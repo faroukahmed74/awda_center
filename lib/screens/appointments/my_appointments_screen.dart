@@ -184,6 +184,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                       await Future.delayed(const Duration(milliseconds: 400));
                     },
                     child: ListView.builder(
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: responsiveListPadding(context),
                       itemCount: _list.length,
                       itemBuilder: (context, i) {

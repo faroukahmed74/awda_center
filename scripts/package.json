@@ -1,0 +1,8 @@
+{
+  "name": "awda-center-scripts",
+  "private": true,
+  "description": "Run clear_firestore_keep_admins.js with: node clear_firestore_keep_admins.js",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

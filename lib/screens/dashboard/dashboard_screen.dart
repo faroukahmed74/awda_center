@@ -74,7 +74,7 @@ class DashboardScreen extends StatelessWidget {
                       user.displayName,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    Text(user.role.value, style: Theme.of(context).textTheme.bodySmall),
+                    Text(l10n.roleDisplay(user.role.value), style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -190,28 +190,33 @@ class DashboardScreen extends StatelessWidget {
             final w = MediaQuery.sizeOf(context).width;
             final maxW = w >= Breakpoint.mobile ? 800.0 : double.infinity;
             return SafeArea(
-              child: SingleChildScrollView(
-                padding: ResponsivePadding.all(context),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxW),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          '${l10n.welcome}, ${user.displayName}',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${l10n.role}: ${user.roles.join(", ")}',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        _DashboardAppointmentsSection(user: user, l10n: l10n),
-                      ],
+              child: GestureDetector(
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                behavior: HitTestBehavior.translucent,
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: ResponsivePadding.all(context),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxW),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            '${l10n.welcome}, ${user.displayName}',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${l10n.role}: ${user.roles.map((r) => l10n.roleDisplay(r)).join(", ")}',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          _DashboardAppointmentsSection(user: user, l10n: l10n),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -339,7 +344,8 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     final isPatient = user.hasRole(UserRole.patient);
     final isDoctor = user.hasRole(UserRole.doctor);
     final canSeeAppointments = user.canAccessFeature('appointments');
-    if (!canSeeAppointments) return const SizedBox.shrink();
+    // Show section for patients (their appointments), doctors (their appointments), or users with appointments feature
+    if (!isPatient && !isDoctor && !canSeeAppointments) return const SizedBox.shrink();
 
     final padding = ResponsivePadding.all(context);
 

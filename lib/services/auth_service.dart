@@ -133,6 +133,23 @@ class AuthService {
     await _auth.sendPasswordResetEmail(email: email.trim());
   }
 
+  /// True if the current user signed in with email/password (can change password in-app).
+  bool get currentUserHasPasswordProvider {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null || user.email!.isEmpty) return false;
+    return user.providerData.any((p) => p.providerId == 'password');
+  }
+
+  /// Reauthenticates with [currentPassword] then sets [newPassword]. Throws [FirebaseAuthException] on failure.
+  Future<void> updatePassword(String currentPassword, String newPassword) async {
+    final user = _auth.currentUser;
+    if (user == null) throw FirebaseAuthException(code: 'no-user', message: 'Not signed in');
+    if (user.email == null || user.email!.isEmpty) throw FirebaseAuthException(code: 'no-email', message: 'No email');
+    final credential = EmailAuthProvider.credential(email: user.email!, password: currentPassword.trim());
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword.trim());
+  }
+
   Future<void> updateUserRoles(String uid, List<String> roles) async {
     await _firestore.collection('users').doc(uid).update({
       'roles': roles,

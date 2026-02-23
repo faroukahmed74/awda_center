@@ -152,7 +152,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                 ),
                             ],
                           ),
-                          subtitle: Text('${u.email} • ${u.roles.join(", ")}'),
+                          subtitle: Text('${u.email} • ${u.roles.map((r) => l10n.roleDisplay(r)).join(", ")}'),
                           trailing: auth.currentUser?.canAccessAdminDashboard == true
                               ? PopupMenuButton<String>(
                                   icon: const Icon(Icons.more_vert),

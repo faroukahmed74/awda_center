@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/income_expense_models.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -176,7 +177,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                         ..._expense.take(50).map((r) => Card(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: ListTile(
-                                title: Text(r.category),
+                                title: Text(_expenseTitle(r)),
                                 subtitle: Text(DateFormat.yMd().format(r.expenseDate)),
                                 trailing: Text(NumberFormat.currency(symbol: '').format(r.amount)),
                               ),
@@ -187,6 +188,14 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
               ),
       ),
     );
+  }
+
+  /// For salary expenses with recipient, show "Salary – Name"; otherwise category.
+  static String _expenseTitle(ExpenseRecordModel r) {
+    if (r.category == 'Salary' && r.recipientName != null && r.recipientName!.isNotEmpty) {
+      return 'Salary – ${r.recipientName}';
+    }
+    return r.category;
   }
 
   Future<void> _showAddIncome(BuildContext context, String? uid, AppLocalizations l10n) async {
@@ -255,12 +264,17 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     final categoryController = TextEditingController(text: 'Salary');
     final descriptionController = TextEditingController();
     DateTime selectedDate = DateTime.now();
+    UserModel? selectedEmployee;
+    final staff = await _firestore.getUsers();
+    final staffList = staff.where((u) => u.hasAnyRole([UserRole.doctor, UserRole.secretary, UserRole.trainee])).toList();
 
     if (!context.mounted) return;
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
+        builder: (ctx, setState) {
+          final isSalary = categoryController.text == 'Salary';
+          return AlertDialog(
           title: Text(l10n.addExpense),
           content: SingleChildScrollView(
             child: Column(
@@ -278,9 +292,22 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   items: _expenseCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                   onChanged: (v) {
                     categoryController.text = v ?? 'Salary';
+                    if (v != 'Salary') selectedEmployee = null;
                     setState(() {});
                   },
                 ),
+                if (isSalary) ...[
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<UserModel?>(
+                    value: selectedEmployee,
+                    decoration: InputDecoration(labelText: l10n.employeeOptional),
+                    items: [
+                      const DropdownMenuItem<UserModel?>(value: null, child: Text('—')),
+                      ...staffList.map((u) => DropdownMenuItem<UserModel?>(value: u, child: Text(u.displayName))),
+                    ],
+                    onChanged: (u) => setState(() => selectedEmployee = u),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 TextField(
                   controller: descriptionController,
@@ -310,6 +337,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   amount: amount,
                   category: category,
                   description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
+                  recipientUserId: selectedEmployee?.id,
+                  recipientName: selectedEmployee?.displayName,
                   recordedByUserId: uid,
                   expenseDate: selectedDate,
                 ));
@@ -318,7 +347,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
               child: Text(l10n.save),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }

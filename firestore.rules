@@ -28,6 +28,12 @@ service cloud.firestore {
       return isAuth() && hasRole('doctor');
     }
 
+    // Helper: user has explicit permission key (from admin grant)
+    function hasPermission(perm) {
+      let d = userData();
+      return 'permissions' in d && perm in d.permissions;
+    }
+
     // users: authenticated can read; user can create own doc (uid); admin or self can update/delete
     match /users/{userId} {
       allow read: if isAuth();
@@ -84,13 +90,13 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || isDoctor() || (isAuth() && resource.data.patientId == request.auth.uid);
     }
 
-    // income_records, expense_records: admin only (and optionally secretary when permission added)
+    // income_records, expense_records: admin, secretary, or any user granted income_expenses permission
     match /income_records/{recordId} {
-      allow read, write: if isAdmin() || isSecretary();
+      allow read, write: if isAuth() && (isAdmin() || isSecretary() || hasPermission('income_expenses'));
     }
 
     match /expense_records/{recordId} {
-      allow read, write: if isAdmin() || isSecretary();
+      allow read, write: if isAuth() && (isAdmin() || isSecretary() || hasPermission('income_expenses'));
     }
 
     // invites: admin creates; any authenticated can read (to apply on register)

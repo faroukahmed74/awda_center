@@ -58,7 +58,7 @@ class AwdaApp extends StatelessWidget {
                 textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
                 child: GestureDetector(
                   onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                  behavior: HitTestBehavior.opaque,
+                  behavior: HitTestBehavior.translucent,
                   child: child ?? const SizedBox.shrink(),
                 ),
               );

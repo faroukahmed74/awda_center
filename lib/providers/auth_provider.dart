@@ -15,6 +15,9 @@ class AuthProvider with ChangeNotifier {
   String? get error => _error;
   bool get isAuthenticated => _currentUser != null;
 
+  /// True if the current user can change password in-app (email/password sign-in).
+  bool get canChangePassword => _authService.currentUserHasPasswordProvider;
+
   AuthProvider() {
     _init();
   }
@@ -167,6 +170,11 @@ class AuthProvider with ChangeNotifier {
       );
       notifyListeners();
     }
+  }
+
+  /// Change password for current user (email/password only). Reauthenticates then updates.
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await _authService.updatePassword(currentPassword, newPassword);
   }
 
   Future<void> deleteUserDocument(String uid) async {

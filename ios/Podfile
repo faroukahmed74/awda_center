@@ -39,5 +39,34 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    end
+  end
+
+  # Fix: BoringSSL-GRPC references PrivacyInfo.xcprivacy that doesn't exist in the pod (Xcode archive fails with lstat).
+  boring_ssl_src = File.join(File.dirname(__FILE__), 'Pods', 'BoringSSL-GRPC', 'src')
+  boring_ssl_privacy = File.join(boring_ssl_src, 'PrivacyInfo.xcprivacy')
+  if File.directory?(File.dirname(boring_ssl_src)) && !File.exist?(boring_ssl_privacy)
+    require 'fileutils'
+    FileUtils.mkdir_p(boring_ssl_src)
+    minimal_privacy_plist = <<~PLIST
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+        <key>NSPrivacyTracking</key>
+        <false/>
+        <key>NSPrivacyTrackingDomains</key>
+        <array/>
+        <key>NSPrivacyCollectedDataTypes</key>
+        <array/>
+        <key>NSPrivacyAccessedAPITypes</key>
+        <array/>
+      </dict>
+      </plist>
+    PLIST
+    File.write(boring_ssl_privacy, minimal_privacy_plist)
+    puts "Created missing BoringSSL-GRPC PrivacyInfo.xcprivacy for Xcode archive."
   end
 end

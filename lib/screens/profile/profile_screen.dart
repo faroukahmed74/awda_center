@@ -14,6 +14,7 @@ import '../patients/patient_document_dialog.dart';
 import '../patients/document_viewer.dart';
 import '../patients/patient_profile_edit_dialog.dart';
 import 'edit_my_info_dialog.dart';
+import 'change_password_dialog.dart';
 
 /// Unified profile screen for all users: personal data + role-specific content (patient: medical/sessions/documents; doctor: link to doctor profile).
 class ProfileScreen extends StatefulWidget {
@@ -93,6 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final user = context.watch<AuthProvider>().currentUser;
+    final canChangePassword = context.watch<AuthProvider>().canChangePassword;
     final isRtl = l10n.isArabic;
 
     if (user == null) {
@@ -154,8 +156,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (user.fullNameEn != null && user.fullNameEn!.isNotEmpty) Text('${l10n.fullNameEn}: ${user.fullNameEn}', style: Theme.of(context).textTheme.bodyMedium),
                       Text('${l10n.email}: ${user.email}', style: Theme.of(context).textTheme.bodyMedium),
                       if (user.phone != null && user.phone!.isNotEmpty) Text('${l10n.phone}: ${user.phone}', style: Theme.of(context).textTheme.bodyMedium),
-                      Text('${l10n.role}: ${user.roles.join(", ")}', style: Theme.of(context).textTheme.bodySmall),
+                      Text('${l10n.role}: ${user.roles.map((r) => l10n.roleDisplay(r)).join(", ")}', style: Theme.of(context).textTheme.bodySmall),
                       Text(user.isActive ? l10n.active : l10n.inactive, style: Theme.of(context).textTheme.bodySmall),
+                      if (canChangePassword) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.lock_outline, size: 20),
+                          label: Text(l10n.changePassword),
+                          onPressed: () async {
+                            await showDialog<bool>(
+                              context: context,
+                              builder: (_) => const ChangePasswordDialog(),
+                            );
+                          },
+                        ),
+                      ],
                     ],
                   ),
                 ),

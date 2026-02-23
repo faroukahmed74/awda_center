@@ -62,6 +62,9 @@ class ExpenseRecordModel {
   final double amount;
   final String category;
   final String? description;
+  /// When category is Salary, optional employee who received the payment.
+  final String? recipientUserId;
+  final String? recipientName;
   final String? recordedByUserId;
   final DateTime expenseDate;
   final DateTime? createdAt;
@@ -71,6 +74,8 @@ class ExpenseRecordModel {
     required this.amount,
     required this.category,
     this.description,
+    this.recipientUserId,
+    this.recipientName,
     this.recordedByUserId,
     required this.expenseDate,
     this.createdAt,
@@ -84,6 +89,8 @@ class ExpenseRecordModel {
       amount: (d['amount'] as num?)?.toDouble() ?? 0,
       category: d['category'] as String? ?? '',
       description: d['description'] as String?,
+      recipientUserId: d['recipientUserId'] as String?,
+      recipientName: d['recipientName'] as String?,
       recordedByUserId: d['recordedByUserId'] as String?,
       expenseDate: dateTs?.toDate() ?? DateTime.now(),
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
@@ -95,6 +102,8 @@ class ExpenseRecordModel {
       'amount': amount,
       'category': category,
       'description': description,
+      'recipientUserId': recipientUserId,
+      'recipientName': recipientName,
       'recordedByUserId': recordedByUserId,
       'expenseDate': Timestamp.fromDate(expenseDate),
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),

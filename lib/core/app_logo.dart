@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'responsive.dart';
 
-/// App logo: prefer PNG (transparent, shape only). Fallback to JPG if PNG is missing.
+/// App logo: CenterLogo.jpg converted to PNG; used everywhere (app bar, drawer, login, launcher).
 const String kAppLogoAsset = 'assets/CenterLogo.png';
 const String _kAppLogoFallbackAsset = 'assets/CenterLogo.jpg';
 

@@ -348,7 +348,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             else
               ..._expenses.map((r) => Card(
                     child: ListTile(
-                      title: Text(r.category),
+                      title: Text(r.category == 'Salary' && r.recipientName != null && r.recipientName!.isNotEmpty ? 'Salary – ${r.recipientName}' : r.category),
                       subtitle: Text(DateFormat.yMd().format(r.expenseDate)),
                       trailing: Text(NumberFormat.currency(symbol: '').format(r.amount)),
                     ),
@@ -453,7 +453,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       title: Text(u.displayName),
-                      subtitle: Text('${u.email} • ${u.roles.join(", ")}'),
+                      subtitle: Text('${u.email} • ${u.roles.map((r) => l10n.roleDisplay(r)).join(", ")}'),
                       trailing: u.isActive ? null : Chip(label: Text(l10n.inactive, style: const TextStyle(fontSize: 12))),
                     ),
                   )),

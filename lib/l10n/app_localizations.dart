@@ -15,6 +15,9 @@ class AppLocalizations {
 
   bool get isArabic => locale.languageCode == 'ar';
 
+  /// Display label for a role value (e.g. 'secretary' -> 'Secretary').
+  String roleDisplay(String roleValue) => _map[roleValue] ?? roleValue;
+
   // App
   String get appTitle => _map['appTitle']!;
   String get login => _map['login']!;
@@ -30,6 +33,12 @@ class AppLocalizations {
   String get logout => _map['logout']!;
   String get email => _map['email']!;
   String get password => _map['password']!;
+  String get changePassword => _map['changePassword']!;
+  String get currentPassword => _map['currentPassword']!;
+  String get newPassword => _map['newPassword']!;
+  String get confirmNewPassword => _map['confirmNewPassword']!;
+  String get passwordChanged => _map['passwordChanged']!;
+  String get changePasswordGoogleHint => _map['changePasswordGoogleHint']!;
   String get fullNameAr => _map['fullNameAr']!;
   String get fullNameEn => _map['fullNameEn']!;
   String get phone => _map['phone']!;
@@ -63,6 +72,7 @@ class AppLocalizations {
   String get source => _map['source']!;
   String get category => _map['category']!;
   String get description => _map['description']!;
+  String get employeeOptional => _map['employeeOptional']!;
   String get save => _map['save']!;
   String get cancel => _map['cancel']!;
   String get confirm => _map['confirm']!;
@@ -183,6 +193,12 @@ class AppLocalizations {
     'logout': 'Logout',
     'email': 'Email',
     'password': 'Password',
+    'changePassword': 'Change password',
+    'currentPassword': 'Current password',
+    'newPassword': 'New password',
+    'confirmNewPassword': 'Confirm new password',
+    'passwordChanged': 'Password changed successfully.',
+    'changePasswordGoogleHint': 'You signed in with Google. Change your password in your Google account settings.',
     'fullNameAr': 'Full name (Arabic)',
     'fullNameEn': 'Full name (English)',
     'phone': 'Phone',
@@ -216,6 +232,7 @@ class AppLocalizations {
     'source': 'Source',
     'category': 'Category',
     'description': 'Description',
+    'employeeOptional': 'Employee (optional)',
     'save': 'Save',
     'cancel': 'Cancel',
     'confirm': 'Confirm',
@@ -335,6 +352,12 @@ class AppLocalizations {
     'logout': 'تسجيل الخروج',
     'email': 'البريد الإلكتروني',
     'password': 'كلمة المرور',
+    'changePassword': 'تغيير كلمة المرور',
+    'currentPassword': 'كلمة المرور الحالية',
+    'newPassword': 'كلمة المرور الجديدة',
+    'confirmNewPassword': 'تأكيد كلمة المرور الجديدة',
+    'passwordChanged': 'تم تغيير كلمة المرور بنجاح.',
+    'changePasswordGoogleHint': 'تم تسجيل الدخول بحساب Google. غيّر كلمة المرور من إعدادات حساب Google.',
     'fullNameAr': 'الاسم الكامل (عربي)',
     'fullNameEn': 'الاسم الكامل (إنجليزي)',
     'phone': 'الهاتف',
@@ -368,6 +391,7 @@ class AppLocalizations {
     'source': 'المصدر',
     'category': 'الفئة',
     'description': 'الوصف',
+    'employeeOptional': 'الموظف (اختياري)',
     'save': 'حفظ',
     'cancel': 'إلغاء',
     'confirm': 'تأكيد',

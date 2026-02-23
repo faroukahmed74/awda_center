@@ -74,16 +74,17 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/CenterLogoWithoutWords.jpeg"
+  remove_alpha_ios: true
+  image_path: "assets/CenterLogo.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/CenterLogoWithoutWords.jpeg"
+  adaptive_icon_foreground: "assets/CenterLogo.png"
   web:
     generate: true
-    image_path: "assets/CenterLogoWithoutWords.jpeg"
-    background_color: "#2E7D32"
+    image_path: "assets/CenterLogo.png"
+    background_color: "#FFFFFF"
     theme_color: "#2E7D32"
   macos:
-    image_path: "assets/CenterLogoWithoutWords.jpeg"
+    image_path: "assets/CenterLogo.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

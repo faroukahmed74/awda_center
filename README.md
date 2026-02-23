@@ -168,6 +168,59 @@ Output: `build/web/`. Deploy the contents to any static host (Firebase Hosting, 
 
 ---
 
+## Upload to Google Play and App Store
+
+### iOS: Archive and upload to App Store
+
+1. **Build the IPA (archive):**
+   ```bash
+   flutter build ipa
+   ```
+   Output: `build/ios/ipa/*.ipa` and the archive in `build/ios/archive/Runner.xcarchive`.
+
+2. **Upload to App Store Connect:**
+   - **Option A:** Open Xcode → **Window → Organizer** → select the archive → **Distribute App** → **App Store Connect** → follow the wizard (upload, then select the app in App Store Connect).
+   - **Option B:** Install [Transporter](https://apps.apple.com/app/transporter/id1450874784) from the Mac App Store, then drag the `.ipa` from `build/ios/ipa/` into Transporter and deliver.
+
+3. **In App Store Connect** ([appstoreconnect.apple.com](https://appstoreconnect.apple.com)):
+   - Create the app if needed (bundle ID: `com.faroukahmed.awdacenter`).
+   - In the app → **TestFlight** or **App Store** tab: the new build appears after processing.
+   - Complete **App Information**, **Pricing**, **App Privacy**, **Version** (screenshots, description, keywords, etc.).
+   - Submit the version for **Review**.
+
+**Requirements:** Apple Developer account ($99/year), valid signing & provisioning in Xcode.
+
+---
+
+### Android: Upload to Google Play
+
+1. **Build an Android App Bundle (preferred by Google):**
+   ```bash
+   flutter build appbundle --release
+   ```
+   Output: `build/app/outputs/bundle/release/app-release.aab`
+
+2. **Create a Google Play Developer account** ([play.google.com/console](https://play.google.com/console)) — one-time $25 registration.
+
+3. **Create the app** in Play Console:
+   - **All apps → Create app** → fill name (e.g. Awda Center), default language, app or game, free/paid.
+
+4. **Complete the dashboard:**
+   - **Store listing:** short/full description, graphics (icon 512×512, feature graphic 1024×512), screenshots (phone 16:9 or 9:16, tablet if needed).
+   - **Content rating:** run the questionnaire and submit.
+   - **Target audience:** age groups.
+   - **News app / COVID-19 apps:** declare if applicable.
+   - **Data safety:** declare what data the app collects (e.g. email, Firebase).
+
+5. **Upload the AAB:**
+   - Go to **Release → Production** (or **Testing → Internal/Closed** first).
+   - **Create new release** → upload `app-release.aab` from step 1.
+   - Add **Release notes**, then **Review release** and **Start rollout**.
+
+**Requirements:** Google Play Developer account, signing key (Flutter release build is already signed if configured in `android/app/build.gradle`).
+
+---
+
 ## Project structure
 
 ```
@@ -265,6 +318,23 @@ Admins can grant these features to any user via the Users screen (edit privilege
 - `admin_todos`
 
 Roles have default feature sets; privileges override or extend them.
+
+---
+
+## Firestore: clearing DB (keep admin-only)
+
+To clear all Firestore data except admin users:
+
+1. **Deploy rules** (if needed):
+   ```bash
+   firebase deploy --only firestore:rules --project awdacenter-eb0a8
+   ```
+
+2. **Run the clear script** (Node.js with Firebase Admin):
+   - `cd scripts`, then `npm install`, then set `GOOGLE_APPLICATION_CREDENTIALS` to your Firebase service account JSON path.
+   - Run: `node clear_firestore_keep_admins.js`.
+
+   The script deletes all users who do **not** have role **admin**, and clears: `appointments`, `sessions`, `patient_profiles`, `patient_documents`, `doctors`, `doctor_availability`, `rooms`, `income_records`, `expense_records`, `center_requirements`, `admin_todos`, `audit_log`, `invites`. Only admin user(s) remain.
 
 ---
 
