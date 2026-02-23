@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "43994021992",
+    "project_id": "awdacenter-eb0a8",
+    "storage_bucket": "awdacenter-eb0a8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43994021992:android:339cbc481d1f1c9e79bbdd",
+        "android_client_info": {
+          "package_name": "com.faroukahmed.awdacenter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "43994021992-g1h4tqm3lkh0orj44jramrdt6nliefef.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.faroukahmed.awdacenter",
+            "certificate_hash": "3aa8a8c3d21489ef5756f9d56e764d12827ea1d9"
+          }
+        },
+        {
+          "client_id": "43994021992-eckl0n819oa76sh10mfknopdo1v6u000.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCF4ZM4xeFZZ2vXupc9GZWMe31O9tvB3Rs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "43994021992-eckl0n819oa76sh10mfknopdo1v6u000.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "43994021992-pt5vttf36lsltauco51rgfke33tcslli.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.faroukahmed.awdacenter"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

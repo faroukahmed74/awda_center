@@ -1,0 +1,180 @@
+import 'package:flutter/foundation.dart';
+import '../models/user_model.dart';
+import '../services/auth_service.dart';
+import '../services/notification_service.dart';
+
+class AuthProvider with ChangeNotifier {
+  final AuthService _authService = AuthService();
+
+  UserModel? _currentUser;
+  bool _loading = true;
+  String? _error;
+
+  UserModel? get currentUser => _currentUser;
+  bool get loading => _loading;
+  String? get error => _error;
+  bool get isAuthenticated => _currentUser != null;
+
+  AuthProvider() {
+    _init();
+  }
+
+  Future<void> _init() async {
+    final user = _authService.currentUser;
+    if (user != null) {
+      await loadUserProfile();
+    } else {
+      _loading = false;
+      notifyListeners();
+    }
+    _authService.authStateChanges.listen((user) async {
+      if (user != null) {
+        await loadUserProfile();
+      } else {
+        _currentUser = null;
+        _loading = false;
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> loadUserProfile() async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      _currentUser = await _authService.getCurrentUserProfile();
+    } catch (e) {
+      _error = e.toString();
+      _currentUser = null;
+    }
+    _loading = false;
+    notifyListeners();
+    if (_currentUser != null) {
+      NotificationService().refreshTokenAndScheduleReminders(_currentUser!.id);
+    }
+  }
+
+  Future<bool> signIn(String email, String password) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final user = await _authService.signInWithEmailAndPassword(email, password);
+      _currentUser = user;
+      if (user != null && !user.isActive) {
+        _error = 'Account is deactivated';
+        await _authService.signOut();
+        _currentUser = null;
+      }
+    } catch (e) {
+      _error = e.toString();
+      _currentUser = null;
+    }
+    _loading = false;
+    notifyListeners();
+    return _currentUser != null;
+  }
+
+  Future<bool> signInWithGoogle() async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final user = await _authService.signInWithGoogle();
+      _currentUser = user;
+      if (user != null && !user.isActive) {
+        _error = 'Account is deactivated';
+        await _authService.signOut();
+        _currentUser = null;
+      }
+    } catch (e) {
+      _error = e.toString();
+      _currentUser = null;
+    }
+    _loading = false;
+    notifyListeners();
+    return _currentUser != null;
+  }
+
+  Future<bool> register({
+    required String email,
+    required String password,
+    String? fullNameAr,
+    String? fullNameEn,
+    String? phone,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final user = await _authService.registerWithEmailAndPassword(
+        email: email,
+        password: password,
+        fullNameAr: fullNameAr,
+        fullNameEn: fullNameEn,
+        phone: phone,
+      );
+      _currentUser = user;
+    } catch (e) {
+      _error = e.toString();
+      _currentUser = null;
+    }
+    _loading = false;
+    notifyListeners();
+    return _currentUser != null;
+  }
+
+  Future<void> signOut() async {
+    final uid = _currentUser?.id;
+    if (uid != null) NotificationService().clearToken(uid);
+    await _authService.signOut();
+    _currentUser = null;
+    _error = null;
+    notifyListeners();
+  }
+
+  Future<void> updateUserRoles(String uid, List<String> roles) async {
+    await _authService.updateUserRoles(uid, roles);
+    if (_currentUser?.id == uid) {
+      _currentUser = _currentUser!.copyWith(roles: roles);
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateUserPermissions(String uid, List<String> permissions) async {
+    await _authService.updateUserPermissions(uid, permissions);
+    if (_currentUser?.id == uid) {
+      _currentUser = _currentUser!.copyWith(permissions: permissions);
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateUserActive(String uid, bool isActive) async {
+    await _authService.updateUserActive(uid, isActive);
+    if (_currentUser?.id == uid) {
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateUserProfile(String uid, {String? fullNameAr, String? fullNameEn, String? phone}) async {
+    await _authService.updateUserProfile(uid, fullNameAr: fullNameAr, fullNameEn: fullNameEn, phone: phone);
+    if (_currentUser?.id == uid && (fullNameAr != null || fullNameEn != null || phone != null)) {
+      _currentUser = _currentUser!.copyWith(
+        fullNameAr: fullNameAr ?? _currentUser!.fullNameAr,
+        fullNameEn: fullNameEn ?? _currentUser!.fullNameEn,
+        phone: phone ?? _currentUser!.phone,
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteUserDocument(String uid) async {
+    await _authService.deleteUserDocument(uid);
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+}

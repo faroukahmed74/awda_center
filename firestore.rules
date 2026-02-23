@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: true if user is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: user doc (supports roles array or legacy role string)
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function hasRole(role) {
+      let d = userData();
+      return ('roles' in d && role in d.roles) || ('role' in d && d.role == role);
+    }
+
+    function isAdmin() {
+      return isAuth() && hasRole('admin');
+    }
+
+    function isSecretary() {
+      return isAuth() && hasRole('secretary');
+    }
+
+    function isDoctor() {
+      return isAuth() && hasRole('doctor');
+    }
+
+    // users: authenticated can read; user can create own doc (uid); admin or self can update/delete
+    match /users/{userId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.auth.uid == userId;
+      allow update, delete: if isAuth() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // doctors: read by authenticated; admin or self (userId) can create; admin or doctor can update own
+    match /doctors/{docId} {
+      allow read: if isAuth();
+      allow create: if isAdmin() || (isAuth() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isDoctor() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // doctor_availability: doctorId is the doctors collection doc id; doctor can update own via doctor doc's userId
+    match /doctor_availability/{docId} {
+      allow read: if isAuth();
+      allow create: if isAdmin() || isDoctor();
+      allow update, delete: if isAdmin() || (isDoctor() && get(/databases/$(database)/documents/doctors/$(resource.data.doctorId)).data.userId == request.auth.uid);
+    }
+
+    // rooms: read by authenticated; write by admin
+    match /rooms/{roomId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // appointments: authenticated read; admin/secretary/doctor can write; patient can create own (book session)
+    match /appointments/{appointmentId} {
+      allow read: if isAuth();
+      allow create: if isAdmin() || isSecretary() || isDoctor() || (isAuth() && request.resource.data.patientId == request.auth.uid);
+      allow update, delete: if isAdmin() || isSecretary() || isDoctor();
+    }
+
+    // sessions: authenticated read; admin/doctor can write; patient can read own
+    match /sessions/{sessionId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isAdmin() || isDoctor();
+    }
+
+    // patient_profiles: patient can create/read/update own (profileId == userId); admin/doctor full access
+    match /patient_profiles/{profileId} {
+      allow read: if isAuth();
+      allow create: if isAdmin() || isDoctor() || (isAuth() && request.auth.uid == profileId);
+      allow update: if isAdmin() || isDoctor() || (isAuth() && request.auth.uid == profileId);
+      allow delete: if isAdmin();
+    }
+
+    // patient_documents: images, PDFs, notes; patient and doctor can add/edit (with date/time)
+    match /patient_documents/{docId} {
+      allow read: if isAuth();
+      allow create: if isAdmin() || isDoctor() || (isAuth() && request.resource.data.patientId == request.auth.uid);
+      allow update, delete: if isAdmin() || isDoctor() || (isAuth() && resource.data.patientId == request.auth.uid);
+    }
+
+    // income_records, expense_records: admin only (and optionally secretary when permission added)
+    match /income_records/{recordId} {
+      allow read, write: if isAdmin() || isSecretary();
+    }
+
+    match /expense_records/{recordId} {
+      allow read, write: if isAdmin() || isSecretary();
+    }
+
+    // invites: admin creates; any authenticated can read (to apply on register)
+    // update: admin, or registering user can set used=true when invite email matches their auth email
+    match /invites/{inviteId} {
+      allow read: if isAuth();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isAuth() && request.resource.data.used == true && resource.data.email == request.auth.token.email);
+      allow delete: if isAdmin();
+    }
+
+    // center_requirements (to-buy list): admin and secretary
+    match /center_requirements/{docId} {
+      allow read, write: if isAdmin() || isSecretary();
+    }
+
+    // admin_todos (to-do list with reminders): admin and secretary
+    match /admin_todos/{docId} {
+      allow read, write: if isAdmin() || isSecretary();
+    }
+
+    // audit_log: authenticated can create; admin can read
+    match /audit_log/{logId} {
+      allow create: if isAuth();
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+  }
+}

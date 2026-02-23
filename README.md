@@ -1,0 +1,273 @@
+# Awda Center — عودة للعلاج الطبيعي
+
+A Flutter app for a physical therapy clinic: appointments, patient profiles, sessions, income/expenses, and multi-role users. Single codebase for **Web**, **Android**, **iOS**, and **Windows**. Backend: **Firebase** (Auth, Firestore, Storage, Messaging).
+
+---
+
+## Features
+
+### User roles
+- **admin** — Full access: users, appointments, patients, income/expenses, reports, requirements, admin todos, rooms, doctors admin, audit log.
+- **secretary** — Users, appointments, reports (configurable via privileges).
+- **doctor** — Appointments, patients, reports; doctor profile and availability.
+- **patient** — My appointments, profile; book appointments with doctors.
+- **trainee** — Limited; privileges configurable by admin.
+
+Role-based dashboards and navigation. Admins can grant **per-feature privileges** to any user (e.g. give a secretary access to income/expenses).
+
+### Main screens
+| Screen | Description |
+|--------|-------------|
+| Login / Register / Forgot password | Email/password auth |
+| Dashboard | Role-specific; today’s appointments, quick links |
+| Admin dashboard | Admin-only overview and shortcuts |
+| Users | List and manage users (admin/secretary) |
+| Appointments | Create, edit, reschedule; filter by doctor/date |
+| My Appointments | Patient/doctor view of own appointments |
+| Profile | View/edit own info; change language and theme |
+| User profile | View another user (by role) |
+| Patients | Patient list and search |
+| Patient detail | Profile, documents, sessions, appointments |
+| Income & expenses | Records and summaries |
+| Reports | Clinic reports |
+| Requirements | Center requirements (e.g. compliance) |
+| Admin todos | Admin task list |
+| Rooms | Room management |
+| Doctors | Doctor list (and admin: doctor management) |
+| My doctor profile | Doctor’s own profile and availability |
+| Audit log | Audit trail (admin) |
+
+### Internationalization (i18n)
+- **Arabic** and **English** with RTL support for Arabic.
+- Language choice persisted; app restarts with selected locale.
+
+### Theme
+- **Light** and **dark** mode; preference persisted.
+
+### Responsive layout
+- Layout adapts to phone, tablet, and desktop (e.g. constrained width on large screens, responsive padding, ellipsis for long text).
+
+### Notifications
+- Firebase Cloud Messaging for push notifications.
+- Local notifications for appointment reminders (patient and doctor); rescheduled when appointments are created or updated.
+
+---
+
+## Prerequisites
+
+- **Flutter SDK** (stable, with Dart 3.9+) — [flutter.dev](https://flutter.dev)
+- **Firebase project** — [console.firebase.google.com](https://console.firebase.google.com)
+- For **iOS**: macOS and Xcode (for device/App Store builds)
+- For **Android**: Android SDK (included with Flutter)
+
+---
+
+## Setup
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/YOUR_USERNAME/awda_center.git
+cd awda_center
+flutter pub get
+```
+
+### 2. Configure Firebase (FlutterFire CLI)
+
+Generate `lib/firebase_options.dart` and platform config files (do **not** commit this file; it contains project-specific keys):
+
+```bash
+dart run flutterfire configure
+```
+
+Select or create a Firebase project and choose the platforms you need (Android, iOS, Web, Windows).
+
+### 3. Enable Firebase services
+
+- **Authentication**: Enable **Email/Password** sign-in.
+- **Firestore Database**: Create the database (test mode is fine for development).
+- **Storage**: Enable if you use patient documents or file uploads.
+- **Cloud Messaging**: Enable for push and appointment reminders.
+
+### 4. Deploy Firestore rules
+
+Copy the contents of `firestore.rules` into Firebase Console → **Firestore** → **Rules**, or deploy via Firebase CLI:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+(Ensure `firestore.rules` is in the project root when using CLI.)
+
+### 5. First admin user
+
+After the first user registers (e.g. yourself):
+
+1. Open **Firestore** in Firebase Console.
+2. Go to the `users` collection.
+3. Find the document whose ID is the new user’s **Firebase Auth UID**.
+4. Set:
+   - `role` = `admin`
+   - `isActive` = `true`
+
+That user can then log in as admin and manage other users and app data.
+
+---
+
+## Run the app
+
+```bash
+# Web
+flutter run -d chrome
+
+# Android
+flutter run -d android
+
+# iOS
+flutter run -d ios
+
+# Windows
+flutter run -d windows
+```
+
+---
+
+## Build for release
+
+Run each in a separate terminal if you want parallel builds.
+
+### Android (APK)
+
+```bash
+flutter build apk --release
+```
+
+Output: `build/app/outputs/flutter-apk/app-release.apk`
+
+### iOS
+
+```bash
+flutter build ios --release
+```
+
+For App Store archive:
+
+```bash
+flutter build ipa
+```
+
+Then open the generated `.ipa` in Xcode (Organizer) or Transporter and complete signing/distribution.
+
+### Web
+
+```bash
+flutter build web --release
+```
+
+Output: `build/web/`. Deploy the contents to any static host (Firebase Hosting, Vercel, Netlify, etc.).
+
+---
+
+## Project structure
+
+```
+lib/
+├── firebase_options.dart     # Generated by flutterfire configure (not committed)
+├── main.dart
+├── core/
+│   ├── app_logo.dart
+│   ├── app_permissions.dart  # Feature keys and role defaults
+│   └── responsive.dart       # Breakpoints, responsive padding
+├── l10n/
+│   └── app_localizations.dart
+├── models/
+│   ├── user_model.dart
+│   ├── appointment_model.dart
+│   ├── session_model.dart
+│   ├── patient_profile_model.dart
+│   ├── doctor_model.dart
+│   ├── room_model.dart
+│   ├── income_expense_models.dart
+│   ├── admin_todo_model.dart
+│   ├── center_requirement_model.dart
+│   └── audit_log_model.dart
+├── providers/
+│   ├── auth_provider.dart
+│   ├── theme_provider.dart
+│   └── locale_provider.dart
+├── router/
+│   └── app_router.dart       # go_router routes and redirects
+├── screens/
+│   ├── auth/
+│   ├── dashboard/
+│   ├── admin/
+│   ├── users/
+│   ├── appointments/
+│   ├── patients/
+│   ├── patient/
+│   ├── profile/
+│   ├── income_expenses/
+│   ├── reports/
+│   ├── requirements/
+│   ├── admin_todos/
+│   ├── rooms/
+│   ├── doctors/
+│   └── audit/
+├── services/
+│   ├── auth_service.dart
+│   ├── firestore_service.dart
+│   ├── storage_service.dart
+│   ├── notification_service.dart
+│   └── audit_service.dart
+└── theme/
+    └── app_theme.dart
+```
+
+Root files:
+- `firestore.rules` — Firestore security rules (deploy to Firebase)
+- `pubspec.yaml` — Dependencies and assets (e.g. app icon)
+
+---
+
+## Firestore collections (outline)
+
+| Collection | Purpose |
+|------------|---------|
+| `users` | User profiles, role, `isActive`, optional `roles` and per-feature `permissions` |
+| `doctors` | Doctor profile linked to `users`; availability in `doctor_availability` |
+| `doctor_availability` | Slots per doctor |
+| `rooms` | Room list for appointments |
+| `appointments` | Appointments (patient, doctor, date, time, status, service, etc.) |
+| `sessions` | Session records linked to patients/appointments |
+| `patient_profiles` | Patient profile data |
+| `patient_documents` | References to stored files (e.g. in Firebase Storage) |
+| `income_records` | Income entries |
+| `expense_records` | Expense entries |
+| `admin_todos` | Admin task list |
+| `center_requirements` | Requirements/compliance items |
+| `audit_logs` | Audit trail entries |
+
+See the code and `firestore.rules` for field names and security rules.
+
+---
+
+## Admin privileges (feature keys)
+
+Admins can grant these features to any user via the Users screen (edit privileges):
+
+- `admin_dashboard`
+- `users`
+- `appointments`
+- `patients`
+- `income_expenses`
+- `reports`
+- `requirements`
+- `admin_todos`
+
+Roles have default feature sets; privileges override or extend them.
+
+---
+
+## License
+
+Private / project-specific.
