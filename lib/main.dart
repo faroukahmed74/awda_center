@@ -38,7 +38,7 @@ class AwdaApp extends StatelessWidget {
       child: Consumer3<AuthProvider, LocaleProvider, ThemeProvider>(
         builder: (context, auth, locale, theme, _) {
           return MaterialApp.router(
-            title: 'Awda Physical Therapy',
+            title: 'Awda Center',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),

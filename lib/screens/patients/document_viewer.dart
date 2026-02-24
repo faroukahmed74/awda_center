@@ -13,36 +13,51 @@ void showDocumentViewer(BuildContext context, PatientDocumentModel doc) {
       context: context,
       builder: (ctx) => AlertDialog(
         content: SingleChildScrollView(
-          child: InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: Image.network(
-              url,
-              fit: BoxFit.contain,
-              loadingBuilder: (_, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return SizedBox(
-                  height: 200,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1)
-                          : null,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 200, maxWidth: 400),
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                loadingBuilder: (_, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1)
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text('Loading…'),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-              errorBuilder: (_, __, ___) => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.broken_image, size: 48),
-                  const SizedBox(height: 8),
-                  Text(l10n.viewImage),
-                  TextButton(
-                    onPressed: () => _openUrl(context, url),
-                    child: Text(l10n.openLink),
-                  ),
-                ],
+                  );
+                },
+                errorBuilder: (_, __, ___) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.broken_image, size: 48),
+                    const SizedBox(height: 8),
+                    Text(l10n.viewImage),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.open_in_browser, size: 20),
+                      label: Text(l10n.openLink),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _openUrl(context, url);
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -57,27 +72,21 @@ void showDocumentViewer(BuildContext context, PatientDocumentModel doc) {
   }
 }
 
-/// Tries in-app WebView first for PDF (Android/iOS), then falls back to external app for older versions.
+/// Opens PDF in external browser/app so it actually displays (in-app WebView often shows blank for PDFs).
 Future<void> _openPdfInApp(BuildContext context, String url, AppLocalizations l10n) async {
   final uri = Uri.parse(url);
   try {
-    final launched = await launchUrl(uri, mode: LaunchMode.inAppWebView);
+    // In-app WebView often shows a blank screen for PDFs (e.g. Firebase Storage). Open externally so the system viewer/browser shows the PDF.
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
-      final fallback = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!fallback && context.mounted) {
+      final inApp = await launchUrl(uri, mode: LaunchMode.inAppWebView);
+      if (!inApp && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.openLink)));
       }
     }
-  } catch (_) {
-    try {
-      final external = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!external && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.openLink)));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l10n.openLink}: $e')));
-      }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l10n.openLink}: $e')));
     }
   }
 }

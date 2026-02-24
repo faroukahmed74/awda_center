@@ -56,31 +56,52 @@ class _PatientDocumentDialogState extends State<PatientDocumentDialog> {
 
   Future<void> _save() async {
     if (!widget.canEdit) return;
+    if (!_formKey.currentState!.validate()) return;
+    final url = _fileUrl.text.trim();
+    if (_type != DocumentType.note && url.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).uploadOrPasteUrl)),
+        );
+      }
+      return;
+    }
     setState(() => _saving = true);
     final now = DateTime.now();
-    if (widget.existing != null) {
-      final data = <String, dynamic>{
-        'documentType': _type.value,
-        'textContent': _type == DocumentType.note ? _textContent.text.trim() : null,
-        'filePathOrUrl': _type != DocumentType.note ? _fileUrl.text.trim() : '',
-        'fileName': _type != DocumentType.note ? _fileName.text.trim() : '',
-      };
-      await _firestore.updatePatientDocument(widget.existing!.id, data);
-    } else {
-      await _firestore.addPatientDocument(PatientDocumentModel(
-        id: '',
-        patientId: widget.patientId,
-        documentType: _type,
-        filePathOrUrl: _type != DocumentType.note ? _fileUrl.text.trim() : '',
-        fileName: _type != DocumentType.note ? _fileName.text.trim() : '',
-        textContent: _type == DocumentType.note ? _textContent.text.trim() : null,
-        uploadedByUserId: widget.currentUserId,
-        createdAt: now,
-        updatedAt: now,
-      ));
+    final filePathOrUrl = _type != DocumentType.note ? url : '';
+    final fileName = _type != DocumentType.note ? _fileName.text.trim() : '';
+    try {
+      if (widget.existing != null) {
+        final data = <String, dynamic>{
+          'documentType': _type.value,
+          'textContent': _type == DocumentType.note ? _textContent.text.trim() : null,
+          'filePathOrUrl': filePathOrUrl,
+          'fileName': fileName,
+        };
+        await _firestore.updatePatientDocument(widget.existing!.id, data);
+      } else {
+        await _firestore.addPatientDocument(PatientDocumentModel(
+          id: '',
+          patientId: widget.patientId,
+          documentType: _type,
+          filePathOrUrl: filePathOrUrl,
+          fileName: fileName.isNotEmpty ? fileName : _type.value,
+          textContent: _type == DocumentType.note ? _textContent.text.trim() : null,
+          uploadedByUserId: widget.currentUserId,
+          createdAt: now,
+          updatedAt: now,
+        ));
+      }
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    if (mounted) Navigator.of(context).pop(true);
-    setState(() => _saving = false);
   }
 
   @override
@@ -131,8 +152,20 @@ class _PatientDocumentDialogState extends State<PatientDocumentDialog> {
                                 _fileUrl.text = r.url;
                                 _fileName.text = r.fileName;
                               });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('File uploaded. Tap Save to store the document.')),
+                              );
                             }
-                          } catch (_) {}
+                          } catch (e) {
+                            if (mounted) {
+                              final msg = e.toString().contains('object-not-found') || e.toString().contains('object_not_found')
+                                  ? 'Upload failed. Enable Firebase Storage and deploy storage rules (firebase deploy --only storage).'
+                                  : 'Upload failed: $e';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
+                              );
+                            }
+                          }
                           if (mounted) setState(() => _uploading = false);
                         },
                 ),

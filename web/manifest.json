@@ -1,11 +1,11 @@
 {
-    "name": "Awda Physical Therapy",
+    "name": "Awda Center",
     "short_name": "Awda Center",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#2E7D32",
-    "description": "Awda Physical Therapy - عودة للعلاج الطبيعي",
+    "description": "Awda Center - مركز عودة",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

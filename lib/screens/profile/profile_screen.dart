@@ -310,17 +310,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? (d.textContent ?? '').replaceAll('\n', ' ').trim()
         : (d.fileName.isNotEmpty ? d.fileName : d.documentType.value);
     final subtitle = formatDocumentDateTime(d.createdAt, d.updatedAt, l10n);
-    final canView = (d.documentType == DocumentType.image || d.documentType == DocumentType.pdf) && (d.filePathOrUrl.trim().isNotEmpty);
+    final isPdfOrImage = d.documentType == DocumentType.image || d.documentType == DocumentType.pdf;
+    final canView = isPdfOrImage && d.filePathOrUrl.trim().isNotEmpty;
+    void openOrHint() {
+      if (canView) {
+        showDocumentViewer(context, d);
+      } else if (isPdfOrImage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No link set. Edit the document to add a URL or upload a file.')),
+        );
+      }
+    }
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Icon(icon),
         title: Text(title.isEmpty ? d.documentType.value : title, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: subtitle.isNotEmpty ? Text(subtitle, style: Theme.of(context).textTheme.bodySmall) : null,
-        onTap: canView ? () => showDocumentViewer(context, d) : null,
+        onTap: isPdfOrImage ? openOrHint : null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (isPdfOrImage)
+              IconButton(
+                icon: Icon(Icons.open_in_new, size: 22, color: Theme.of(context).colorScheme.primary),
+                tooltip: 'Open',
+                onPressed: openOrHint,
+              ),
             IconButton(
               icon: const Icon(Icons.edit, size: 20),
               onPressed: () async {

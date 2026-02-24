@@ -179,7 +179,7 @@ class AppLocalizations {
   Map<String, String> get _map => locale.languageCode == 'ar' ? _ar : _en;
 
   static const Map<String, String> _en = {
-    'appTitle': 'Awda Physical Therapy',
+    'appTitle': 'Awda Center',
     'login': 'Login',
     'signInWithGoogle': 'Sign in with Google',
     'orContinueWithEmail': 'Or continue with email',
@@ -338,7 +338,7 @@ class AppLocalizations {
   };
 
   static const Map<String, String> _ar = {
-    'appTitle': 'عودة للعلاج الطبيعي',
+    'appTitle': 'مركز عودة',
     'login': 'تسجيل الدخول',
     'signInWithGoogle': 'تسجيل الدخول بـ Google',
     'orContinueWithEmail': 'أو متابعة بالبريد الإلكتروني',
