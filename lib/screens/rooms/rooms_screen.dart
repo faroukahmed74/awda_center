@@ -121,7 +121,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.rooms),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             IconButton(icon: const Icon(Icons.add), tooltip: l10n.addRoom, onPressed: () => _showForm(context, l10n)),
           ],

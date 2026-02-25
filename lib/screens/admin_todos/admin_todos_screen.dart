@@ -139,7 +139,7 @@ class _AdminTodosScreenState extends State<AdminTodosScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.toDoList),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             IconButton(
               icon: Icon(_showCompleted ? Icons.filter_list_off : Icons.done_all),

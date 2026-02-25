@@ -30,6 +30,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   List<DoctorModel> _doctors = [];
   List<RoomModel> _rooms = [];
   bool _loading = true;
+  /// null = All (non-cancelled), otherwise filter by this status. Cancelled appointments are never shown.
+  AppointmentStatus? _statusFilter;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
 
   @override
@@ -72,6 +74,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         var list = snapshot.docs
             .map((d) => AppointmentModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>))
             .where((a) => a.appointmentDate.isAfter(from.subtract(const Duration(days: 1))))
+            .where((a) => a.status != AppointmentStatus.cancelled)
             .toList();
         if (mounted) {
           setState(() {
@@ -127,6 +130,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     });
   }
 
+  /// List to display: already excludes cancelled; further filtered by _statusFilter.
+  List<AppointmentModel> _displayList() {
+    if (_statusFilter == null) return _list;
+    return _list.where((a) => a.status == _statusFilter).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -139,7 +148,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.appointments),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             if (canUpdate)
               IconButton(
@@ -160,21 +169,45 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               ),
           ],
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _list.isEmpty
-                ? Center(child: Text(l10n.noData))
-                : RefreshIndicator(
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      label: Text(l10n.filterAll),
+                      selected: _statusFilter == null,
+                      onSelected: (_) => setState(() => _statusFilter = null),
+                    ),
+                  ),
+                  Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.pending), selected: _statusFilter == AppointmentStatus.pending, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.pending))),
+                  Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.confirmed), selected: _statusFilter == AppointmentStatus.confirmed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.confirmed))),
+                  Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.completed), selected: _statusFilter == AppointmentStatus.completed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.completed))),
+                  FilterChip(label: Text(l10n.noShow), selected: _statusFilter == AppointmentStatus.noShow, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.noShow)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _displayList().isEmpty
+                      ? Center(child: Text(l10n.noData))
+                      : RefreshIndicator(
                     onRefresh: () async {
-                      _subscription?.cancel();
-                      _startAppointmentsStream();
-                      await Future.delayed(const Duration(milliseconds: 400));
-                    },
-                    child: ListView.builder(
-                      padding: responsiveListPadding(context),
-                      itemCount: _list.length,
-                      itemBuilder: (context, i) {
-                        final a = _list[i];
+                          _subscription?.cancel();
+                          _startAppointmentsStream();
+                          await Future.delayed(const Duration(milliseconds: 400));
+                        },
+                        child: ListView.builder(
+                          padding: responsiveListPadding(context),
+                          itemCount: _displayList().length,
+                          itemBuilder: (context, i) {
+                            final a = _displayList()[i];
                         final dateStr = DateFormat.yMd().format(a.appointmentDate);
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
@@ -226,6 +259,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                       },
                     ),
                   ),
+            ),
+          ],
+        ),
       ),
     );
   }

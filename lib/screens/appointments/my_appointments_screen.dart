@@ -56,6 +56,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       (snapshot) {
         final list = snapshot.docs
             .map((d) => AppointmentModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>))
+            .where((a) => a.status != AppointmentStatus.cancelled)
             .toList();
         if (mounted) {
           setState(() {
@@ -115,7 +116,16 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.myAppointments),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.add),

@@ -106,7 +106,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.viewProfile),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/users'); }),
           actions: [
             if (isAdmin && _user != null && _user!.id != auth.currentUser?.id) ...[
               IconButton(

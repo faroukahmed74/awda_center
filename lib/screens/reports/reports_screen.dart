@@ -277,9 +277,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           pw.SizedBox(height: 8),
           pw.Text('${l10n.total}: ${_users.length} ${l10n.users}'),
           pw.SizedBox(height: 8),
-          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(3), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.fullNameEn)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.email)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.role))]),
-            ..._users.map((u) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.displayName, textDirection: pw.TextDirection.rtl, textAlign: pw.TextAlign.right)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.email)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.roles.join(', ')))])),
+          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(2), 3: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.fullNameAr)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.fullNameEn)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.email)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.role))]),
+            ..._users.map((u) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.fullNameAr ?? '', textDirection: pw.TextDirection.rtl, textAlign: pw.TextAlign.right)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.fullNameEn ?? '')), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.email)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.roles.join(', ')))])),
           ]),
         ],
       ));
@@ -334,8 +334,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       }
     } else {
       sheet.appendRow([TextCellValue(l10n.usersReport)]);
-      sheet.appendRow([TextCellValue(l10n.fullNameEn), TextCellValue(l10n.email), TextCellValue(l10n.role)]);
-      for (final u in _users) sheet.appendRow([TextCellValue(u.displayName), TextCellValue(u.email), TextCellValue(u.roles.join(', '))]);
+      sheet.appendRow([TextCellValue(l10n.fullNameAr), TextCellValue(l10n.fullNameEn), TextCellValue(l10n.email), TextCellValue(l10n.role)]);
+      for (final u in _users) sheet.appendRow([TextCellValue(u.fullNameAr ?? ''), TextCellValue(u.fullNameEn ?? ''), TextCellValue(u.email), TextCellValue(u.roles.join(', '))]);
     }
 
     final bytes = excel.encode();
@@ -358,7 +358,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.reports),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             PopupMenuButton<String>(
               icon: const Icon(Icons.upload),

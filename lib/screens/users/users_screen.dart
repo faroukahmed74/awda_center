@@ -79,10 +79,7 @@ class _UsersScreenState extends State<UsersScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.users),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
-          ),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             if (auth.currentUser?.canAccessAdminDashboard ?? false)
               IconButton(

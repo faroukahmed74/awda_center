@@ -83,7 +83,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.patients),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
         ),
         body: Column(
           children: [

@@ -43,7 +43,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.auditLog),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())

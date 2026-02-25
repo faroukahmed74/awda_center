@@ -79,6 +79,7 @@ class AppLocalizations {
   String get welcome => _map['welcome']!;
   String get noData => _map['noData']!;
   String get filterByRole => _map['filterByRole']!;
+  String get filterAll => _map['filterAll']!;
   String get allRoles => _map['allRoles']!;
   String get admin => _map['admin']!;
   String get secretary => _map['secretary']!;
@@ -247,6 +248,7 @@ class AppLocalizations {
     'welcome': 'Welcome',
     'noData': 'No data',
     'filterByRole': 'Filter by role',
+    'filterAll': 'All',
     'allRoles': 'All roles',
     'admin': 'Admin',
     'secretary': 'Secretary',
@@ -413,6 +415,7 @@ class AppLocalizations {
     'welcome': 'مرحباً',
     'noData': 'لا توجد بيانات',
     'filterByRole': 'تصفية حسب الدور',
+    'filterAll': 'الكل',
     'allRoles': 'جميع الأدوار',
     'admin': 'مدير',
     'secretary': 'سكرتير',

@@ -116,7 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Directionality(
         textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
         child: Scaffold(
-          appBar: AppBar(title: Text(l10n.profile), leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop())),
+          appBar: AppBar(title: Text(l10n.profile), leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); })),
           body: const Center(child: Text('Not signed in')),
         ),
       );
@@ -127,7 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.profile),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             IconButton(
               icon: const Icon(Icons.edit_outlined),

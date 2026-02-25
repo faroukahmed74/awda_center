@@ -121,7 +121,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.patientDetail),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/patients'); }),
           actions: [
             if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
               IconButton(

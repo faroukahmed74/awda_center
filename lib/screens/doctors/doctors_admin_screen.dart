@@ -124,7 +124,7 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.manageDoctors),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             IconButton(icon: const Icon(Icons.add), tooltip: l10n.addDoctor, onPressed: () => _addDoctor(context, l10n)),
           ],
