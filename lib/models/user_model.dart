@@ -30,6 +30,8 @@ class UserModel {
   final bool isActive;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  /// Preferred language for notifications: 'en' or 'ar'. Set by app from current locale.
+  final String? locale;
 
   const UserModel({
     required this.id,
@@ -42,6 +44,7 @@ class UserModel {
     this.isActive = true,
     this.createdAt,
     this.updatedAt,
+    this.locale,
   });
 
   /// Primary role for display (first in list).
@@ -106,6 +109,7 @@ class UserModel {
       isActive: d['isActive'] as bool? ?? true,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
+      locale: d['locale'] as String?,
     );
   }
 

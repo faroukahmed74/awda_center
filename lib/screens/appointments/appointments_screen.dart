@@ -11,6 +11,7 @@ import '../../models/room_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../services/notification_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'appointment_form_dialog.dart';
 
@@ -118,6 +119,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
   }
 
+  /// After status change: reschedule local reminders for patient and doctor. Push to patient/doctor/secretary is sent by Cloud Function when deployed.
+  void _notifyAppointmentStatusChange(AppointmentModel a) {
+    NotificationService().rescheduleRemindersForUser(a.patientId);
+    _firestore.getDoctorById(a.doctorId).then((doc) {
+      if (doc != null) NotificationService().rescheduleRemindersForUser(doc.userId);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -189,12 +198,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         if (ok == true && mounted) { _subscription?.cancel(); _startAppointmentsStream(); }
                                       } else if (v == 'confirmed') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.confirmed);
+                                        _notifyAppointmentStatusChange(a);
                                       } else if (v == 'completed') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.completed);
+                                        _notifyAppointmentStatusChange(a);
                                       } else if (v == 'cancelled') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.cancelled);
+                                        _notifyAppointmentStatusChange(a);
                                       } else if (v == 'noShow') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.noShow);
+                                        _notifyAppointmentStatusChange(a);
                                       }
                                     },
                                     itemBuilder: (context) => [

@@ -6,6 +6,20 @@ import 'firestore_service.dart';
 import '../models/appointment_model.dart';
 import '../models/user_model.dart';
 
+/// Localized notification strings by locale ('en' or 'ar'). Used when no BuildContext.
+Map<String, String> _notificationStrings(String locale) {
+  final isAr = locale == 'ar';
+  return {
+    'reminderTitle': isAr ? 'تذكير موعد' : 'Appointment reminder',
+    'reminderBody': isAr ? 'جلسة في {date} الساعة {time}' : 'Session on {date} at {time}',
+    'confirmed': isAr ? 'تم تأكيد الموعد' : 'Appointment confirmed',
+    'completed': isAr ? 'تم إكمال الموعد' : 'Appointment completed',
+    'cancelled': isAr ? 'تم إلغاء الموعد' : 'Appointment cancelled',
+    'noShow': isAr ? 'تم تسجيل عدم الحضور' : 'Appointment marked no-show',
+    'todoTitle': isAr ? 'تذكير مهمة' : 'To-do reminder',
+  };
+}
+
 /// Handles FCM (push) and local scheduled reminders for appointments/todos.
 /// Call [init] after Firebase init; call [refreshTokenAndScheduleReminders] after login.
 class NotificationService {
@@ -119,6 +133,8 @@ class NotificationService {
 
     // Patient: my appointments in next 7 days → remind day before or morning of
     if (user.hasRole(UserRole.patient)) {
+      final strings = _notificationStrings(user.locale ?? 'en');
+      final dateTimeTemplate = strings['reminderBody']!;
       final appointments = await _firestore.getAppointments(
         patientId: uid,
         from: dayStart,
@@ -128,10 +144,14 @@ class NotificationService {
         if (a.status != AppointmentStatus.cancelled) {
           final reminderAt = _reminderTimeForAppointment(a);
           if (reminderAt.isAfter(now)) {
+            final dateStr = '${a.appointmentDate.day}/${a.appointmentDate.month}';
+            final body = dateTimeTemplate
+                .replaceAll('{date}', dateStr)
+                .replaceAll('{time}', a.startTime);
             await _scheduleLocal(
               id: a.id.hashCode.abs() % 100000,
-              title: 'Appointment reminder',
-              body: 'Session on ${a.appointmentDate.day}/${a.appointmentDate.month} at ${a.startTime}',
+              title: strings['reminderTitle']!,
+              body: body,
               scheduledDate: reminderAt,
             );
           }
@@ -143,6 +163,8 @@ class NotificationService {
     if (user.hasRole(UserRole.doctor)) {
       final doc = await _firestore.getDoctorByUserId(uid);
       if (doc != null) {
+        final strings = _notificationStrings(user.locale ?? 'en');
+        final dateTimeTemplate = strings['reminderBody']!;
         final appointments = await _firestore.getAppointments(
           doctorId: doc.id,
           from: dayStart,
@@ -152,10 +174,14 @@ class NotificationService {
           if (a.status != AppointmentStatus.cancelled) {
             final reminderAt = _reminderTimeForAppointment(a);
             if (reminderAt.isAfter(now)) {
+              final dateStr = '${a.appointmentDate.day}/${a.appointmentDate.month}';
+              final body = dateTimeTemplate
+                  .replaceAll('{date}', dateStr)
+                  .replaceAll('{time}', a.startTime);
               await _scheduleLocal(
                 id: ('doc_${a.id}').hashCode.abs() % 100000 + 50000,
-                title: 'Appointment reminder',
-                body: 'Session on ${a.appointmentDate.day}/${a.appointmentDate.month} at ${a.startTime}',
+                title: strings['reminderTitle']!,
+                body: body,
                 scheduledDate: reminderAt,
               );
             }
@@ -167,11 +193,12 @@ class NotificationService {
     // Admin/staff: todos with reminder in future
     if (user.canAccessFeature('admin_todos')) {
       final todos = await _firestore.getAdminTodos(includeCompleted: false);
+      final strings = _notificationStrings(user.locale ?? 'en');
       for (final t in todos) {
         if (t.reminderAt != null && t.reminderAt!.isAfter(now)) {
           await _scheduleLocal(
             id: ('todo_${t.id}').hashCode.abs() % 100000 + 100000,
-            title: 'To-do reminder',
+            title: strings['todoTitle']!,
             body: t.title,
             scheduledDate: t.reminderAt!,
           );

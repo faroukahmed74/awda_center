@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/appointment_model.dart';
 import '../../models/patient_profile_model.dart';
 import '../../models/session_model.dart';
 import '../../providers/auth_provider.dart';
@@ -24,6 +25,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   final FirestoreService _firestore = FirestoreService();
   PatientProfileModel? _profile;
   List<SessionModel> _sessions = [];
+  List<AppointmentModel> _appointmentSessions = [];
   List<PatientDocumentModel> _documents = [];
   bool _loading = true;
   String? _errorMessage;
@@ -58,6 +60,18 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       } catch (_) {
         sessions = [];
       }
+      List<AppointmentModel> appointmentSessions = [];
+      try {
+        final appointments = await _firestore.getAppointments(patientId: uid);
+        appointmentSessions = appointments
+            .where((a) =>
+                a.status == AppointmentStatus.confirmed ||
+                a.status == AppointmentStatus.completed)
+            .toList();
+        appointmentSessions.sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
+      } catch (_) {
+        appointmentSessions = [];
+      }
       try {
         docs = await _firestore.getPatientDocuments(uid);
       } catch (_) {
@@ -67,6 +81,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       setState(() {
         _profile = profile;
         _sessions = sessions;
+        _appointmentSessions = appointmentSessions;
         _documents = docs;
         _loading = false;
         _errorMessage = null;
@@ -79,6 +94,34 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         _errorMessage = e.toString();
       });
     }
+  }
+
+  /// Merged session rows: from sessions collection + confirmed/completed appointments, sorted by date desc.
+  List<_SessionDisplayRow> _mergedSessionRows(AppLocalizations l10n) {
+    final rows = <_SessionDisplayRow>[];
+    for (final s in _sessions) {
+      rows.add(_SessionDisplayRow(
+        date: s.sessionDate,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        service: s.service,
+        statusLabel: null,
+      ));
+    }
+    for (final a in _appointmentSessions) {
+      final statusLabel = a.status == AppointmentStatus.confirmed
+          ? l10n.confirmed
+          : l10n.completed;
+      rows.add(_SessionDisplayRow(
+        date: a.appointmentDate,
+        startTime: a.startTime,
+        endTime: a.endTime,
+        service: a.service,
+        statusLabel: statusLabel,
+      ));
+    }
+    rows.sort((a, b) => b.date.compareTo(a.date));
+    return rows.take(50).toList();
   }
 
   @override
@@ -172,16 +215,22 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     const SizedBox(height: 16),
                     Text(l10n.sessions, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    if (_sessions.isEmpty)
-                      Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
-                    else
-                      ..._sessions.take(20).map((s) => Card(
+                    Builder(
+                      builder: (context) {
+                        final rows = _mergedSessionRows(l10n);
+                        if (rows.isEmpty)
+                          return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)));
+                        return Column(
+                          children: rows.map((r) => Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
-                              title: Text(DateFormat.yMd().format(s.sessionDate)),
-                              subtitle: Text('${s.startTime} - ${s.endTime} ${s.service ?? ''}'),
+                              title: Text(DateFormat.yMd().format(r.date)),
+                              subtitle: Text('${r.startTime} - ${r.endTime} ${r.service ?? ''}${r.statusLabel != null ? ' • ${r.statusLabel}' : ''}'),
                             ),
-                          )),
+                          )).toList(),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -293,4 +342,20 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       ),
     );
   }
+}
+
+class _SessionDisplayRow {
+  final DateTime date;
+  final String startTime;
+  final String endTime;
+  final String? service;
+  final String? statusLabel;
+
+  _SessionDisplayRow({
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    this.service,
+    this.statusLabel,
+  });
 }

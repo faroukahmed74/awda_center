@@ -48,6 +48,14 @@ class FirestoreService {
     }, SetOptions(merge: true));
   }
 
+  /// Update preferred locale for notifications ('en' or 'ar'). Call from app when locale is known.
+  Future<void> updateUserLocale(String uid, String locale) async {
+    if (uid.isEmpty) return;
+    await _firestore.collection('users').doc(uid).set({
+      'locale': locale == 'ar' ? 'ar' : 'en',
+    }, SetOptions(merge: true));
+  }
+
   // Doctors
   Future<List<DoctorModel>> getDoctors() async {
     final snapshot = await _firestore.collection('doctors').get();

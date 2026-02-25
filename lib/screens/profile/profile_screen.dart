@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/appointment_model.dart';
 import '../../models/patient_profile_model.dart';
 import '../../models/session_model.dart';
 import '../../models/user_model.dart';
@@ -28,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final FirestoreService _firestore = FirestoreService();
   PatientProfileModel? _profile;
   List<SessionModel> _sessions = [];
+  List<AppointmentModel> _appointmentSessions = [];
   List<PatientDocumentModel> _documents = [];
   bool _loading = true;
   String? _errorMessage;
@@ -57,11 +59,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (user.hasRole(UserRole.patient)) {
         final profile = await _firestore.getPatientProfile(user.id);
         List<SessionModel> sessions = [];
+        List<AppointmentModel> appointmentSessions = [];
         List<PatientDocumentModel> docs = [];
         try {
           sessions = await _firestore.getSessionsForPatient(user.id);
         } catch (_) {
           sessions = [];
+        }
+        try {
+          final appointments = await _firestore.getAppointments(patientId: user.id);
+          appointmentSessions = appointments
+              .where((a) =>
+                  a.status == AppointmentStatus.confirmed ||
+                  a.status == AppointmentStatus.completed)
+              .toList();
+          appointmentSessions.sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
+        } catch (_) {
+          appointmentSessions = [];
         }
         try {
           docs = await _firestore.getPatientDocuments(user.id);
@@ -72,6 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _profile = profile;
           _sessions = sessions;
+          _appointmentSessions = appointmentSessions;
           _documents = docs;
         });
       }
@@ -264,16 +279,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 16),
         Text(l10n.sessions, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        if (_sessions.isEmpty)
-          Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
-        else
-          ..._sessions.take(20).map((s) => Card(
+        Builder(
+          builder: (context) {
+            final rows = _mergedSessionRows(l10n);
+            if (rows.isEmpty)
+              return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)));
+            return Column(
+              children: rows.map((r) => Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  title: Text(DateFormat.yMd().format(s.sessionDate)),
-                  subtitle: Text('${s.startTime} - ${s.endTime} ${s.service ?? ''}'),
+                  title: Text(DateFormat.yMd().format(r.date)),
+                  subtitle: Text('${r.startTime} - ${r.endTime} ${r.service ?? ''}${r.statusLabel != null ? ' • ${r.statusLabel}' : ''}'),
                 ),
-              )),
+              )).toList(),
+            );
+          },
+        ),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -299,6 +320,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ..._documents.take(50).map((d) => _docCard(context, d, l10n, uid)),
       ],
     );
+  }
+
+  /// Merged session rows: from sessions collection + confirmed/completed appointments, sorted by date desc.
+  List<_ProfileSessionRow> _mergedSessionRows(AppLocalizations l10n) {
+    final rows = <_ProfileSessionRow>[];
+    for (final s in _sessions) {
+      rows.add(_ProfileSessionRow(
+        date: s.sessionDate,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        service: s.service,
+        statusLabel: null,
+      ));
+    }
+    for (final a in _appointmentSessions) {
+      final statusLabel = a.status == AppointmentStatus.confirmed
+          ? l10n.confirmed
+          : l10n.completed;
+      rows.add(_ProfileSessionRow(
+        date: a.appointmentDate,
+        startTime: a.startTime,
+        endTime: a.endTime,
+        service: a.service,
+        statusLabel: statusLabel,
+      ));
+    }
+    rows.sort((a, b) => b.date.compareTo(a.date));
+    return rows.take(50).toList();
   }
 
   Widget _docCard(BuildContext context, PatientDocumentModel d, AppLocalizations l10n, String uid) {
@@ -375,4 +424,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
+
+class _ProfileSessionRow {
+  final DateTime date;
+  final String startTime;
+  final String endTime;
+  final String? service;
+  final String? statusLabel;
+
+  _ProfileSessionRow({
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    this.service,
+    this.statusLabel,
+  });
 }

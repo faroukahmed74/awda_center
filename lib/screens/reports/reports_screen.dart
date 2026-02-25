@@ -196,11 +196,28 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               icon: const Icon(Icons.upload),
               tooltip: l10n.export,
               onSelected: (v) async {
-                if (v == 'income') await _exportIncome(l10n);
-                if (v == 'appointments') await _exportAppointments(l10n);
-                if (v == 'patients') await _exportPatients(l10n);
-                if (v == 'users') await _exportUsers(l10n);
-                if (v == 'audit') await _exportAuditLog(l10n);
+                try {
+                  if (v == 'income') await _exportIncome(l10n);
+                  if (v == 'appointments') await _exportAppointments(l10n);
+                  if (v == 'patients') await _exportPatients(l10n);
+                  if (v == 'users') await _exportUsers(l10n);
+                  if (v == 'audit') await _exportAuditLog(l10n);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Export ready — use share sheet to save or send')),
+                    );
+                  }
+                } catch (e, st) {
+                  debugPrint('Export error: $e\n$st');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${l10n.export}: $e'),
+                        duration: const Duration(seconds: 5),
+                      ),
+                    );
+                  }
+                }
               },
               itemBuilder: (context) => [
                 PopupMenuItem(value: 'income', child: Text(l10n.exportIncomeExpense)),

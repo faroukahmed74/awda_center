@@ -175,6 +175,14 @@ class AppLocalizations {
   String get manageDoctors => _map['manageDoctors']!;
   String get addDoctor => _map['addDoctor']!;
   String get edit => _map['edit']!;
+  // Notification text (used in push and local notifications)
+  String get notificationReminderTitle => _map['notificationReminderTitle']!;
+  String get notificationReminderBody => _map['notificationReminderBody']!;
+  String get notificationAppointmentConfirmed => _map['notificationAppointmentConfirmed']!;
+  String get notificationAppointmentCompleted => _map['notificationAppointmentCompleted']!;
+  String get notificationAppointmentCancelled => _map['notificationAppointmentCancelled']!;
+  String get notificationAppointmentNoShow => _map['notificationAppointmentNoShow']!;
+  String get notificationTodoReminderTitle => _map['notificationTodoReminderTitle']!;
 
   Map<String, String> get _map => locale.languageCode == 'ar' ? _ar : _en;
 
@@ -335,6 +343,13 @@ class AppLocalizations {
     'manageDoctors': 'Manage doctors',
     'addDoctor': 'Add doctor',
     'edit': 'Edit',
+    'notificationReminderTitle': 'Appointment reminder',
+    'notificationReminderBody': 'Session on {date} at {time}',
+    'notificationAppointmentConfirmed': 'Appointment confirmed',
+    'notificationAppointmentCompleted': 'Appointment completed',
+    'notificationAppointmentCancelled': 'Appointment cancelled',
+    'notificationAppointmentNoShow': 'Appointment marked no-show',
+    'notificationTodoReminderTitle': 'To-do reminder',
   };
 
   static const Map<String, String> _ar = {
@@ -494,6 +509,13 @@ class AppLocalizations {
     'manageDoctors': 'إدارة الأطباء',
     'addDoctor': 'إضافة طبيب',
     'edit': 'تعديل',
+    'notificationReminderTitle': 'تذكير موعد',
+    'notificationReminderBody': 'جلسة في {date} الساعة {time}',
+    'notificationAppointmentConfirmed': 'تم تأكيد الموعد',
+    'notificationAppointmentCompleted': 'تم إكمال الموعد',
+    'notificationAppointmentCancelled': 'تم إلغاء الموعد',
+    'notificationAppointmentNoShow': 'تم تسجيل عدم الحضور',
+    'notificationTodoReminderTitle': 'تذكير مهمة',
   };
 }
 

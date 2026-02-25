@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/appointment_model.dart';
 import '../../models/patient_profile_model.dart';
 import '../../models/session_model.dart';
 import '../../models/user_model.dart';
@@ -28,13 +30,34 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
   UserModel? _user;
   PatientProfileModel? _profile;
   List<SessionModel> _sessions = [];
+  List<AppointmentModel> _appointmentSessions = [];
   List<PatientDocumentModel> _documents = [];
   bool _loading = true;
+  StreamSubscription<dynamic>? _appointmentsSubscription;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _appointmentsSubscription = _firestore
+        .appointmentsStream(patientId: widget.patientId)
+        .listen((snapshot) {
+      if (!mounted) return;
+      final list = snapshot.docs
+          .map((d) => AppointmentModel.fromFirestore(d))
+          .where((a) =>
+              a.status == AppointmentStatus.confirmed ||
+              a.status == AppointmentStatus.completed)
+          .toList();
+      list.sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
+      setState(() => _appointmentSessions = list);
+    });
+  }
+
+  @override
+  void dispose() {
+    _appointmentsSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -42,14 +65,50 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     final user = await _firestore.getUser(widget.patientId);
     final profile = await _firestore.getPatientProfile(widget.patientId);
     final sessions = await _firestore.getSessionsForPatient(widget.patientId);
+    final appointments = await _firestore.getAppointments(patientId: widget.patientId);
+    final appointmentSessions = appointments
+        .where((a) =>
+            a.status == AppointmentStatus.confirmed ||
+            a.status == AppointmentStatus.completed)
+        .toList();
+    appointmentSessions.sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
     final docs = await _firestore.getPatientDocuments(widget.patientId);
     setState(() {
       _user = user;
       _profile = profile;
       _sessions = sessions;
+      _appointmentSessions = appointmentSessions;
       _documents = docs;
       _loading = false;
     });
+  }
+
+  /// Merged session rows: from sessions collection and from confirmed/completed appointments, sorted by date desc.
+  List<_SessionRow> _mergedSessionRows(AppLocalizations l10n) {
+    final rows = <_SessionRow>[];
+    for (final s in _sessions) {
+      rows.add(_SessionRow(
+        date: s.sessionDate,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        service: s.service,
+        statusLabel: null,
+      ));
+    }
+    for (final a in _appointmentSessions) {
+      final statusLabel = a.status == AppointmentStatus.confirmed
+          ? l10n.confirmed
+          : l10n.completed;
+      rows.add(_SessionRow(
+        date: a.appointmentDate,
+        startTime: a.startTime,
+        endTime: a.endTime,
+        service: a.service,
+        statusLabel: statusLabel,
+      ));
+    }
+    rows.sort((a, b) => b.date.compareTo(a.date));
+    return rows.take(50).toList();
   }
 
   @override
@@ -113,16 +172,27 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                         const SizedBox(height: 16),
                         Text(l10n.sessions, style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 8),
-                        if (_sessions.isEmpty)
-                          Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
-                        else
-                          ..._sessions.take(30).map((s) => Card(
+                        Builder(
+                          builder: (context) {
+                            final rows = _mergedSessionRows(l10n);
+                            if (rows.isEmpty) {
+                              return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)));
+                            }
+                            return Column(
+                              children: rows.map((r) => Card(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(
-                                  title: Text(DateFormat.yMd().format(s.sessionDate)),
-                                  subtitle: Text('${s.startTime} - ${s.endTime} ${s.service ?? ''}'),
+                                  title: Text(DateFormat.yMd().format(r.date)),
+                                  subtitle: Text([
+                                    '${r.startTime} - ${r.endTime}',
+                                    if (r.service != null && r.service!.isNotEmpty) r.service,
+                                    if (r.statusLabel != null) r.statusLabel,
+                                  ].where((e) => e != null && e.isNotEmpty).join(' • ')),
                                 ),
-                              )),
+                              )).toList(),
+                            );
+                          },
+                        ),
                         const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -249,4 +319,21 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       ),
     );
   }
+}
+
+/// One row in the merged Sessions list (from sessions collection or from confirmed/completed appointment).
+class _SessionRow {
+  final DateTime date;
+  final String startTime;
+  final String endTime;
+  final String? service;
+  final String? statusLabel;
+
+  _SessionRow({
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    this.service,
+    this.statusLabel,
+  });
 }

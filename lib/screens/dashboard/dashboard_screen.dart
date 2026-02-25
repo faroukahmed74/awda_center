@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/app_logo.dart';
@@ -24,6 +25,11 @@ class DashboardScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser!;
     final isRtl = l10n.isArabic;
+    // Sync current locale to Firestore so push notifications use the right language
+    final localeCode = context.watch<LocaleProvider>().locale.languageCode;
+    if (user.id.isNotEmpty) {
+      FirestoreService().updateUserLocale(user.id, localeCode);
+    }
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -59,129 +65,136 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
         drawer: Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
+          child: Column(
             children: [
-              DrawerHeader(
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
                   children: [
-                    AppLogo(size: Breakpoint.isDesktop(context) ? 56 : 48),
-                    const SizedBox(height: 8),
-                    Text(
-                      user.displayName,
-                      style: Theme.of(context).textTheme.titleLarge,
+                    DrawerHeader(
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          AppLogo(size: Breakpoint.isDesktop(context) ? 56 : 48),
+                          const SizedBox(height: 8),
+                          Text(
+                            user.displayName,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          Text(l10n.roleDisplay(user.role.value), style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ),
                     ),
-                    Text(l10n.roleDisplay(user.role.value), style: Theme.of(context).textTheme.bodySmall),
+                    ListTile(
+                      leading: const Icon(Icons.dashboard),
+                      title: Text(l10n.dashboard),
+                      onTap: () { Navigator.pop(context); },
+                    ),
+                    if (canAccessRoute(user, '/admin-dashboard')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.admin_panel_settings),
+                        title: Text(l10n.adminDashboard),
+                        onTap: () { Navigator.pop(context); context.push('/admin-dashboard'); },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.meeting_room),
+                        title: Text(l10n.rooms),
+                        onTap: () { Navigator.pop(context); context.push('/rooms'); },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.badge),
+                        title: Text(l10n.manageDoctors),
+                        onTap: () { Navigator.pop(context); context.push('/doctors-admin'); },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.history),
+                        title: Text(l10n.auditLog),
+                        onTap: () { Navigator.pop(context); context.push('/audit-log'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/users')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.people),
+                        title: Text(l10n.users),
+                        onTap: () { Navigator.pop(context); context.push('/users'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/appointments')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.calendar_today),
+                        title: Text(l10n.appointments),
+                        onTap: () { Navigator.pop(context); context.push('/appointments'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/doctors')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.medical_services_outlined),
+                        title: Text(l10n.ourDoctors),
+                        onTap: () { Navigator.pop(context); context.push('/doctors'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/my-doctor-profile')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.badge_outlined),
+                        title: Text(l10n.myDoctorProfile),
+                        onTap: () { Navigator.pop(context); context.push('/my-doctor-profile'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/my-appointments')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.event),
+                        title: Text(l10n.myAppointments),
+                        onTap: () { Navigator.pop(context); context.push('/my-appointments'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/profile')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.person),
+                        title: Text(l10n.profile),
+                        onTap: () { Navigator.pop(context); context.push('/profile'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/patients')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.medical_services),
+                        title: Text(l10n.patients),
+                        onTap: () { Navigator.pop(context); context.push('/patients'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/income-expenses')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.attach_money),
+                        title: Text(l10n.incomeAndExpenses),
+                        onTap: () { Navigator.pop(context); context.push('/income-expenses'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/reports')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.assessment),
+                        title: Text(l10n.reports),
+                        onTap: () { Navigator.pop(context); context.push('/reports'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/requirements')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.shopping_cart_outlined),
+                        title: Text(l10n.requirements),
+                        onTap: () { Navigator.pop(context); context.push('/requirements'); },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/admin-todos')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.check_circle_outline),
+                        title: Text(l10n.toDoList),
+                        onTap: () { Navigator.pop(context); context.push('/admin-todos'); },
+                      ),
+                    ],
                   ],
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.dashboard),
-                title: Text(l10n.dashboard),
-                onTap: () { Navigator.pop(context); },
-              ),
-              if (canAccessRoute(user, '/admin-dashboard')) ...[
-                ListTile(
-                  leading: const Icon(Icons.admin_panel_settings),
-                  title: Text(l10n.adminDashboard),
-                  onTap: () { Navigator.pop(context); context.push('/admin-dashboard'); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.meeting_room),
-                  title: Text(l10n.rooms),
-                  onTap: () { Navigator.pop(context); context.push('/rooms'); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.badge),
-                  title: Text(l10n.manageDoctors),
-                  onTap: () { Navigator.pop(context); context.push('/doctors-admin'); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.history),
-                  title: Text(l10n.auditLog),
-                  onTap: () { Navigator.pop(context); context.push('/audit-log'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/users')) ...[
-                ListTile(
-                  leading: const Icon(Icons.people),
-                  title: Text(l10n.users),
-                  onTap: () { Navigator.pop(context); context.push('/users'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/appointments')) ...[
-                ListTile(
-                  leading: const Icon(Icons.calendar_today),
-                  title: Text(l10n.appointments),
-                  onTap: () { Navigator.pop(context); context.push('/appointments'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/doctors')) ...[
-                ListTile(
-                  leading: const Icon(Icons.medical_services_outlined),
-                  title: Text(l10n.ourDoctors),
-                  onTap: () { Navigator.pop(context); context.push('/doctors'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/my-doctor-profile')) ...[
-                ListTile(
-                  leading: const Icon(Icons.badge_outlined),
-                  title: Text(l10n.myDoctorProfile),
-                  onTap: () { Navigator.pop(context); context.push('/my-doctor-profile'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/my-appointments')) ...[
-                ListTile(
-                  leading: const Icon(Icons.event),
-                  title: Text(l10n.myAppointments),
-                  onTap: () { Navigator.pop(context); context.push('/my-appointments'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/profile')) ...[
-                ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(l10n.profile),
-                  onTap: () { Navigator.pop(context); context.push('/profile'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/patients')) ...[
-                ListTile(
-                  leading: const Icon(Icons.medical_services),
-                  title: Text(l10n.patients),
-                  onTap: () { Navigator.pop(context); context.push('/patients'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/income-expenses')) ...[
-                ListTile(
-                  leading: const Icon(Icons.attach_money),
-                  title: Text(l10n.incomeAndExpenses),
-                  onTap: () { Navigator.pop(context); context.push('/income-expenses'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/reports')) ...[
-                ListTile(
-                  leading: const Icon(Icons.assessment),
-                  title: Text(l10n.reports),
-                  onTap: () { Navigator.pop(context); context.push('/reports'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/requirements')) ...[
-                ListTile(
-                  leading: const Icon(Icons.shopping_cart_outlined),
-                  title: Text(l10n.requirements),
-                  onTap: () { Navigator.pop(context); context.push('/requirements'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/admin-todos')) ...[
-                ListTile(
-                  leading: const Icon(Icons.check_circle_outline),
-                  title: Text(l10n.toDoList),
-                  onTap: () { Navigator.pop(context); context.push('/admin-todos'); },
-                ),
-              ],
+              const _DrawerVersionFooter(),
             ],
           ),
         ),
@@ -223,6 +236,42 @@ class DashboardScreen extends StatelessWidget {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// Shows app version at the bottom of the drawer. All roles see it.
+class _DrawerVersionFooter extends StatefulWidget {
+  const _DrawerVersionFooter();
+
+  @override
+  State<_DrawerVersionFooter> createState() => _DrawerVersionFooterState();
+}
+
+class _DrawerVersionFooterState extends State<_DrawerVersionFooter> {
+  String _version = '';
+
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _version = '${info.version}+${info.buildNumber}');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Text(
+          _version.isEmpty ? '—' : 'v$_version',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );

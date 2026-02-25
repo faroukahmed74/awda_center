@@ -221,6 +221,71 @@ Output: `build/web/`. Deploy the contents to any static host (Firebase Hosting, 
 
 ---
 
+## Updating the app (new features or bug fixes)
+
+When you add features or fix bugs and want to ship a new version to Google Play and the App Store:
+
+### 1. Bump the version
+
+In **`pubspec.yaml`** update the `version` line:
+
+```yaml
+# Format: versionName+buildNumber
+# Android: versionName = 1.0.0, versionCode = 2
+# iOS:     CFBundleShortVersionString = 1.0.0, CFBundleVersion = 2
+version: 1.0.0+2
+```
+
+- **First number (e.g. 1.0.0):** User-visible version. Increase when you have a notable release (e.g. 1.0.1 for a small fix, 1.1.0 for new features).
+- **After the + (e.g. 2):** Build number. **Must increase for every upload** to each store (Google Play and App Store both require a higher build number than the previous release).
+
+Example: after your first release was `1.0.0+1`, use `1.0.0+2` for the next upload, then `1.0.1+3`, etc.
+
+### 2. Build the release artifacts
+
+```bash
+# Android (AAB for Google Play)
+flutter build appbundle --release
+
+# iOS (IPA for App Store)
+flutter build ipa
+```
+
+Outputs:
+- Android: `build/app/outputs/bundle/release/app-release.aab`
+- iOS: `build/ios/ipa/*.ipa` (and archive in `build/ios/archive/`)
+
+### 3. Upload to Google Play
+
+1. Open [Google Play Console](https://play.google.com/console) → your app.
+2. **Release → Production** (or **Testing → Internal/Closed** to test first).
+3. **Create new release** → upload the new `app-release.aab`.
+4. Add **Release notes** (what’s new or what you fixed).
+5. **Review release** → **Start rollout**.
+
+Users get the update via the Play Store when you roll out; no new listing needed if you only changed the build.
+
+### 4. Upload to App Store
+
+1. **Upload the build:**
+   - **Option A:** Xcode → **Window → Organizer** → select the archive from `build/ios/archive/` (or from a new archive via **Product → Archive**) → **Distribute App** → **App Store Connect**.
+   - **Option B:** Open [Transporter](https://apps.apple.com/app/transporter/id1450874784), drag the `.ipa` from `build/ios/ipa/` and deliver.
+2. In [App Store Connect](https://appstoreconnect.apple.com) → your app:
+   - The new build appears under **TestFlight** and **App Store** after processing.
+   - If this is an update to an existing version: **App Store** tab → your version → select the new build.
+   - Add **What’s New** (release notes) for the version.
+   - Submit for **Review** when ready.
+
+### 5. Backend / Firebase (if you changed them)
+
+- **Firestore rules:** `firebase deploy --only firestore:rules`
+- **Cloud Functions:** `firebase deploy --only functions`
+- **Hosting (web):** `firebase deploy --only hosting` (if you deploy the Flutter web build to Firebase Hosting)
+
+Deploy these when you change backend logic, rules, or the web app; they are independent of the mobile version number.
+
+---
+
 ## Project structure
 
 ```
