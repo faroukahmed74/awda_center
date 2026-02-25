@@ -7,12 +7,68 @@ const db = admin.firestore();
 const messaging = admin.messaging();
 
 const notificationTitles = {
-  en: { confirmed: 'Appointment confirmed', completed: 'Appointment completed', cancelled: 'Appointment cancelled', no_show: 'Appointment marked no-show' },
-  ar: { confirmed: 'تم تأكيد الموعد', completed: 'تم إكمال الموعد', cancelled: 'تم إلغاء الموعد', no_show: 'تم تسجيل عدم الحضور' },
+  en: { confirmed: 'Appointment confirmed', completed: 'Appointment completed', cancelled: 'Appointment cancelled', no_show: 'Appointment marked no-show', pending: 'New pending appointment' },
+  ar: { confirmed: 'تم تأكيد الموعد', completed: 'تم إكمال الموعد', cancelled: 'تم إلغاء الموعد', no_show: 'تم تسجيل عدم الحضور', pending: 'موعد جديد قيد الانتظار' },
 };
 
 function getBodyTemplate(locale) {
   return locale === 'ar' ? 'جلسة في %s الساعة %s' : 'Session on %s at %s';
+}
+
+/**
+ * When a new appointment is created (patient request) with status pending,
+ * send FCM to all secretaries and admins so they see pending sessions.
+ */
+async function sendPendingNotificationToSecretaries(appointmentId, after) {
+  const appointmentDate = after.appointmentDate;
+  const startTime = after.startTime || '';
+  const endTime = after.endTime || '';
+  const dateStr = appointmentDate && appointmentDate.toDate
+    ? appointmentDate.toDate().toLocaleDateString()
+    : '';
+  const timeStr = dateStr ? `${startTime}${endTime ? ` - ${endTime}` : ''}` : '';
+
+  const tokensByLocale = { en: [], ar: [] };
+  const usersSnap = await db.collection('users').get();
+  usersSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const token = d.fcmToken;
+    if (!token) return;
+    const roles = d.roles || [];
+    const permissions = d.permissions || [];
+    const isSecretary = roles.includes('secretary') || roles.includes('admin');
+    const hasAppointments = permissions.includes('appointments') || roles.includes('admin') || roles.includes('secretary');
+    if (isSecretary || hasAppointments) {
+      const locale = (d.locale === 'ar' ? 'ar' : 'en');
+      tokensByLocale[locale].push(token);
+    }
+  });
+
+  const titleEn = notificationTitles.en.pending;
+  const titleAr = notificationTitles.ar.pending;
+  const bodyEn = dateStr ? `Session on ${dateStr} at ${timeStr}` : 'A patient requested a new appointment.';
+  const bodyAr = dateStr ? `جلسة في ${dateStr} الساعة ${timeStr}` : 'طلب مريض موعداً جديداً.';
+
+  const data = { type: 'appointment_pending', appointmentId, status: 'pending' };
+
+  for (const locale of ['en', 'ar']) {
+    const tokens = [...new Set(tokensByLocale[locale])];
+    if (tokens.length === 0) continue;
+    const title = locale === 'ar' ? titleAr : titleEn;
+    const body = locale === 'ar' ? bodyAr : bodyEn;
+    const message = {
+      notification: { title, body },
+      data,
+      tokens,
+      android: { priority: 'high' },
+      apns: { payload: { aps: { sound: 'default' } } },
+    };
+    try {
+      await messaging.sendEachForMulticast(message);
+    } catch (err) {
+      console.error('FCM pending secretaries error:', err);
+    }
+  }
 }
 
 /**
@@ -114,4 +170,17 @@ exports.onAppointmentStatusChange = functions.firestore
         console.error(`FCM send ${locale} error:`, err);
       }
     }
+  });
+
+/**
+ * When a new appointment is created (e.g. patient requests), if status is pending,
+ * notify secretaries and admins about the new pending session.
+ */
+exports.onAppointmentCreated = functions.firestore
+  .document('appointments/{appointmentId}')
+  .onCreate(async (snap, context) => {
+    const after = snap.data();
+    const status = after && after.status;
+    if (status !== 'pending') return;
+    await sendPendingNotificationToSecretaries(context.params.appointmentId, after);
   });

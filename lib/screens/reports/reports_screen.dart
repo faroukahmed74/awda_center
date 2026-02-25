@@ -1,5 +1,8 @@
+import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
@@ -8,6 +11,8 @@ import '../../models/income_expense_models.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+
+import 'report_file_io_stub.dart' if (dart.library.io) 'report_file_io.dart' as report_io;
 
 /// Reports: patients, income & expenses, appointments, users summary. All reports use period (day/month/year) where applicable; exports available from menu.
 class ReportsScreen extends StatefulWidget {
@@ -32,18 +37,31 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   List<UserModel> _users = [];
   Map<String, int> _usersByRole = {};
   bool _loading = false;
+  int _previousTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _load();
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging && mounted) {
+      final index = _tabController.index;
+      if (index != _previousTabIndex) {
+        _previousTabIndex = index;
+        _load();
+      }
+    }
   }
 
   (DateTime, DateTime) _range() {
@@ -109,7 +127,14 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     }
   }
 
-  Future<void> _exportIncome(AppLocalizations l10n) async {
+  /// Origin rect for the share sheet (required on iPad / some iOS). Pass from build context.
+  static Rect? _sharePositionOriginFrom(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    if (size.width <= 0 || size.height <= 0) return null;
+    return Rect.fromLTWH(0, 0, size.width, size.height * 0.5);
+  }
+
+  Future<void> _exportIncome(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
     final (from, to) = _range();
     final income = await _firestore.getIncomeRecords(from: from, to: to);
     final expense = await _firestore.getExpenseRecords(from: from, to: to);
@@ -121,10 +146,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     for (final r in expense) {
       sb.writeln('${DateFormat.yMd().format(r.expenseDate)},Expense,${r.amount},${r.category},${r.description ?? ''}');
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportIncomeExpense} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}');
+    await Share.share(sb.toString(), subject: '${l10n.exportIncomeExpense} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}', sharePositionOrigin: sharePositionOrigin);
   }
 
-  Future<void> _exportAppointments(AppLocalizations l10n) async {
+  Future<void> _exportAppointments(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
     final (from, to) = _range();
     final appointments = await _firestore.getAppointments(from: from, to: to);
     final sb = StringBuffer();
@@ -132,10 +157,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     for (final a in appointments) {
       sb.writeln('${DateFormat.yMd().format(a.appointmentDate)},${a.startTime},${a.endTime},${a.patientId},${a.doctorId},${a.status.value},${a.service ?? ''}');
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportAppointments} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}');
+    await Share.share(sb.toString(), subject: '${l10n.exportAppointments} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}', sharePositionOrigin: sharePositionOrigin);
   }
 
-  Future<void> _exportPatients(AppLocalizations l10n) async {
+  Future<void> _exportPatients(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
     final (from, to) = _range();
     final appointments = await _firestore.getAppointments(from: from, to: to);
     final patientIds = appointments.map((a) => a.patientId).toSet().toList();
@@ -145,20 +170,20 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       final u = await _firestore.getUser(id);
       sb.writeln('$id,${u?.displayName ?? id}');
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportPatients} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}');
+    await Share.share(sb.toString(), subject: '${l10n.exportPatients} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}', sharePositionOrigin: sharePositionOrigin);
   }
 
-  Future<void> _exportUsers(AppLocalizations l10n) async {
+  Future<void> _exportUsers(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
     final users = await _firestore.getUsers();
     final sb = StringBuffer();
     sb.writeln('Id,Email,FullNameAr,FullNameEn,Phone,Roles,Active');
     for (final u in users) {
       sb.writeln('${u.id},${u.email},${u.fullNameAr ?? ''},${u.fullNameEn ?? ''},${u.phone ?? ''},${u.roles.join(";")},${u.isActive}');
     }
-    await Share.share(sb.toString(), subject: l10n.exportUsers);
+    await Share.share(sb.toString(), subject: l10n.exportUsers, sharePositionOrigin: sharePositionOrigin);
   }
 
-  Future<void> _exportAuditLog(AppLocalizations l10n) async {
+  Future<void> _exportAuditLog(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
     final logs = await _firestore.getAuditLogs(limit: 500);
     final sb = StringBuffer();
     sb.writeln('CreatedAt,Action,EntityType,EntityId,UserId,UserEmail,Details');
@@ -166,7 +191,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       final details = e.details != null ? e.details!.toString().replaceAll(',', ';') : '';
       sb.writeln('${e.createdAt != null ? DateFormat.yMd().add_Hms().format(e.createdAt!) : ''},${e.action},${e.entityType},${e.entityId ?? ''},${e.userId},${e.userEmail ?? ''},$details');
     }
-    await Share.share(sb.toString(), subject: l10n.exportAuditLog);
+    await Share.share(sb.toString(), subject: l10n.exportAuditLog, sharePositionOrigin: sharePositionOrigin);
   }
 
   String _statusLabel(String value, AppLocalizations l10n) {
@@ -178,6 +203,149 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       case 'no_show': return l10n.noShow;
       default: return value;
     }
+  }
+
+  Future<void> _exportCurrentAsPdf(AppLocalizations l10n, Rect? shareOrigin) async {
+    final (from, to) = _range();
+    final periodLabel = '${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}';
+    // Use a static TTF (Amiri) for Arabic; dart_pdf does not support variable fonts.
+    pw.ThemeData? pdfTheme;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
+      final baseFont = pw.Font.ttf(fontData);
+      pdfTheme = pw.ThemeData.withFont(base: baseFont, fontFallback: [baseFont]);
+    } catch (_) {
+      // Fallback: no custom theme (Arabic may render as replacement glyphs)
+    }
+    final doc = pw.Document(theme: pdfTheme);
+    final int tabIndex = _tabController.index;
+
+    if (tabIndex == 0) {
+      final names = _patientNames.toSet().toList()..sort();
+      doc.addPage(pw.MultiPage(
+        build: (context) => [
+          pw.Text('${l10n.patientsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Text('${l10n.total}: ${names.length} ${l10n.patient}', style: pw.TextStyle(fontSize: 12)),
+          pw.SizedBox(height: 8),
+          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2)}, children: [
+            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.patient, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)))]),
+            ...names.map((n) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(n, textDirection: pw.TextDirection.rtl, textAlign: pw.TextAlign.right))])),
+          ]),
+        ],
+      ));
+    } else if (tabIndex == 1) {
+      final net = _incomeTotal - _expenseTotal;
+      doc.addPage(pw.MultiPage(
+        build: (context) => [
+          pw.Text('${l10n.incomeExpensesReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Text('${l10n.totalIncome}: ${NumberFormat.currency(symbol: '').format(_incomeTotal)}'),
+          pw.Text('${l10n.totalExpenses}: ${NumberFormat.currency(symbol: '').format(_expenseTotal)}'),
+          pw.Text('${l10n.net}: ${NumberFormat.currency(symbol: '').format(net)}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 12),
+          pw.Text(l10n.income, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.source)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.amount))]),
+            ..._income.map((r) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(r.source)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(DateFormat.yMd().format(r.incomeDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(NumberFormat.currency(symbol: '').format(r.amount)))])),
+          ]),
+          pw.SizedBox(height: 12),
+          pw.Text(l10n.expenses, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.category)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.amount))]),
+            ..._expenses.map((r) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(r.category)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(DateFormat.yMd().format(r.expenseDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(NumberFormat.currency(symbol: '').format(r.amount)))])),
+          ]),
+        ],
+      ));
+    } else if (tabIndex == 2) {
+      doc.addPage(pw.MultiPage(
+        build: (context) => [
+          pw.Text('${l10n.appointmentsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Text('${l10n.total}: ${_appointments.length} ${l10n.appointments}'),
+          pw.SizedBox(height: 8),
+          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(1), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.time)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.status)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.service))]),
+            ..._appointments.take(100).map((a) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(DateFormat.yMd().format(a.appointmentDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('${a.startTime}-${a.endTime}')), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(_statusLabel(a.status.value, l10n))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(a.service ?? ''))])),
+          ]),
+        ],
+      ));
+    } else {
+      doc.addPage(pw.MultiPage(
+        build: (context) => [
+          pw.Text(l10n.usersReport, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Text('${l10n.total}: ${_users.length} ${l10n.users}'),
+          pw.SizedBox(height: 8),
+          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(3), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.fullNameEn)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.email)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.role))]),
+            ..._users.map((u) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.displayName, textDirection: pw.TextDirection.rtl, textAlign: pw.TextAlign.right)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.email)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.roles.join(', ')))])),
+          ]),
+        ],
+      ));
+    }
+
+    final bytes = await doc.save();
+    final path = await report_io.writeReportBytes('report_${tabIndex}_$from.pdf', bytes);
+    if (path == null || !mounted) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF export is available on mobile and desktop. Use CSV on web.')));
+      return;
+    }
+    await Share.shareXFiles([XFile(path)], sharePositionOrigin: shareOrigin);
+  }
+
+  Future<void> _exportCurrentAsExcel(AppLocalizations l10n, Rect? shareOrigin) async {
+    final (from, to) = _range();
+    final periodLabel = '${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}';
+    final excel = Excel.createExcel();
+    final sheet = excel['Sheet1'] ?? excel[excel.sheets.keys.first];
+    if (sheet == null) return;
+    final int tabIndex = _tabController.index;
+
+    if (tabIndex == 0) {
+      final names = _patientNames.toSet().toList()..sort();
+      sheet.appendRow([TextCellValue(l10n.patientsReport), TextCellValue(periodLabel)]);
+      sheet.appendRow([TextCellValue('${l10n.total}: ${names.length}')]);
+      sheet.appendRow([TextCellValue(l10n.patient)]);
+      for (final n in names) sheet.appendRow([TextCellValue(n)]);
+    } else if (tabIndex == 1) {
+      sheet.appendRow([TextCellValue(l10n.incomeExpensesReport), TextCellValue(periodLabel)]);
+      sheet.appendRow([TextCellValue(l10n.totalIncome), TextCellValue(NumberFormat.currency(symbol: '').format(_incomeTotal))]);
+      sheet.appendRow([TextCellValue(l10n.totalExpenses), TextCellValue(NumberFormat.currency(symbol: '').format(_expenseTotal))]);
+      sheet.appendRow([TextCellValue(l10n.net), TextCellValue(NumberFormat.currency(symbol: '').format(_incomeTotal - _expenseTotal))]);
+      sheet.appendRow([]);
+      sheet.appendRow([TextCellValue(l10n.income)]);
+      sheet.appendRow([TextCellValue(l10n.source), TextCellValue(l10n.date), TextCellValue(l10n.amount)]);
+      for (final r in _income) sheet.appendRow([TextCellValue(r.source), TextCellValue(DateFormat.yMd().format(r.incomeDate)), TextCellValue(r.amount.toString())]);
+      sheet.appendRow([]);
+      sheet.appendRow([TextCellValue(l10n.expenses)]);
+      sheet.appendRow([TextCellValue(l10n.category), TextCellValue(l10n.date), TextCellValue(l10n.amount)]);
+      for (final r in _expenses) sheet.appendRow([TextCellValue(r.category), TextCellValue(DateFormat.yMd().format(r.expenseDate)), TextCellValue(r.amount.toString())]);
+    } else if (tabIndex == 2) {
+      sheet.appendRow([TextCellValue(l10n.appointmentsReport), TextCellValue(periodLabel)]);
+      sheet.appendRow([TextCellValue(l10n.date), TextCellValue(l10n.time), TextCellValue(l10n.status), TextCellValue(l10n.service)]);
+      for (final a in _appointments) {
+        sheet.appendRow([
+          TextCellValue(DateFormat.yMd().format(a.appointmentDate)),
+          TextCellValue('${a.startTime} - ${a.endTime}'),
+          TextCellValue(_statusLabel(a.status.value, l10n)),
+          TextCellValue(a.service ?? ''),
+        ]);
+      }
+    } else {
+      sheet.appendRow([TextCellValue(l10n.usersReport)]);
+      sheet.appendRow([TextCellValue(l10n.fullNameEn), TextCellValue(l10n.email), TextCellValue(l10n.role)]);
+      for (final u in _users) sheet.appendRow([TextCellValue(u.displayName), TextCellValue(u.email), TextCellValue(u.roles.join(', '))]);
+    }
+
+    final bytes = excel.encode();
+    if (bytes == null) return;
+    final path = await report_io.writeReportBytes('report_${tabIndex}_$from.xlsx', bytes);
+    if (path == null || !mounted) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Excel export is available on mobile and desktop. Use CSV on web.')));
+      return;
+    }
+    await Share.shareXFiles([XFile(path)], sharePositionOrigin: shareOrigin);
   }
 
   @override
@@ -196,15 +364,23 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               icon: const Icon(Icons.upload),
               tooltip: l10n.export,
               onSelected: (v) async {
+                final shareOrigin = _sharePositionOriginFrom(context);
                 try {
-                  if (v == 'income') await _exportIncome(l10n);
-                  if (v == 'appointments') await _exportAppointments(l10n);
-                  if (v == 'patients') await _exportPatients(l10n);
-                  if (v == 'users') await _exportUsers(l10n);
-                  if (v == 'audit') await _exportAuditLog(l10n);
-                  if (context.mounted) {
+                  if (v == 'income') await _exportIncome(l10n, shareOrigin);
+                  if (v == 'appointments') await _exportAppointments(l10n, shareOrigin);
+                  if (v == 'patients') await _exportPatients(l10n, shareOrigin);
+                  if (v == 'users') await _exportUsers(l10n, shareOrigin);
+                  if (v == 'audit') await _exportAuditLog(l10n, shareOrigin);
+                  if (v == 'pdf') await _exportCurrentAsPdf(l10n, shareOrigin);
+                  if (v == 'excel') await _exportCurrentAsExcel(l10n, shareOrigin);
+                  if (context.mounted && v != 'pdf' && v != 'excel') {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Export ready — use share sheet to save or send')),
+                    );
+                  }
+                  if (context.mounted && (v == 'pdf' || v == 'excel')) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(v == 'pdf' ? 'PDF export ready' : 'Excel export ready')),
                     );
                   }
                 } catch (e, st) {
@@ -225,6 +401,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 PopupMenuItem(value: 'patients', child: Text(l10n.exportPatients)),
                 PopupMenuItem(value: 'users', child: Text(l10n.exportUsers)),
                 PopupMenuItem(value: 'audit', child: Text(l10n.exportAuditLog)),
+                const PopupMenuDivider(),
+                const PopupMenuItem(value: 'pdf', child: Text('Export current tab as PDF')),
+                const PopupMenuItem(value: 'excel', child: Text('Export current tab as Excel')),
               ],
             ),
           ],
