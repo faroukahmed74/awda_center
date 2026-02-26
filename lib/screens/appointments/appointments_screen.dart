@@ -32,6 +32,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   bool _loading = true;
   /// null = All (non-cancelled), otherwise filter by this status. Cancelled appointments are never shown.
   AppointmentStatus? _statusFilter;
+  /// Search by patient or doctor name (and optionally service).
+  String _searchQuery = '';
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
 
   @override
@@ -77,11 +79,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             .where((a) => a.status != AppointmentStatus.cancelled)
             .toList();
         if (mounted) {
-          setState(() {
-            _list = list;
-            _loading = false;
-          });
-          _loadNames(list);
+          setState(() => _list = list);
+          if (list.isEmpty) setState(() => _loading = false);
+          else _loadNames(list);
         }
       },
       onError: (e, st) {
@@ -109,7 +109,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         }
       }
     }
-    if (mounted) setState(() => _userNames = names);
+    if (mounted) setState(() {
+      _userNames = names;
+      _loading = false;
+    });
   }
 
   String _statusLabel(AppointmentStatus s, AppLocalizations l10n) {
@@ -130,10 +133,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     });
   }
 
-  /// List to display: already excludes cancelled; further filtered by _statusFilter.
+  /// List to display: already excludes cancelled; filtered by _statusFilter and _searchQuery.
   List<AppointmentModel> _displayList() {
-    if (_statusFilter == null) return _list;
-    return _list.where((a) => a.status == _statusFilter).toList();
+    var out = _statusFilter == null ? _list : _list.where((a) => a.status == _statusFilter!).toList();
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return out;
+    return out.where((a) {
+      final patientName = (_userNames[a.patientId] ?? a.patientId).toLowerCase();
+      final doctorName = (_userNames[a.doctorId] ?? a.doctorId).toLowerCase();
+      final service = (a.service ?? '').toLowerCase();
+      return patientName.contains(q) || doctorName.contains(q) || service.contains(q);
+    }).toList();
   }
 
   @override
@@ -190,6 +200,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.completed), selected: _statusFilter == AppointmentStatus.completed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.completed))),
                   FilterChip(label: Text(l10n.noShow), selected: _statusFilter == AppointmentStatus.noShow, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.noShow)),
                 ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: TextField(
+                onChanged: (v) => setState(() => _searchQuery = v),
+                decoration: InputDecoration(
+                  hintText: l10n.search,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _searchQuery = ''),
+                        ),
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                ),
               ),
             ),
             Expanded(

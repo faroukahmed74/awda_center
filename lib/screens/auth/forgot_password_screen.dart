@@ -1,6 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth_error_helper.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
@@ -39,17 +39,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _loading = false;
         _sent = true;
       });
-    } on FirebaseAuthException catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.message ?? e.code;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.toString();
+        _error = authErrorToMessageKey(e, st.toString(), true);
       });
     }
   }
@@ -109,7 +103,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                             if (_error != null) ...[
                               const SizedBox(height: 12),
-                              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error), textAlign: TextAlign.center),
+                              Text(l10n.authErrorMessage(_error), style: TextStyle(color: Theme.of(context).colorScheme.error), textAlign: TextAlign.center),
                             ],
                             const SizedBox(height: 24),
                             FilledButton(

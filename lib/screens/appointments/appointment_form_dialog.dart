@@ -150,22 +150,39 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
               },
             ),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _timeSlots.contains(_startTime) ? _startTime : _timeSlots.first,
-                    decoration: InputDecoration(labelText: '${l10n.time} (start)'),
-                    items: _timeSlots.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                    onChanged: (v) => setState(() => _startTime = v ?? _startTime),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('${l10n.time} (start)', style: Theme.of(context).textTheme.bodySmall),
+                      const SizedBox(height: 4),
+                      DropdownButtonFormField<String>(
+                        value: _timeSlots.contains(_startTime) ? _startTime : _timeSlots.first,
+                        decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                        items: _timeSlots.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        onChanged: (v) => setState(() => _startTime = v ?? _startTime),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _timeSlots.contains(_endTime) ? _endTime : _timeSlots[1],
-                    decoration: InputDecoration(labelText: '${l10n.time} (end)'),
-                    items: _timeSlots.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                    onChanged: (v) => setState(() => _endTime = v ?? _endTime),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('${l10n.time} (end)', style: Theme.of(context).textTheme.bodySmall),
+                      const SizedBox(height: 4),
+                      DropdownButtonFormField<String>(
+                        value: _timeSlots.contains(_endTime) ? _endTime : _timeSlots[1],
+                        decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                        items: _timeSlots.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        onChanged: (v) => setState(() => _endTime = v ?? _endTime),
+                      ),
+                    ],
                   ),
                 ),
               ],

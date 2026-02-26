@@ -77,3 +77,15 @@ firebase deploy --only functions
 ```
 
 Ensure your Firebase project has the Blaze plan if you use out-of-free-tier resources. The function uses Firestore (read users, doctors) and FCM (send messages).
+
+---
+
+## Web notifications
+
+On **web**, notifications work as follows:
+
+1. **Foreground** (tab open and focused): When an FCM message arrives, the app shows a **browser notification** (using the Web Notifications API). The user must allow notifications when prompted after login.
+
+2. **Background** (tab in background or closed): The **service worker** `web/firebase-messaging-sw.js` receives the message and shows the notification. It is included in the app and deployed with `flutter build web`.
+
+3. **FCM token on web**: For the server to send pushes to the web client, the app must get a token with a **VAPID key**. In `lib/services/notification_service.dart`, set `NotificationService.webVapidKey` to your **Web Push certificate** (public key) from Firebase Console → Project Settings → Cloud Messaging → **Web Push certificates** → “Key pair” (generate one if needed). If `webVapidKey` is empty, web may not receive any push notifications.

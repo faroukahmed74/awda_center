@@ -346,11 +346,9 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
       return a.startTime.compareTo(b.startTime);
     });
     if (!mounted) return;
-    setState(() {
-      _appointments = list;
-      _loading = false;
-    });
-    _loadNames(list);
+    setState(() => _appointments = list);
+    if (list.isEmpty) setState(() => _loading = false);
+    else _loadNames(list);
   }
 
   Future<void> _loadNames(List<AppointmentModel> list) async {
@@ -372,7 +370,10 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
         }
       }
     }
-    if (mounted) setState(() => _names = names);
+    if (mounted) setState(() {
+      _names = names;
+      _loading = false;
+    });
   }
 
   String _statusLabel(AppointmentStatus s) {

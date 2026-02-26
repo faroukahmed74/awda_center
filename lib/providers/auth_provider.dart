@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../core/auth_error_helper.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
@@ -47,8 +48,8 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
     try {
       _currentUser = await _authService.getCurrentUserProfile();
-    } catch (e) {
-      _error = e.toString();
+    } catch (e, st) {
+      _error = authErrorToMessageKey(e, st.toString());
       _currentUser = null;
     }
     _loading = false;
@@ -66,12 +67,12 @@ class AuthProvider with ChangeNotifier {
       final user = await _authService.signInWithEmailAndPassword(email, password);
       _currentUser = user;
       if (user != null && !user.isActive) {
-        _error = 'Account is deactivated';
+        _error = AuthErrorKey.accountDeactivated;
         await _authService.signOut();
         _currentUser = null;
       }
-    } catch (e) {
-      _error = e.toString();
+    } catch (e, st) {
+      _error = authErrorToMessageKey(e, st.toString());
       _currentUser = null;
     }
     _loading = false;
@@ -87,12 +88,12 @@ class AuthProvider with ChangeNotifier {
       final user = await _authService.signInWithGoogle();
       _currentUser = user;
       if (user != null && !user.isActive) {
-        _error = 'Account is deactivated';
+        _error = AuthErrorKey.accountDeactivated;
         await _authService.signOut();
         _currentUser = null;
       }
-    } catch (e) {
-      _error = e.toString();
+    } catch (e, st) {
+      _error = authErrorToMessageKey(e, st.toString());
       _currentUser = null;
     }
     _loading = false;
@@ -119,8 +120,8 @@ class AuthProvider with ChangeNotifier {
         phone: phone,
       );
       _currentUser = user;
-    } catch (e) {
-      _error = e.toString();
+    } catch (e, st) {
+      _error = authErrorToMessageKey(e, st.toString());
       _currentUser = null;
     }
     _loading = false;

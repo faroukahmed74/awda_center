@@ -24,6 +24,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   Map<String, String> _doctorNames = {};
   bool _loading = true;
   String? _errorMessage;
+  String _searchQuery = '';
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
 
   @override
@@ -61,10 +62,10 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
         if (mounted) {
           setState(() {
             _list = list;
-            _loading = false;
             _errorMessage = null;
           });
-          _loadDoctorNames(list);
+          if (list.isEmpty) setState(() => _loading = false);
+          else _loadDoctorNames(list);
         }
       },
       onError: (e, st) {
@@ -93,7 +94,10 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
         names[did] = did;
       }
     }
-    if (mounted) setState(() => _doctorNames = names);
+    if (mounted) setState(() {
+      _doctorNames = names;
+      _loading = false;
+    });
   }
 
   String _statusLabel(AppointmentStatus s, AppLocalizations l10n) {
@@ -104,6 +108,18 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       case AppointmentStatus.cancelled: return l10n.cancelled;
       case AppointmentStatus.noShow: return l10n.noShow;
     }
+  }
+
+  List<AppointmentModel> _displayList() {
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return _list;
+    return _list.where((a) {
+      final doctorName = (_doctorNames[a.doctorId] ?? a.doctorId).toLowerCase();
+      final service = (a.service ?? '').toLowerCase();
+      final dateStr = DateFormat.yMd().format(a.appointmentDate).toLowerCase();
+      final timeStr = '${a.startTime}-${a.endTime}'.toLowerCase();
+      return doctorName.contains(q) || service.contains(q) || dateStr.contains(q) || timeStr.contains(q);
+    }).toList();
   }
 
   @override
@@ -142,63 +158,87 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
             ),
           ],
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
-                          const SizedBox(height: 16),
-                          Text(_errorMessage!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
-                          const SizedBox(height: 16),
-                          FilledButton.icon(
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Retry'),
-                            onPressed: () { _subscription?.cancel(); _listenToAppointments(); },
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : _list.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(l10n.noData),
-                            const SizedBox(height: 16),
-                            FilledButton.icon(
-                              icon: const Icon(Icons.add),
-                              label: Text(l10n.bookAppointment),
-                              onPressed: () async {
-                                final uid = context.read<AuthProvider>().currentUser?.id;
-                                if (uid == null) return;
-                                final ok = await showDialog<bool>(
-                                  context: context,
-                                  builder: (_) => PatientBookAppointmentDialog(patientId: uid),
-                                );
-                                if (ok == true && mounted) _listenToAppointments();
-                              },
-                            ),
-                          ],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: TextField(
+                onChanged: (v) => setState(() => _searchQuery = v),
+                decoration: InputDecoration(
+                  hintText: l10n.search,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _searchQuery = ''),
                         ),
-                      )
-                    : RefreshIndicator(
-                    onRefresh: () async {
-                      _subscription?.cancel();
-                      _listenToAppointments();
-                      await Future.delayed(const Duration(milliseconds: 400));
-                    },
-                    child: ListView.builder(
-                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: responsiveListPadding(context),
-                      itemCount: _list.length,
-                      itemBuilder: (context, i) {
-                        final a = _list[i];
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+                                const SizedBox(height: 16),
+                                Text(_errorMessage!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+                                const SizedBox(height: 16),
+                                FilledButton.icon(
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Retry'),
+                                  onPressed: () { _subscription?.cancel(); _listenToAppointments(); },
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : _displayList().isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(_list.isEmpty ? l10n.noData : l10n.noData),
+                                  if (_list.isEmpty) ...[
+                                    const SizedBox(height: 16),
+                                    FilledButton.icon(
+                                      icon: const Icon(Icons.add),
+                                      label: Text(l10n.bookAppointment),
+                                      onPressed: () async {
+                                        final uid = context.read<AuthProvider>().currentUser?.id;
+                                        if (uid == null) return;
+                                        final ok = await showDialog<bool>(
+                                          context: context,
+                                          builder: (_) => PatientBookAppointmentDialog(patientId: uid),
+                                        );
+                                        if (ok == true && mounted) _listenToAppointments();
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: () async {
+                                _subscription?.cancel();
+                                _listenToAppointments();
+                                await Future.delayed(const Duration(milliseconds: 400));
+                              },
+                              child: ListView.builder(
+                                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                                padding: responsiveListPadding(context),
+                                itemCount: _displayList().length,
+                                itemBuilder: (context, i) {
+                                  final a = _displayList()[i];
                         final dateStr = DateFormat.yMd().format(a.appointmentDate);
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
@@ -210,6 +250,9 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                       },
                     ),
                   ),
+              ),
+            ],
+        ),
       ),
     );
   }

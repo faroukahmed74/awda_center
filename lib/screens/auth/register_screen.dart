@@ -150,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (auth.error != null) ...[
                       const SizedBox(height: 12),
                       Text(
-                        auth.error!,
+                        l10n.authErrorMessage(auth.error),
                         style: TextStyle(color: Theme.of(context).colorScheme.error),
                         textAlign: TextAlign.center,
                       ),

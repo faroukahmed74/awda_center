@@ -64,6 +64,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     }
   }
 
+  /// Returns (fromInclusive, toExclusive) for Firestore queries.
   (DateTime, DateTime) _range() {
     if (_period == 'day') {
       final s = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
@@ -71,12 +72,50 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     }
     if (_period == 'month') {
       final s = DateTime(_selectedDate.year, _selectedDate.month, 1);
-      final e = DateTime(_selectedDate.year, _selectedDate.month + 1, 0).add(const Duration(days: 1));
+      final e = DateTime(_selectedDate.year, _selectedDate.month + 1, 1);
       return (s, e);
     }
     final s = DateTime(_selectedDate.year, 1, 1);
-    final e = DateTime(_selectedDate.year, 12, 31).add(const Duration(days: 1));
+    final e = DateTime(_selectedDate.year + 1, 1, 1);
     return (s, e);
+  }
+
+  String _periodLabel() {
+    if (_period == 'day') return DateFormat.yMd().format(_selectedDate);
+    if (_period == 'month') return DateFormat.yMMM().format(DateTime(_selectedDate.year, _selectedDate.month, 1));
+    return DateFormat.y().format(DateTime(_selectedDate.year, 1, 1));
+  }
+
+  Future<void> _pickPeriod(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+    if (_period == 'day') {
+      final d = await showDatePicker(
+        context: context,
+        initialDate: _selectedDate,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(now.year + 1, 12, 31),
+      );
+      if (d != null && mounted) setState(() { _selectedDate = d; _load(); });
+      return;
+    }
+    if (_period == 'month') {
+      final picked = await showDialog<DateTime>(
+        context: context,
+        builder: (ctx) => _MonthYearPickerDialog(
+          initial: _selectedDate,
+          l10n: l10n,
+          now: now,
+        ),
+      );
+      if (picked != null && mounted) setState(() { _selectedDate = picked; _load(); });
+      return;
+    }
+    final pickedYear = await showDialog<int>(
+      context: context,
+      builder: (ctx) => _YearPickerDialog(initial: _selectedDate.year, l10n: l10n, now: now),
+    );
+    if (pickedYear != null && mounted) setState(() { _selectedDate = DateTime(pickedYear, 1, 1); _load(); });
   }
 
   Future<void> _load() async {
@@ -298,8 +337,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final (from, to) = _range();
     final periodLabel = '${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}';
     final excel = Excel.createExcel();
-    final sheet = excel['Sheet1'] ?? excel[excel.sheets.keys.first];
-    if (sheet == null) return;
+    final sheet = excel['Sheet1'];
     final int tabIndex = _tabController.index;
 
     if (tabIndex == 0) {
@@ -438,16 +476,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   const SizedBox(width: 16),
                   TextButton.icon(
                     icon: const Icon(Icons.calendar_today),
-                    label: Text(DateFormat.yMd().format(_selectedDate)),
-                    onPressed: () async {
-                      final d = await showDatePicker(
-                        context: context,
-                        initialDate: _selectedDate,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (d != null) setState(() { _selectedDate = d; _load(); });
-                    },
+                    label: Text(_periodLabel()),
+                    onPressed: () => _pickPeriod(context),
                   ),
                 ],
               ),
@@ -656,6 +686,105 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MonthYearPickerDialog extends StatefulWidget {
+  const _MonthYearPickerDialog({required this.initial, required this.l10n, required this.now});
+
+  final DateTime initial;
+  final AppLocalizations l10n;
+  final DateTime now;
+
+  @override
+  State<_MonthYearPickerDialog> createState() => _MonthYearPickerDialogState();
+}
+
+class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
+  late int _year;
+  late int _month;
+
+  @override
+  void initState() {
+    super.initState();
+    _year = widget.initial.year;
+    _month = widget.initial.month;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.l10n.month),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButton<int>(
+            value: _month,
+            isExpanded: true,
+            items: List.generate(12, (i) => i + 1)
+                .map((m) => DropdownMenuItem(value: m, child: Text(DateFormat.MMMM().format(DateTime(2000, m)))))
+                .toList(),
+            onChanged: (v) => setState(() => _month = v ?? _month),
+          ),
+          const SizedBox(height: 8),
+          DropdownButton<int>(
+            value: _year,
+            isExpanded: true,
+            items: List.generate(widget.now.year - 2020 + 2, (i) => 2020 + i)
+                .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
+                .toList(),
+            onChanged: (v) => setState(() => _year = v ?? _year),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(widget.l10n.cancel)),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, DateTime(_year, _month, 1)),
+          child: Text(widget.l10n.confirm),
+        ),
+      ],
+    );
+  }
+}
+
+class _YearPickerDialog extends StatefulWidget {
+  const _YearPickerDialog({required this.initial, required this.l10n, required this.now});
+
+  final int initial;
+  final AppLocalizations l10n;
+  final DateTime now;
+
+  @override
+  State<_YearPickerDialog> createState() => _YearPickerDialogState();
+}
+
+class _YearPickerDialogState extends State<_YearPickerDialog> {
+  late int _year;
+
+  @override
+  void initState() {
+    super.initState();
+    _year = widget.initial;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.l10n.year),
+      content: DropdownButton<int>(
+        value: _year,
+        isExpanded: true,
+        items: List.generate(widget.now.year - 2020 + 2, (i) => 2020 + i)
+            .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
+            .toList(),
+        onChanged: (v) => setState(() => _year = v ?? _year),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(widget.l10n.cancel)),
+        FilledButton(onPressed: () => Navigator.pop(context, _year), child: Text(widget.l10n.confirm)),
+      ],
     );
   }
 }

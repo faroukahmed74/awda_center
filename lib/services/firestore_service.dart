@@ -157,8 +157,8 @@ class FirestoreService {
     if (doctorId != null) q = q.where('doctorId', isEqualTo: doctorId);
     final snapshot = await q.get();
     var list = snapshot.docs.map((d) => AppointmentModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
-    if (from != null) list = list.where((a) => a.appointmentDate.isAfter(from.subtract(const Duration(days: 1)))).toList();
-    if (to != null) list = list.where((a) => a.appointmentDate.isBefore(to.add(const Duration(days: 1)))).toList();
+    if (from != null) list = list.where((a) => !a.appointmentDate.isBefore(from)).toList();
+    if (to != null) list = list.where((a) => a.appointmentDate.isBefore(to)).toList();
     return list;
   }
 
@@ -254,16 +254,16 @@ class FirestoreService {
   Future<List<IncomeRecordModel>> getIncomeRecords({DateTime? from, DateTime? to}) async {
     final snapshot = await _firestore.collection('income_records').orderBy('incomeDate', descending: true).get();
     var list = snapshot.docs.map((d) => IncomeRecordModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
-    if (from != null) list = list.where((r) => r.incomeDate.isAfter(from.subtract(const Duration(days: 1)))).toList();
-    if (to != null) list = list.where((r) => r.incomeDate.isBefore(to.add(const Duration(days: 1)))).toList();
+    if (from != null) list = list.where((r) => !r.incomeDate.isBefore(from)).toList();
+    if (to != null) list = list.where((r) => r.incomeDate.isBefore(to)).toList();
     return list;
   }
 
   Future<List<ExpenseRecordModel>> getExpenseRecords({DateTime? from, DateTime? to}) async {
     final snapshot = await _firestore.collection('expense_records').orderBy('expenseDate', descending: true).get();
     var list = snapshot.docs.map((d) => ExpenseRecordModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
-    if (from != null) list = list.where((r) => r.expenseDate.isAfter(from.subtract(const Duration(days: 1)))).toList();
-    if (to != null) list = list.where((r) => r.expenseDate.isBefore(to.add(const Duration(days: 1)))).toList();
+    if (from != null) list = list.where((r) => !r.expenseDate.isBefore(from)).toList();
+    if (to != null) list = list.where((r) => r.expenseDate.isBefore(to)).toList();
     return list;
   }
 

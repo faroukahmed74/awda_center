@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'firestore_service.dart';
+import 'notification_service_stub.dart' if (dart.library.html) 'notification_service_web.dart' as web_notif;
 import '../models/appointment_model.dart';
 import '../models/user_model.dart';
 
@@ -72,11 +73,16 @@ class NotificationService {
 
   void _setupFcmHandlers() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (message.notification != null && !kIsWeb) {
+      if (message.notification == null) return;
+      final title = message.notification!.title ?? 'Notification';
+      final body = message.notification!.body ?? '';
+      if (kIsWeb) {
+        web_notif.showWebNotification(title, body);
+      } else {
         _local.show(
           message.hashCode,
-          message.notification!.title,
-          message.notification!.body,
+          title,
+          body,
           const NotificationDetails(
             android: AndroidNotificationDetails(
               _channelId,
@@ -97,6 +103,10 @@ class NotificationService {
     // App opened from local notification; could navigate by payload
   }
 
+  /// Web: VAPID key from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates.
+  static const String webVapidKey =
+      'BDOGjkgl3Q_cM7BL3pS3v2nsRceQnGykmdYyEfcDqr0hmTV2Q1n_Rzp4Cly58bUofOcaTYUacTuUTMX-SoAAcuM';
+
   /// Request permission (iOS/macOS/Web), get FCM token, save to Firestore, and schedule local reminders.
   /// Call after user is logged in (uid required).
   Future<void> refreshTokenAndScheduleReminders(String? uid) async {
@@ -108,7 +118,9 @@ class NotificationService {
         sound: true,
       );
       if (settings.authorizationStatus == AuthorizationStatus.denied) return;
-      final token = await _fcm.getToken();
+      final token = kIsWeb && webVapidKey.isNotEmpty
+          ? await _fcm.getToken(vapidKey: webVapidKey)
+          : await _fcm.getToken();
       if (token != null) await _firestore.updateUserFcmToken(uid, token);
       if (!kIsWeb) await _scheduleRemindersForUser(uid);
     } catch (_) {}

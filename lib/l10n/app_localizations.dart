@@ -185,6 +185,9 @@ class AppLocalizations {
   String get notificationAppointmentNoShow => _map['notificationAppointmentNoShow']!;
   String get notificationTodoReminderTitle => _map['notificationTodoReminderTitle']!;
 
+  /// User-friendly auth error message for login/register. Returns localized text for known keys, or [key] if unknown.
+  String authErrorMessage(String? key) => key == null ? '' : (_map[key] ?? key);
+
   Map<String, String> get _map => locale.languageCode == 'ar' ? _ar : _en;
 
   static const Map<String, String> _en = {
@@ -352,6 +355,16 @@ class AppLocalizations {
     'notificationAppointmentCancelled': 'Appointment cancelled',
     'notificationAppointmentNoShow': 'Appointment marked no-show',
     'notificationTodoReminderTitle': 'To-do reminder',
+    'authErrorInvalidEmail': 'Please enter a valid email address.',
+    'authErrorInvalidCredentials': 'Invalid email or password. Please try again.',
+    'authErrorEmailAlreadyInUse': 'This email is already registered. Try logging in or use another email.',
+    'authErrorWeakPassword': 'Password is too weak. Use at least 6 characters.',
+    'authErrorAccountDeactivated': 'This account has been deactivated. Contact support.',
+    'authErrorUserDisabled': 'This account has been disabled. Contact support.',
+    'authErrorTooManyRequests': 'Too many attempts. Please try again later.',
+    'authErrorNetwork': 'Connection error. Check your internet and try again.',
+    'authErrorTryAgain': 'Something went wrong. Please try again.',
+    'authErrorNoAccountWithEmail': 'No account found with this email.',
   };
 
   static const Map<String, String> _ar = {
@@ -519,6 +532,16 @@ class AppLocalizations {
     'notificationAppointmentCancelled': 'تم إلغاء الموعد',
     'notificationAppointmentNoShow': 'تم تسجيل عدم الحضور',
     'notificationTodoReminderTitle': 'تذكير مهمة',
+    'authErrorInvalidEmail': 'يرجى إدخال بريد إلكتروني صحيح.',
+    'authErrorInvalidCredentials': 'البريد الإلكتروني أو كلمة المرور غير صحيحة. حاول مرة أخرى.',
+    'authErrorEmailAlreadyInUse': 'هذا البريد مسجل مسبقاً. سجّل الدخول أو استخدم بريداً آخر.',
+    'authErrorWeakPassword': 'كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل.',
+    'authErrorAccountDeactivated': 'تم إلغاء تفعيل هذا الحساب. تواصل مع الدعم.',
+    'authErrorUserDisabled': 'تم تعطيل هذا الحساب. تواصل مع الدعم.',
+    'authErrorTooManyRequests': 'محاولات كثيرة. حاول لاحقاً.',
+    'authErrorNetwork': 'خطأ في الاتصال. تحقق من الإنترنت وحاول مرة أخرى.',
+    'authErrorTryAgain': 'حدث خطأ. حاول مرة أخرى.',
+    'authErrorNoAccountWithEmail': 'لا يوجد حساب بهذا البريد الإلكتروني.',
   };
 }
 
