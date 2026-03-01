@@ -118,12 +118,24 @@ class NotificationService {
         sound: true,
       );
       if (settings.authorizationStatus == AuthorizationStatus.denied) return;
-      final token = kIsWeb && webVapidKey.isNotEmpty
-          ? await _fcm.getToken(vapidKey: webVapidKey)
-          : await _fcm.getToken();
-      if (token != null) await _firestore.updateUserFcmToken(uid, token);
+      // On web, token can take a moment; retry once after delay if needed.
+      String? token;
+      if (kIsWeb && webVapidKey.isNotEmpty) {
+        token = await _fcm.getToken(vapidKey: webVapidKey);
+        if (token == null) {
+          await Future.delayed(const Duration(milliseconds: 800));
+          token = await _fcm.getToken(vapidKey: webVapidKey);
+        }
+      } else {
+        token = await _fcm.getToken();
+      }
+      if (token != null && token.isNotEmpty) {
+        await _firestore.updateUserFcmToken(uid, token);
+      }
       if (!kIsWeb) await _scheduleRemindersForUser(uid);
-    } catch (_) {}
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('NotificationService refreshToken error: $e\n$st');
+    }
   }
 
   /// Clear FCM token on logout (optional).

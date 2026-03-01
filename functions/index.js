@@ -51,6 +51,7 @@ async function sendPendingNotificationToSecretaries(appointmentId, after) {
 
   const data = { type: 'appointment_pending', appointmentId, status: 'pending' };
 
+  const baseUrl = 'https://awdacenter-eb0a8.web.app';
   for (const locale of ['en', 'ar']) {
     const tokens = [...new Set(tokensByLocale[locale])];
     if (tokens.length === 0) continue;
@@ -62,6 +63,10 @@ async function sendPendingNotificationToSecretaries(appointmentId, after) {
       tokens,
       android: { priority: 'high' },
       apns: { payload: { aps: { sound: 'default' } } },
+      webpush: {
+        notification: { title, body, icon: '/icons/Icon-192.png' },
+        fcmOptions: { link: baseUrl + '/#/appointments' },
+      },
     };
     try {
       await messaging.sendEachForMulticast(message);
@@ -149,6 +154,7 @@ exports.onAppointmentStatusChange = functions.firestore
 
     const data = { type: 'appointment_status', appointmentId, status: newStatus };
 
+    const baseUrl = 'https://awdacenter-eb0a8.web.app';
     for (const locale of ['en', 'ar']) {
       const tokens = [...new Set(tokensByLocale[locale])];
       if (tokens.length === 0) continue;
@@ -160,6 +166,10 @@ exports.onAppointmentStatusChange = functions.firestore
         tokens,
         android: { priority: 'high' },
         apns: { payload: { aps: { sound: 'default' } } },
+        webpush: {
+          notification: { title, body, icon: '/icons/Icon-192.png' },
+          fcmOptions: { link: baseUrl + '/#/appointments' },
+        },
       };
       try {
         const res = await messaging.sendEachForMulticast(message);

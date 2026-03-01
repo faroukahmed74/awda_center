@@ -153,12 +153,14 @@ class InAppNotificationsService {
     return filtered.map((a) {
       final dateStr = DateFormat.yMMMd().format(a.appointmentDate);
       final timeStr = '${a.startTime} - ${a.endTime}';
+      // Use when the appointment was created/updated for the "when" line, not the scheduled date
+      final when = a.updatedAt ?? a.createdAt ?? a.appointmentDate;
       return AppNotification(
         id: 'appointment_${a.id}',
         type: AppNotificationType.appointment,
         title: a.service ?? (forPatient ? 'Appointment' : 'Session'),
         subtitle: '$dateStr · $timeStr',
-        time: a.appointmentDate,
+        time: when,
         route: '/appointments',
       );
     }).toList();

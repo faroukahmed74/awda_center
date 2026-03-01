@@ -235,7 +235,8 @@ class _NotificationTile extends StatelessWidget {
         icon = Icons.task_alt;
         break;
     }
-    final timeStr = DateFormat.MMMd().add_Hm().format(notification.time);
+    final localTime = notification.time.isUtc ? notification.time.toLocal() : notification.time;
+    final timeStr = DateFormat.MMMd().add_Hm().format(localTime);
 
     return InkWell(
       onTap: onTap,
@@ -274,7 +275,8 @@ class _NotificationTile extends StatelessWidget {
                   Text(
                     timeStr,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.outline,
+                      color: theme.colorScheme.onSurface.withOpacity(0.85),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
