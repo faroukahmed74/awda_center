@@ -18,24 +18,26 @@ Role-based dashboards and navigation. Admins can grant **per-feature privileges*
 ### Main screens
 | Screen | Description |
 |--------|-------------|
-| Login / Register / Forgot password | Email/password auth |
+| Login / Register / Forgot password | Email/password auth; localized validation messages |
 | Dashboard | Role-specific; today’s appointments, quick links |
-| Admin dashboard | Admin-only overview and shortcuts |
-| Users | List and manage users (admin/secretary) |
-| Appointments | Create, edit, reschedule; filter by doctor/date |
-| My Appointments | Patient/doctor view of own appointments |
+| Admin dashboard | Stats (users, appointments, patients, doctors, todos), two-column layout on desktop, quick access to all admin sections |
+| Users | List and manage users (admin/secretary); invite user |
+| Appointments | Create, edit, reschedule; filter by status; search; appointment status changes logged to audit |
+| My Appointments | Patient/doctor view of own appointments; search |
 | Profile | View/edit own info; change language and theme |
 | User profile | View another user (by role) |
-| Patients | Patient list and search |
-| Patient detail | Profile, documents, sessions, appointments |
+| Patients | Patient list and search (cached) |
+| Patient detail | Profile, documents (images open full-screen), sessions, appointments |
 | Income & expenses | Records and summaries |
-| Reports | Clinic reports |
+| Reports | Clinic reports; filters by day/month/year; export (PDF, Excel, share) |
 | Requirements | Center requirements (e.g. compliance) |
-| Admin todos | Admin task list |
+| Admin todos | Admin task list with reminders |
 | Rooms | Room management |
-| Doctors | Doctor list (and admin: doctor management) |
-| My doctor profile | Doctor’s own profile and availability |
-| Audit log | Audit trail (admin) |
+| Our doctors | Public doctor list for patients: name, specialization, qualifications, certifications, availability, bio; search |
+| Manage doctors | Admin: add/link doctors, edit profiles |
+| My doctor profile | Doctor’s own profile and availability; auto-creates doctor document if missing so they appear in Our doctors |
+| Audit log | Audit trail (admin); appointment and user actions logged |
+| Notifications (app bar) | Bell icon on all main screens; role-based list (upcoming appointments, audit entries for admins, open todos); responsive panel (dialog on desktop, bottom sheet on mobile) |
 
 ### Internationalization (i18n)
 - **Arabic** and **English** with RTL support for Arabic.
@@ -45,11 +47,12 @@ Role-based dashboards and navigation. Admins can grant **per-feature privileges*
 - **Light** and **dark** mode; preference persisted.
 
 ### Responsive layout
-- Layout adapts to phone, tablet, and desktop (e.g. constrained width on large screens, responsive padding, ellipsis for long text).
+- Layout adapts to phone, tablet, and desktop (constrained width on large screens, responsive padding, two-column admin dashboard on desktop). Notifications panel and list tiles scale for all screen sizes.
 
 ### Notifications
-- Firebase Cloud Messaging for push notifications.
-- Local notifications for appointment reminders (patient and doctor); rescheduled when appointments are created or updated.
+- **Push:** Firebase Cloud Messaging for push notifications; web push supported (VAPID).
+- **Local:** Appointment reminders for patient and doctor; rescheduled when appointments are created or updated.
+- **In-app:** Notifications icon in the app bar on all main screens. Opens a responsive panel (dialog on tablet/desktop, bottom sheet on phone) with role-based items: upcoming appointments (patient/doctor/staff), appointment status changes (admins), recent audit log (admins), open admin todos. Tapping an item navigates to the related screen. Full title/subtitle and time shown without truncation.
 
 ---
 
@@ -301,6 +304,7 @@ lib/
 ├── models/
 │   ├── user_model.dart
 │   ├── appointment_model.dart
+│   ├── app_notification.dart      # In-app notification item (appointment, audit, todo)
 │   ├── session_model.dart
 │   ├── patient_profile_model.dart
 │   ├── doctor_model.dart
@@ -311,6 +315,7 @@ lib/
 │   └── audit_log_model.dart
 ├── providers/
 │   ├── auth_provider.dart
+│   ├── data_cache_provider.dart   # Cached doctors, patients, rooms, user names; real-time via Firestore streams
 │   ├── theme_provider.dart
 │   └── locale_provider.dart
 ├── router/
@@ -334,9 +339,12 @@ lib/
 ├── services/
 │   ├── auth_service.dart
 │   ├── firestore_service.dart
+│   ├── in_app_notifications_service.dart  # Fetches notifications by role (appointments, audit, todos)
 │   ├── storage_service.dart
 │   ├── notification_service.dart
 │   └── audit_service.dart
+├── widgets/
+│   └── notifications_button.dart   # App bar bell; opens notifications panel
 └── theme/
     └── app_theme.dart
 ```
@@ -363,7 +371,7 @@ Root files:
 | `expense_records` | Expense entries |
 | `admin_todos` | Admin task list |
 | `center_requirements` | Requirements/compliance items |
-| `audit_logs` | Audit trail entries |
+| `audit_log` | Audit trail entries (appointment created/confirmed/cancelled, user updates, etc.) |
 
 See the code and `firestore.rules` for field names and security rules.
 

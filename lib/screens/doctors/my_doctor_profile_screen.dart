@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/doctor_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
 
@@ -54,12 +55,19 @@ class _MyDoctorProfileScreenState extends State<MyDoctorProfileScreen> {
   }
 
   Future<void> _load() async {
-    final uid = context.read<AuthProvider>().currentUser?.id;
-    if (uid == null) {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) {
       setState(() => _loading = false);
       return;
     }
-    final doc = await _firestore.getDoctorByUserId(uid);
+    var doc = await _firestore.getDoctorByUserId(user.id);
+    // If user has doctor role but no doctor doc yet (e.g. role added before ensureDoctorDocForUser), create it so the form appears and they show in Our doctors.
+    if (doc == null && user.hasRole(UserRole.doctor)) {
+      await _firestore.ensureDoctorDocForUser(user.id, user.displayName);
+      if (!mounted) return;
+      doc = await _firestore.getDoctorByUserId(user.id);
+    }
+    if (!mounted) return;
     setState(() {
       _doctor = doc;
       if (doc != null) {
