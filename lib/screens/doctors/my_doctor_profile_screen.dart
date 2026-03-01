@@ -22,6 +22,8 @@ class _MyDoctorProfileScreenState extends State<MyDoctorProfileScreen> {
   late TextEditingController _specEn;
   late TextEditingController _qualAr;
   late TextEditingController _qualEn;
+  late TextEditingController _certAr;
+  late TextEditingController _certEn;
   late TextEditingController _bio;
   bool _loading = true;
   bool _saving = false;
@@ -33,6 +35,8 @@ class _MyDoctorProfileScreenState extends State<MyDoctorProfileScreen> {
     _specEn = TextEditingController();
     _qualAr = TextEditingController();
     _qualEn = TextEditingController();
+    _certAr = TextEditingController();
+    _certEn = TextEditingController();
     _bio = TextEditingController();
     _load();
   }
@@ -43,6 +47,8 @@ class _MyDoctorProfileScreenState extends State<MyDoctorProfileScreen> {
     _specEn.dispose();
     _qualAr.dispose();
     _qualEn.dispose();
+    _certAr.dispose();
+    _certEn.dispose();
     _bio.dispose();
     super.dispose();
   }
@@ -61,6 +67,8 @@ class _MyDoctorProfileScreenState extends State<MyDoctorProfileScreen> {
         _specEn.text = doc.specializationEn ?? '';
         _qualAr.text = doc.qualificationsAr ?? '';
         _qualEn.text = doc.qualificationsEn ?? '';
+        _certAr.text = doc.certificationsAr ?? '';
+        _certEn.text = doc.certificationsEn ?? '';
         _bio.text = doc.bio ?? '';
       }
       _loading = false;
@@ -75,6 +83,8 @@ class _MyDoctorProfileScreenState extends State<MyDoctorProfileScreen> {
       'specializationEn': _specEn.text.trim().isEmpty ? null : _specEn.text.trim(),
       'qualificationsAr': _qualAr.text.trim().isEmpty ? null : _qualAr.text.trim(),
       'qualificationsEn': _qualEn.text.trim().isEmpty ? null : _qualEn.text.trim(),
+      'certificationsAr': _certAr.text.trim().isEmpty ? null : _certAr.text.trim(),
+      'certificationsEn': _certEn.text.trim().isEmpty ? null : _certEn.text.trim(),
       'bio': _bio.text.trim().isEmpty ? null : _bio.text.trim(),
     });
     setState(() => _saving = false);
@@ -130,6 +140,18 @@ class _MyDoctorProfileScreenState extends State<MyDoctorProfileScreen> {
                           TextFormField(
                             controller: _qualEn,
                             decoration: InputDecoration(labelText: '${l10n.qualifications} (EN)'),
+                            maxLines: 2,
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _certAr,
+                            decoration: InputDecoration(labelText: '${l10n.certifications} (AR)'),
+                            maxLines: 2,
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _certEn,
+                            decoration: InputDecoration(labelText: '${l10n.certifications} (EN)'),
                             maxLines: 2,
                           ),
                           const SizedBox(height: 12),

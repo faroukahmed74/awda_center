@@ -5,6 +5,7 @@ import '../../models/appointment_model.dart';
 import '../../models/doctor_model.dart';
 import '../../models/room_model.dart';
 import '../../models/user_model.dart';
+import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 
@@ -73,7 +74,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         'notes': _notes.isEmpty ? null : _notes,
       });
     } else {
-      await fs.createAppointment(AppointmentModel(
+      final appointmentId = await fs.createAppointment(AppointmentModel(
         id: '',
         patientId: _patientId!,
         doctorId: _doctorId!,
@@ -86,6 +87,16 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         notes: _notes.isEmpty ? null : _notes,
         createdByUserId: widget.currentUserId,
       ));
+      if (widget.currentUserId != null && widget.currentUserId!.isNotEmpty) {
+        AuditService.log(
+          action: 'appointment_created',
+          entityType: 'appointment',
+          entityId: appointmentId,
+          userId: widget.currentUserId!,
+          userEmail: null,
+          details: {'patientId': _patientId, 'doctorId': _doctorId},
+        );
+      }
       // Reschedule reminders so patient and doctor get notification for the new appointment
       NotificationService().rescheduleRemindersForUser(_patientId);
       final doctorDoc = await fs.getDoctorById(_doctorId!);

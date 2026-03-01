@@ -57,6 +57,10 @@ class FirestoreService {
   }
 
   // Doctors
+  Stream<QuerySnapshot<Map<String, dynamic>>> doctorsStream() {
+    return _firestore.collection('doctors').snapshots();
+  }
+
   Future<List<DoctorModel>> getDoctors() async {
     final snapshot = await _firestore.collection('doctors').get();
     return snapshot.docs.map((d) => DoctorModel.fromFirestore(d)).toList();
@@ -85,6 +89,8 @@ class FirestoreService {
       'specializationEn': null,
       'qualificationsAr': null,
       'qualificationsEn': null,
+      'certificationsAr': null,
+      'certificationsEn': null,
       'bio': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -109,6 +115,10 @@ class FirestoreService {
   }
 
   // Rooms
+  Stream<QuerySnapshot<Map<String, dynamic>>> roomsStream() {
+    return _firestore.collection('rooms').where('isActive', isEqualTo: true).snapshots();
+  }
+
   Future<List<RoomModel>> getRooms() async {
     final snapshot = await _firestore.collection('rooms').where('isActive', isEqualTo: true).get();
     var list = snapshot.docs.map((d) => RoomModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
@@ -162,6 +172,13 @@ class FirestoreService {
     return list;
   }
 
+  Future<AppointmentModel?> getAppointmentById(String id) async {
+    final doc = await _firestore.collection('appointments').doc(id).get();
+    final data = doc.data();
+    if (data == null) return null;
+    return AppointmentModel.fromFirestore(doc);
+  }
+
   Future<void> updateAppointmentStatus(String id, AppointmentStatus status) async {
     await _firestore.collection('appointments').doc(id).update({
       'status': status.value,
@@ -169,8 +186,10 @@ class FirestoreService {
     });
   }
 
-  Future<void> createAppointment(AppointmentModel appointment) async {
-    await _firestore.collection('appointments').add(appointment.toFirestore());
+  /// Creates an appointment and returns the new document id.
+  Future<String> createAppointment(AppointmentModel appointment) async {
+    final ref = await _firestore.collection('appointments').add(appointment.toFirestore());
+    return ref.id;
   }
 
   Future<void> updateAppointment(String id, Map<String, dynamic> data) async {
@@ -382,12 +401,21 @@ class FirestoreService {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final todayEnd = todayStart.add(const Duration(days: 1));
+    final weekEnd = todayStart.add(const Duration(days: 7));
     final users = await getUsers();
-    final appointments = await getAppointments(from: todayStart, to: todayEnd);
+    final todayAppointments = await getAppointments(from: todayStart, to: todayEnd);
+    final weekAppointments = await getAppointments(from: todayStart, to: weekEnd);
+    final doctors = await getDoctors();
+    final patients = users.where((u) => u.roles.contains('patient')).length;
+    final openTodos = await getAdminTodos(includeCompleted: false).then((l) => l.length);
     return {
       'totalUsers': users.length,
       'activeUsers': users.where((u) => u.isActive).length,
-      'todayAppointments': appointments.length,
+      'todayAppointments': todayAppointments.length,
+      'weekAppointments': weekAppointments.length,
+      'totalPatients': patients,
+      'totalDoctors': doctors.length,
+      'openTodos': openTodos,
     };
   }
 }

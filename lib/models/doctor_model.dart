@@ -8,6 +8,8 @@ class DoctorModel {
   final String? specializationEn;
   final String? qualificationsAr;
   final String? qualificationsEn;
+  final String? certificationsAr;
+  final String? certificationsEn;
   final String? bio;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -20,6 +22,8 @@ class DoctorModel {
     this.specializationEn,
     this.qualificationsAr,
     this.qualificationsEn,
+    this.certificationsAr,
+    this.certificationsEn,
     this.bio,
     this.createdAt,
     this.updatedAt,
@@ -35,6 +39,8 @@ class DoctorModel {
       specializationEn: d['specializationEn'] as String?,
       qualificationsAr: d['qualificationsAr'] as String?,
       qualificationsEn: d['qualificationsEn'] as String?,
+      certificationsAr: d['certificationsAr'] as String?,
+      certificationsEn: d['certificationsEn'] as String?,
       bio: d['bio'] as String?,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
@@ -49,6 +55,8 @@ class DoctorModel {
       'specializationEn': specializationEn,
       'qualificationsAr': qualificationsAr,
       'qualificationsEn': qualificationsEn,
+      'certificationsAr': certificationsAr,
+      'certificationsEn': certificationsEn,
       'bio': bio,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

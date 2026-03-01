@@ -8,6 +8,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'patient_book_appointment_dialog.dart';
 
@@ -143,6 +144,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
             },
           ),
           actions: [
+            const NotificationsButton(),
             IconButton(
               icon: const Icon(Icons.add),
               tooltip: l10n.bookAppointment,

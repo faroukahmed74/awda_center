@@ -6,12 +6,13 @@ import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
-import '../../models/doctor_model.dart';
-import '../../models/room_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/data_cache_provider.dart';
+import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
+import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'appointment_form_dialog.dart';
 
@@ -25,10 +26,6 @@ class AppointmentsScreen extends StatefulWidget {
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
   final FirestoreService _firestore = FirestoreService();
   List<AppointmentModel> _list = [];
-  Map<String, String> _userNames = {};
-  List<UserModel> _patients = [];
-  List<DoctorModel> _doctors = [];
-  List<RoomModel> _rooms = [];
   bool _loading = true;
   /// null = All (non-cancelled), otherwise filter by this status. Cancelled appointments are never shown.
   AppointmentStatus? _statusFilter;
@@ -39,7 +36,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRefData();
     _startAppointmentsStream();
   }
 
@@ -47,17 +43,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   void dispose() {
     _subscription?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadRefData() async {
-    final patients = await _firestore.getPatients();
-    final doctors = await _firestore.getDoctors();
-    final rooms = await _firestore.getRooms();
-    if (mounted) setState(() {
-      _patients = patients;
-      _doctors = doctors;
-      _rooms = rooms;
-    });
   }
 
   void _startAppointmentsStream() async {
@@ -78,41 +63,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             .where((a) => a.appointmentDate.isAfter(from.subtract(const Duration(days: 1))))
             .where((a) => a.status != AppointmentStatus.cancelled)
             .toList();
-        if (mounted) {
-          setState(() => _list = list);
-          if (list.isEmpty) setState(() => _loading = false);
-          else _loadNames(list);
-        }
+        if (mounted) setState(() {
+          _list = list;
+          _loading = false;
+        });
       },
       onError: (e, st) {
         if (mounted) setState(() => _loading = false);
       },
     );
-  }
-
-  Future<void> _loadNames(List<AppointmentModel> list) async {
-    final userIds = <String>{};
-    for (final a in list) {
-      userIds.add(a.patientId);
-      userIds.add(a.doctorId);
-    }
-    final names = <String, String>{};
-    for (final id in userIds) {
-      final u = await _firestore.getUser(id);
-      if (u != null) {
-        names[id] = u.displayName;
-      } else {
-        final doc = await _firestore.getDoctorById(id);
-        if (doc != null) {
-          final docUser = await _firestore.getUser(doc.userId);
-          names[id] = docUser?.displayName ?? doc.displayName ?? id;
-        }
-      }
-    }
-    if (mounted) setState(() {
-      _userNames = names;
-      _loading = false;
-    });
   }
 
   String _statusLabel(AppointmentStatus s, AppLocalizations l10n) {
@@ -133,14 +92,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     });
   }
 
+  void _logAppointmentAction(BuildContext context, String action, AppointmentModel a, AppointmentStatus newStatus) {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+    AuditService.log(
+      action: action,
+      entityType: 'appointment',
+      entityId: a.id,
+      userId: user.id,
+      userEmail: user.email,
+      details: {'patientId': a.patientId, 'doctorId': a.doctorId, 'status': newStatus.value},
+    );
+  }
+
   /// List to display: already excludes cancelled; filtered by _statusFilter and _searchQuery.
-  List<AppointmentModel> _displayList() {
+  List<AppointmentModel> _displayList(DataCacheProvider cache) {
     var out = _statusFilter == null ? _list : _list.where((a) => a.status == _statusFilter!).toList();
     final q = _searchQuery.trim().toLowerCase();
     if (q.isEmpty) return out;
     return out.where((a) {
-      final patientName = (_userNames[a.patientId] ?? a.patientId).toLowerCase();
-      final doctorName = (_userNames[a.doctorId] ?? a.doctorId).toLowerCase();
+      final patientName = (cache.userName(a.patientId) ?? a.patientId).toLowerCase();
+      final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId).toLowerCase();
       final service = (a.service ?? '').toLowerCase();
       return patientName.contains(q) || doctorName.contains(q) || service.contains(q);
     }).toList();
@@ -150,6 +122,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final auth = context.watch<AuthProvider>().currentUser;
+    final cache = context.watch<DataCacheProvider>();
     final canUpdate = auth != null && auth.canAccessAppointments;
     final isRtl = l10n.isArabic;
 
@@ -160,6 +133,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           title: Text(l10n.appointments),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
+            const NotificationsButton(),
             if (canUpdate)
               IconButton(
                 icon: const Icon(Icons.add),
@@ -169,9 +143,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     context: context,
                     builder: (_) => AppointmentFormDialog(
                       currentUserId: auth.id,
-                      patients: _patients,
-                      doctors: _doctors,
-                      rooms: _rooms,
+                      patients: cache.patients,
+                      doctors: cache.doctors,
+                      rooms: cache.rooms,
                     ),
                   );
                   if (ok == true && mounted) { _subscription?.cancel(); _startAppointmentsStream(); }
@@ -223,7 +197,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : _displayList().isEmpty
+                  : _displayList(cache).isEmpty
                       ? Center(child: Text(l10n.noData))
                       : RefreshIndicator(
                     onRefresh: () async {
@@ -233,14 +207,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         },
                         child: ListView.builder(
                           padding: responsiveListPadding(context),
-                          itemCount: _displayList().length,
+                          itemCount: _displayList(cache).length,
                           itemBuilder: (context, i) {
-                            final a = _displayList()[i];
+                            final a = _displayList(cache)[i];
                         final dateStr = DateFormat.yMd().format(a.appointmentDate);
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
                           child: ListTile(
-                            title: Text('${_userNames[a.patientId] ?? a.patientId} • ${_userNames[a.doctorId] ?? a.doctorId}'),
+                            title: Text('${cache.userName(a.patientId) ?? a.patientId} • ${cache.doctorDisplayName(a.doctorId) ?? a.doctorId}'),
                             subtitle: Text('$dateStr ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status, l10n)}'),
                             trailing: canUpdate
                                 ? PopupMenuButton<String>(
@@ -251,23 +225,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                           builder: (_) => AppointmentFormDialog(
                                             existing: a,
                                             currentUserId: auth.id,
-                                            patients: _patients,
-                                            doctors: _doctors,
-                                            rooms: _rooms,
+                                            patients: cache.patients,
+                                            doctors: cache.doctors,
+                                            rooms: cache.rooms,
                                           ),
                                         );
                                         if (ok == true && mounted) { _subscription?.cancel(); _startAppointmentsStream(); }
                                       } else if (v == 'confirmed') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.confirmed);
+                                        _logAppointmentAction(context, 'appointment_confirmed', a, AppointmentStatus.confirmed);
                                         _notifyAppointmentStatusChange(a);
                                       } else if (v == 'completed') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.completed);
+                                        _logAppointmentAction(context, 'appointment_completed', a, AppointmentStatus.completed);
                                         _notifyAppointmentStatusChange(a);
                                       } else if (v == 'cancelled') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.cancelled);
+                                        _logAppointmentAction(context, 'appointment_cancelled', a, AppointmentStatus.cancelled);
                                         _notifyAppointmentStatusChange(a);
                                       } else if (v == 'noShow') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.noShow);
+                                        _logAppointmentAction(context, 'appointment_no_show', a, AppointmentStatus.noShow);
                                         _notifyAppointmentStatusChange(a);
                                       }
                                     },

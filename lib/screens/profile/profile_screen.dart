@@ -11,6 +11,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/notifications_button.dart';
 import '../patients/patient_document_dialog.dart';
 import '../patients/document_viewer.dart';
 import '../patients/patient_profile_edit_dialog.dart';
@@ -129,6 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: Text(l10n.profile),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
+            const NotificationsButton(),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: l10n.editMyInfo,

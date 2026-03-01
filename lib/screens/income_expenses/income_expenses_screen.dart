@@ -9,6 +9,7 @@ import '../../models/income_expense_models.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 class IncomeExpensesScreen extends StatefulWidget {
@@ -84,6 +85,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
           title: Text(l10n.incomeAndExpenses),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
+            const NotificationsButton(),
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () => _showAddIncome(context, uid, l10n),

@@ -15,6 +15,7 @@ import '../../providers/locale_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../router/app_router.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/notifications_button.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -44,6 +45,7 @@ class DashboardScreen extends StatelessWidget {
             ],
           ),
           actions: [
+            const NotificationsButton(),
             IconButton(
               icon: const Icon(Icons.language),
               tooltip: l10n.isArabic ? 'English' : 'العربية',

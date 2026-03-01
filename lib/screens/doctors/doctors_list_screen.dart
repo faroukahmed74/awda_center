@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/doctor_model.dart';
-import '../../services/firestore_service.dart';
+import '../../providers/data_cache_provider.dart';
 
 const List<String> _dayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -20,20 +21,12 @@ class DoctorsListScreen extends StatefulWidget {
 }
 
 class _DoctorsListScreenState extends State<DoctorsListScreen> {
-  final FirestoreService _firestore = FirestoreService();
   final _searchController = TextEditingController();
-  List<DoctorModel> _allDoctors = [];
-  List<DoctorModel> _filtered = [];
-  Map<String, String> _userNames = {};
-  Map<String, List<DoctorAvailabilityModel>> _availability = {};
-  bool _loading = true;
-  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _load();
-    _searchController.addListener(_applyFilter);
+    _searchController.addListener(() => setState(() {}));
   }
 
   @override
@@ -42,77 +35,41 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
     super.dispose();
   }
 
-  void _applyFilter() {
-    final q = _searchController.text.trim().toLowerCase();
-    if (q.isEmpty) {
-      setState(() => _filtered = List.from(_allDoctors));
-      return;
-    }
-    setState(() {
-      _filtered = _allDoctors.where((d) {
-        final name = (_userNames[d.userId] ?? d.displayName ?? '').toLowerCase();
-        final spec = (d.specializationEn ?? d.specializationAr ?? '').toLowerCase();
-        final qual = (d.qualificationsEn ?? d.qualificationsAr ?? '').toLowerCase();
-        return name.contains(q) || spec.contains(q) || qual.contains(q);
-      }).toList();
-    });
-  }
-
-  Future<void> _load() async {
-    if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _errorMessage = null;
-    });
-    try {
-      final doctors = await _firestore.getDoctors();
-      final names = <String, String>{};
-      final availability = <String, List<DoctorAvailabilityModel>>{};
-      for (final d in doctors) {
-        if (d.userId.isNotEmpty) {
-          try {
-            final u = await _firestore.getUser(d.userId);
-            names[d.userId] = u?.displayName ?? d.displayName ?? d.userId;
-          } catch (_) {
-            names[d.userId] = d.displayName ?? d.userId;
-          }
-        }
-        try {
-          availability[d.id] = await _firestore.getDoctorAvailability(d.id);
-        } catch (_) {
-          availability[d.id] = [];
-        }
-      }
-      if (!mounted) return;
-      setState(() {
-        _allDoctors = doctors;
-        _filtered = List.from(doctors);
-        _userNames = names;
-        _availability = availability;
-        _loading = false;
-        _errorMessage = null;
-      });
-    } catch (e, st) {
-      debugPrint('DoctorsListScreen _load error: $e\n$st');
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _errorMessage = e.toString();
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isRtl = l10n.isArabic;
+    final cache = context.watch<DataCacheProvider>();
+
+    final q = _searchController.text.trim().toLowerCase();
+    final filtered = q.isEmpty
+        ? cache.doctors
+        : cache.doctors.where((d) {
+            final name = (cache.userName(d.userId) ?? d.displayName ?? '').toLowerCase();
+            final spec = (d.specializationEn ?? d.specializationAr ?? '').toLowerCase();
+            final qual = (d.qualificationsEn ?? d.qualificationsAr ?? '').toLowerCase();
+            final cert = (d.certificationsEn ?? d.certificationsAr ?? '').toLowerCase();
+            final bio = (d.bio ?? '').toLowerCase();
+            return name.contains(q) || spec.contains(q) || qual.contains(q) || cert.contains(q) || bio.contains(q);
+          }).toList();
+
+    final showLoading = cache.doctorsLoading && cache.doctors.isEmpty;
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.ourDoctors),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
+          ),
         ),
         body: Column(
           children: [
@@ -129,41 +86,22 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
               ),
             ),
             Expanded(
-              child: _loading
+              child: showLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
-                                const SizedBox(height: 16),
-                                Text(_errorMessage!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
-                                const SizedBox(height: 16),
-                                FilledButton.icon(
-                                  icon: const Icon(Icons.refresh),
-                                  label: const Text('Retry'),
-                                  onPressed: _load,
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                  : _filtered.isEmpty
+                  : filtered.isEmpty
                       ? Center(child: Text(l10n.noData))
                       : RefreshIndicator(
-                          onRefresh: _load,
+                          onRefresh: () async => cache.refreshDoctorsCache(),
                           child: ListView.builder(
                             padding: responsiveListPadding(context),
-                            itemCount: _filtered.length,
+                            itemCount: filtered.length,
                             itemBuilder: (context, i) {
-                              final d = _filtered[i];
-                              final name = _userNames[d.userId] ?? d.displayName ?? d.userId;
-                              final qual = isRtl ? (d.qualificationsAr ?? d.qualificationsEn) : (d.qualificationsEn ?? d.qualificationsAr);
+                              final d = filtered[i];
+                              final name = cache.userName(d.userId) ?? d.displayName ?? d.userId;
                               final spec = isRtl ? (d.specializationAr ?? d.specializationEn) : (d.specializationEn ?? d.specializationAr);
-                              final avail = _availability[d.id];
+                              final qual = isRtl ? (d.qualificationsAr ?? d.qualificationsEn) : (d.qualificationsEn ?? d.qualificationsAr);
+                              final cert = isRtl ? (d.certificationsAr ?? d.certificationsEn) : (d.certificationsEn ?? d.certificationsAr);
+                              final avail = cache.doctorAvailability(d.id);
                               final availText = avail != null && avail.isNotEmpty ? _availabilityText(avail) : null;
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 12),
@@ -175,30 +113,71 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
                                       Text(name, style: Theme.of(context).textTheme.titleLarge),
                                       if (spec != null && spec.isNotEmpty)
                                         Padding(
-                                          padding: const EdgeInsets.only(top: 4),
-                                          child: Text('${l10n.specialization}: $spec', style: Theme.of(context).textTheme.bodyMedium),
+                                          padding: const EdgeInsets.only(top: 6),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Icon(Icons.medical_services, size: 18, color: Theme.of(context).colorScheme.primary),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text('${l10n.specialization}: $spec', style: Theme.of(context).textTheme.bodyMedium),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       if (qual != null && qual.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 4),
-                                          child: Text('${l10n.qualifications}: $qual', style: Theme.of(context).textTheme.bodySmall),
-                                        ),
-                                      if (availText != null && availText.isNotEmpty)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 6),
                                           child: Row(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Icon(Icons.schedule, size: 16, color: Theme.of(context).colorScheme.primary),
-                                              const SizedBox(width: 6),
-                                              Expanded(child: Text('${l10n.availableTime}: $availText', style: Theme.of(context).textTheme.bodySmall)),
+                                              Icon(Icons.school_outlined, size: 18, color: Theme.of(context).colorScheme.primary),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text('${l10n.qualifications}: $qual', style: Theme.of(context).textTheme.bodyMedium),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      if (cert != null && cert.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 6),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Icon(Icons.verified_outlined, size: 18, color: Theme.of(context).colorScheme.primary),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text('${l10n.certifications}: $cert', style: Theme.of(context).textTheme.bodyMedium),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      if (availText != null && availText.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 8),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Icon(Icons.schedule, size: 18, color: Theme.of(context).colorScheme.primary),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text('${l10n.availableTime}: $availText', style: Theme.of(context).textTheme.bodySmall),
+                                              ),
                                             ],
                                           ),
                                         ),
                                       if (d.bio != null && d.bio!.isNotEmpty)
                                         Padding(
-                                          padding: const EdgeInsets.only(top: 8),
-                                          child: Text(d.bio!, style: Theme.of(context).textTheme.bodySmall),
+                                          padding: const EdgeInsets.only(top: 10),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(l10n.about, style: Theme.of(context).textTheme.titleSmall),
+                                              const SizedBox(height: 4),
+                                              Text(d.bio!, style: Theme.of(context).textTheme.bodyMedium),
+                                            ],
+                                          ),
                                         ),
                                     ],
                                   ),

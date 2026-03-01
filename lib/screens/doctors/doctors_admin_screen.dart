@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/doctor_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/notifications_button.dart';
 
 /// Admin: List doctors, add (link user with doctor role), edit.
 class DoctorsAdminScreen extends StatefulWidget {
@@ -43,6 +44,8 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
     final specEn = TextEditingController(text: doc.specializationEn ?? '');
     final qualAr = TextEditingController(text: doc.qualificationsAr ?? '');
     final qualEn = TextEditingController(text: doc.qualificationsEn ?? '');
+    final certAr = TextEditingController(text: doc.certificationsAr ?? '');
+    final certEn = TextEditingController(text: doc.certificationsEn ?? '');
     final bio = TextEditingController(text: doc.bio ?? '');
 
     await showDialog(
@@ -61,6 +64,10 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
               const SizedBox(height: 8),
               TextField(controller: qualEn, decoration: InputDecoration(labelText: '${l10n.qualifications} (EN)'), maxLines: 2),
               const SizedBox(height: 8),
+              TextField(controller: certAr, decoration: InputDecoration(labelText: '${l10n.certifications} (AR)'), maxLines: 2),
+              const SizedBox(height: 8),
+              TextField(controller: certEn, decoration: InputDecoration(labelText: '${l10n.certifications} (EN)'), maxLines: 2),
+              const SizedBox(height: 8),
               TextField(controller: bio, decoration: const InputDecoration(labelText: 'Bio'), maxLines: 3),
             ],
           ),
@@ -74,6 +81,8 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
                 'specializationEn': specEn.text.trim().isEmpty ? null : specEn.text.trim(),
                 'qualificationsAr': qualAr.text.trim().isEmpty ? null : qualAr.text.trim(),
                 'qualificationsEn': qualEn.text.trim().isEmpty ? null : qualEn.text.trim(),
+                'certificationsAr': certAr.text.trim().isEmpty ? null : certAr.text.trim(),
+                'certificationsEn': certEn.text.trim().isEmpty ? null : certEn.text.trim(),
                 'bio': bio.text.trim().isEmpty ? null : bio.text.trim(),
               });
               if (ctx.mounted) Navigator.pop(ctx);
@@ -126,6 +135,7 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
           title: Text(l10n.manageDoctors),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
+            const NotificationsButton(),
             IconButton(icon: const Icon(Icons.add), tooltip: l10n.addDoctor, onPressed: () => _addDoctor(context, l10n)),
           ],
         ),

@@ -98,11 +98,14 @@ class AppLocalizations {
   String get totalUsers => _map['totalUsers']!;
   String get activeUsers => _map['activeUsers']!;
   String get todayAppointments => _map['todayAppointments']!;
+  String get thisWeekAppointments => _map['thisWeekAppointments']!;
+  String get openTodos => _map['openTodos']!;
   String get manageUsers => _map['manageUsers']!;
   String get inviteUserHint => _map['inviteUserHint']!;
   String get ourDoctors => _map['ourDoctors']!;
   String get myDoctorProfile => _map['myDoctorProfile']!;
   String get qualifications => _map['qualifications']!;
+  String get certifications => _map['certifications']!;
   String get specialization => _map['specialization']!;
   String get medicalHistory => _map['medicalHistory']!;
   String get treatmentProgress => _map['treatmentProgress']!;
@@ -111,6 +114,7 @@ class AppLocalizations {
   String get editUser => _map['editUser']!;
   String get deleteUser => _map['deleteUser']!;
   String get search => _map['search']!;
+  String get about => _map['about']!;
   String get addNote => _map['addNote']!;
   String get addImage => _map['addImage']!;
   String get addPdf => _map['addPdf']!;
@@ -176,6 +180,10 @@ class AppLocalizations {
   String get manageDoctors => _map['manageDoctors']!;
   String get addDoctor => _map['addDoctor']!;
   String get edit => _map['edit']!;
+  String get quickAccess => _map['quickAccess']!;
+  String get notifications => _map['notifications']!;
+  String get noNotifications => _map['noNotifications']!;
+  String get retry => _map['retry']!;
   // Notification text (used in push and local notifications)
   String get notificationReminderTitle => _map['notificationReminderTitle']!;
   String get notificationReminderBody => _map['notificationReminderBody']!;
@@ -270,11 +278,14 @@ class AppLocalizations {
     'totalUsers': 'Total users',
     'activeUsers': 'Active users',
     'todayAppointments': 'Today\'s appointments',
+    'thisWeekAppointments': 'This week\'s appointments',
+    'openTodos': 'Open to-dos',
     'manageUsers': 'Manage users',
     'inviteUserHint': 'User will get this role when they register with this email.',
     'ourDoctors': 'Our doctors',
     'myDoctorProfile': 'My doctor profile',
     'qualifications': 'Qualifications',
+    'certifications': 'Certifications',
     'specialization': 'Specialization',
     'medicalHistory': 'Medical history',
     'treatmentProgress': 'Treatment progress',
@@ -283,6 +294,7 @@ class AppLocalizations {
     'editUser': 'Edit user',
     'deleteUser': 'Delete user',
     'search': 'Search',
+    'about': 'About',
     'addNote': 'Add note',
     'addImage': 'Add image',
     'addPdf': 'Add PDF',
@@ -348,6 +360,10 @@ class AppLocalizations {
     'manageDoctors': 'Manage doctors',
     'addDoctor': 'Add doctor',
     'edit': 'Edit',
+    'quickAccess': 'Quick access',
+    'notifications': 'Notifications',
+    'noNotifications': 'No notifications',
+    'retry': 'Retry',
     'notificationReminderTitle': 'Appointment reminder',
     'notificationReminderBody': 'Session on {date} at {time}',
     'notificationAppointmentConfirmed': 'Appointment confirmed',
@@ -447,11 +463,14 @@ class AppLocalizations {
     'totalUsers': 'إجمالي المستخدمين',
     'activeUsers': 'المستخدمون النشطون',
     'todayAppointments': 'مواعيد اليوم',
+    'thisWeekAppointments': 'مواعيد هذا الأسبوع',
+    'openTodos': 'مهام مفتوحة',
     'manageUsers': 'إدارة المستخدمين',
     'inviteUserHint': 'سيحصل المستخدم على هذا الدور عند التسجيل بهذا البريد.',
     'ourDoctors': 'أطباؤنا',
     'myDoctorProfile': 'ملفي كطبيب',
     'qualifications': 'المؤهلات',
+    'certifications': 'الشهادات',
     'specialization': 'التخصص',
     'medicalHistory': 'التاريخ الطبي',
     'treatmentProgress': 'تقدم العلاج',
@@ -460,6 +479,7 @@ class AppLocalizations {
     'editUser': 'تعديل المستخدم',
     'deleteUser': 'حذف المستخدم',
     'search': 'بحث',
+    'about': 'نبذة',
     'addNote': 'إضافة ملاحظة',
     'addImage': 'إضافة صورة',
     'addPdf': 'إضافة PDF',
@@ -525,6 +545,10 @@ class AppLocalizations {
     'manageDoctors': 'إدارة الأطباء',
     'addDoctor': 'إضافة طبيب',
     'edit': 'تعديل',
+    'quickAccess': 'وصول سريع',
+    'notifications': 'الإشعارات',
+    'noNotifications': 'لا توجد إشعارات',
+    'retry': 'إعادة المحاولة',
     'notificationReminderTitle': 'تذكير موعد',
     'notificationReminderBody': 'جلسة في {date} الساعة {time}',
     'notificationAppointmentConfirmed': 'تم تأكيد الموعد',

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
 import '../../models/doctor_model.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 
 /// Lets a patient book an appointment (reserve a session/examination) for themselves.
@@ -63,7 +66,7 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
       _errorMessage = null;
     });
     try {
-      await _firestore.createAppointment(AppointmentModel(
+      final appointmentId = await _firestore.createAppointment(AppointmentModel(
         id: '',
         patientId: widget.patientId,
         doctorId: _doctorId!,
@@ -77,6 +80,16 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
         notes: _notes.isEmpty ? null : _notes,
         createdByUserId: widget.patientId,
       ));
+      if (!mounted) return;
+      final currentUser = context.read<AuthProvider>().currentUser;
+      AuditService.log(
+        action: 'appointment_created',
+        entityType: 'appointment',
+        entityId: appointmentId,
+        userId: currentUser?.id ?? widget.patientId,
+        userEmail: currentUser?.email,
+        details: {'patientId': widget.patientId, 'doctorId': _doctorId},
+      );
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {

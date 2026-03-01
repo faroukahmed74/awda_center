@@ -10,6 +10,7 @@ import '../../models/appointment_model.dart';
 import '../../models/income_expense_models.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 import 'report_file_io_stub.dart' if (dart.library.io) 'report_file_io.dart' as report_io;
@@ -398,6 +399,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           title: Text(l10n.reports),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
+            const NotificationsButton(),
             PopupMenuButton<String>(
               icon: const Icon(Icons.upload),
               tooltip: l10n.export,

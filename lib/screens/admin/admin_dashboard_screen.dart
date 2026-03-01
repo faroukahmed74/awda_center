@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/notifications_button.dart';
 import 'invite_user_dialog.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -71,119 +73,214 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         appBar: AppBar(
           title: Text(l10n.adminDashboard),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
+          actions: const [NotificationsButton()],
         ),
         body: RefreshIndicator(
           onRefresh: _loadStats,
           child: SingleChildScrollView(
             padding: ResponsivePadding.all(context),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: responsiveMaxContentWidth(context)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_loading)
-                    const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
-                  else if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
-                            const SizedBox(height: 16),
-                            Text(_errorMessage!, textAlign: TextAlign.center),
-                            const SizedBox(height: 16),
-                            FilledButton.icon(icon: const Icon(Icons.refresh), label: const Text('Retry'), onPressed: _loadStats),
-                          ],
-                        ),
-                      ),
-                    )
-                  else if (_stats != null) ...[
-                    Text(
-                      l10n.welcome,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            title: l10n.totalUsers,
-                            value: '${_stats!['totalUsers'] ?? 0}',
-                            icon: Icons.people,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatCard(
-                            title: l10n.activeUsers,
-                            value: '${_stats!['activeUsers'] ?? 0}',
-                            icon: Icons.check_circle,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            title: l10n.todayAppointments,
-                            value: '${_stats!['todayAppointments'] ?? 0}',
-                            icon: Icons.calendar_today,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(child: SizedBox()),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Text(l10n.manageUsers, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _openInviteUser,
-                      icon: const Icon(Icons.person_add),
-                      label: Text(l10n.inviteUser),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    FilledButton.icon(
-                      onPressed: () => context.push('/users'),
-                      icon: const Icon(Icons.people),
-                      label: Text(l10n.users),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text('Administration', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    _AdminTile(
-                      icon: Icons.calendar_today,
-                      title: l10n.appointments,
-                      onTap: () => context.push('/appointments'),
-                    ),
-                    _AdminTile(
-                      icon: Icons.medical_services,
-                      title: l10n.patients,
-                      onTap: () => context.push('/patients'),
-                    ),
-                    _AdminTile(
-                      icon: Icons.attach_money,
-                      title: l10n.incomeAndExpenses,
-                      onTap: () => context.push('/income-expenses'),
-                    ),
-                  ],
-                ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: Breakpoint.isDesktop(context) ? 1200 : responsiveMaxContentWidth(context),
+                ),
+                child: _loading
+                    ? const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+                    : _errorMessage != null
+                        ? Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+                                  const SizedBox(height: 16),
+                                  Text(_errorMessage!, textAlign: TextAlign.center),
+                                  const SizedBox(height: 16),
+                                  FilledButton.icon(icon: const Icon(Icons.refresh), label: const Text('Retry'), onPressed: _loadStats),
+                                ],
+                              ),
+                            ),
+                          )
+                        : _stats == null
+                            ? const SizedBox.shrink()
+                            : Breakpoint.isDesktop(context)
+                                ? _buildDesktopLayout(context, l10n, user)
+                                : _buildMobileLayout(context, l10n, user),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatsAndManage(BuildContext context, AppLocalizations l10n, UserModel user) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.welcome,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                title: l10n.totalUsers,
+                value: '${_stats!['totalUsers'] ?? 0}',
+                icon: Icons.people,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                title: l10n.activeUsers,
+                value: '${_stats!['activeUsers'] ?? 0}',
+                icon: Icons.check_circle,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                title: l10n.todayAppointments,
+                value: '${_stats!['todayAppointments'] ?? 0}',
+                icon: Icons.calendar_today,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                title: l10n.thisWeekAppointments,
+                value: '${_stats!['weekAppointments'] ?? 0}',
+                icon: Icons.calendar_month,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                title: l10n.patients,
+                value: '${_stats!['totalPatients'] ?? 0}',
+                icon: Icons.medical_services,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                title: l10n.ourDoctors,
+                value: '${_stats!['totalDoctors'] ?? 0}',
+                icon: Icons.badge,
+              ),
+            ),
+          ],
+        ),
+        if (user.canAccessAdminTodos) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  title: l10n.openTodos,
+                  value: '${_stats!['openTodos'] ?? 0}',
+                  icon: Icons.task_alt,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
+        ],
+        const SizedBox(height: 24),
+        if (user.canAccessUsers) ...[
+          Text(l10n.manageUsers, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _openInviteUser,
+            icon: const Icon(Icons.person_add),
+            label: Text(l10n.inviteUser),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            onPressed: () => context.push('/users'),
+            icon: const Icon(Icons.people),
+            label: Text(l10n.users),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildQuickAccessTiles(BuildContext context, AppLocalizations l10n, UserModel user) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l10n.quickAccess, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (user.canAccessUsers)
+          _AdminTile(icon: Icons.people, title: l10n.users, onTap: () => context.push('/users')),
+        if (user.canAccessAppointments)
+          _AdminTile(icon: Icons.calendar_today, title: l10n.appointments, onTap: () => context.push('/appointments')),
+        if (user.canAccessPatients)
+          _AdminTile(icon: Icons.medical_services, title: l10n.patients, onTap: () => context.push('/patients')),
+        if (user.canAccessIncomeExpenses)
+          _AdminTile(icon: Icons.attach_money, title: l10n.incomeAndExpenses, onTap: () => context.push('/income-expenses')),
+        if (user.canAccessReports)
+          _AdminTile(icon: Icons.assessment, title: l10n.reports, onTap: () => context.push('/reports')),
+        if (user.canAccessAdminDashboard) ...[
+          _AdminTile(icon: Icons.meeting_room, title: l10n.rooms, onTap: () => context.push('/rooms')),
+          _AdminTile(icon: Icons.badge, title: l10n.manageDoctors, onTap: () => context.push('/doctors-admin')),
+          _AdminTile(icon: Icons.history, title: l10n.auditLog, onTap: () => context.push('/audit-log')),
+        ],
+        if (user.canAccessRequirements)
+          _AdminTile(icon: Icons.shopping_cart, title: l10n.requirements, onTap: () => context.push('/requirements')),
+        if (user.canAccessAdminTodos)
+          _AdminTile(icon: Icons.task_alt, title: l10n.toDoList, onTap: () => context.push('/admin-todos')),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context, AppLocalizations l10n, UserModel user) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildStatsAndManage(context, l10n, user),
+        const SizedBox(height: 24),
+        _buildQuickAccessTiles(context, l10n, user),
+      ],
+    );
+  }
+
+  Widget _buildDesktopLayout(BuildContext context, AppLocalizations l10n, UserModel user) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _buildStatsAndManage(context, l10n, user),
+          ),
+          const SizedBox(width: 32),
+          Expanded(
+            child: _buildQuickAccessTiles(context, l10n, user),
+          ),
+        ],
       ),
     );
   }
