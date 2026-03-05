@@ -113,6 +113,7 @@ class AppLocalizations {
   String get scheduleView => _map['scheduleView']!;
   String get listView => _map['listView']!;
   String get slotFull => _map['slotFull']!;
+  String get roomTimeConflict => _map['roomTimeConflict']!;
   String get updateStatus => _map['updateStatus']!;
   String get name => _map['name']!;
   String get service => _map['service']!;
@@ -351,6 +352,7 @@ class AppLocalizations {
     'scheduleView': 'Schedule',
     'listView': 'List',
     'slotFull': 'This time slot is full (max 3 sessions + 1 extra).',
+    'roomTimeConflict': 'This room is already booked for an appointment in this time range.',
     'updateStatus': 'Update status',
     'name': 'Name',
     'service': 'Service',
@@ -596,6 +598,7 @@ class AppLocalizations {
     'scheduleView': 'الجدول',
     'listView': 'قائمة',
     'slotFull': 'هذا الموعد ممتلئ (٣ جلسات + ١ إضافية).',
+    'roomTimeConflict': 'هذه الغرفة محجوزة بالفعل لموعد في هذا التوقيت.',
     'updateStatus': 'تحديث الحالة',
     'name': 'الاسم',
     'service': 'الخدمة',

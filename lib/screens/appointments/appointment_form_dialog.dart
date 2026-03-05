@@ -166,15 +166,48 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     super.dispose();
   }
 
+  /// Minutes since midnight for "HH:mm" (e.g. "09:30" -> 570).
+  static int _minutesOfDay(String timeStr) {
+    final parts = timeStr.split(':');
+    if (parts.length < 2) return 0;
+    final h = int.tryParse(parts[0].trim()) ?? 0;
+    final m = int.tryParse(parts[1].trim()) ?? 0;
+    return h * 60 + m;
+  }
+
+  /// True if [start1, end1] and [start2, end2] overlap (any time in common).
+  static bool _timeRangesOverlap(String start1, String end1, String start2, String end2) {
+    final s1 = _minutesOfDay(start1), e1 = _minutesOfDay(end1);
+    final s2 = _minutesOfDay(start2), e2 = _minutesOfDay(end2);
+    return s1 < e2 && s2 < e1;
+  }
+
   Future<void> _save() async {
     if (_patientId == null || _patientId!.isEmpty || _doctorId == null || _doctorId!.isEmpty) return;
     setState(() => _saving = true);
     final fs = FirestoreService();
+    final dayStart = DateTime(_date.year, _date.month, _date.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final range = await fs.getAppointments(from: dayStart, to: dayEnd);
+
+    // Room conflict: same date, same room, overlapping session time (all time between start and end)
+    if (_roomId != null && _roomId!.trim().isNotEmpty) {
+      final sameRoom = range
+          .where((a) =>
+              a.roomId == _roomId &&
+              a.status != AppointmentStatus.cancelled &&
+              a.id != (widget.existing?.id ?? ''))
+          .toList();
+      final hasOverlap = sameRoom.any((a) => _timeRangesOverlap(a.startTime, a.endTime, _startTime, _endTime));
+      if (hasOverlap && mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).roomTimeConflict)));
+        return;
+      }
+    }
+
     // Slot limit: max 3 main + 1 extra per (date, startTime)
     if (widget.existing == null) {
-      final dayStart = DateTime(_date.year, _date.month, _date.day);
-      final dayEnd = dayStart.add(const Duration(days: 1));
-      final range = await fs.getAppointments(from: dayStart, to: dayEnd);
       final sameSlot = range.where((a) => a.startTime == _startTime && a.status != AppointmentStatus.cancelled).toList();
       final mainCount = sameSlot.where((a) => !a.isExtraSlot).length;
       final extraCount = sameSlot.where((a) => a.isExtraSlot).length;

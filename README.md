@@ -22,17 +22,19 @@ Role-based dashboards and navigation. Admins can grant **per-feature privileges*
 | Dashboard | Role-specific; today’s appointments, quick links |
 | Admin dashboard | Stats (users, appointments, patients, doctors, todos), two-column layout on desktop, quick access to all admin sections |
 | Users | List and manage users (admin/secretary); invite user |
-| Appointments | Create, edit, reschedule; filter by status; search; appointment status changes logged to audit |
+| Appointments | Create, edit, reschedule; filter by status; search; **no double-booking** (same room + overlapping time on same date blocked); appointment status changes logged to audit |
 | My Appointments | Patient/doctor view of own appointments; search |
 | Profile | View/edit own info; change language and theme |
 | User profile | View another user (by role) |
-| Patients | Patient list and search (cached) |
+| Patients | Patient list and search (cached); add patient (create user + profile) |
 | Patient detail | Profile, documents (images open full-screen), sessions, appointments |
-| Income & expenses | Records and summaries |
+| Income & expenses | **Full details** per income (source, amount, date, notes, doctor/patient names) and expense (category, amount, date, description, recipient); **edit** and **delete** any record; summaries by day/month/year; filter and search |
 | Reports | Clinic reports; filters by day/month/year; export (PDF, Excel, share) |
 | Requirements | Center requirements (e.g. compliance) |
 | Admin todos | Admin task list with reminders |
 | Rooms | Room management |
+| Services | Service list; add/edit; amount per session |
+| Packages | Package list; add/edit; link to services |
 | Our doctors | Public doctor list for patients: name, specialization, qualifications, certifications, availability, bio; search |
 | Manage doctors | Admin: add/link doctors, edit profiles |
 | My doctor profile | Doctor’s own profile and availability; auto-creates doctor document if missing so they appear in Our doctors |
@@ -53,6 +55,10 @@ Role-based dashboards and navigation. Admins can grant **per-feature privileges*
 - **Push:** Firebase Cloud Messaging for push notifications; web push supported (VAPID).
 - **Local:** Appointment reminders for patient and doctor; rescheduled when appointments are created or updated.
 - **In-app:** Notifications icon in the app bar on all main screens. Opens a responsive panel (dialog on tablet/desktop, bottom sheet on phone) with role-based items: upcoming appointments (patient/doctor/staff), appointment status changes (admins), recent audit log (admins), open admin todos. Tapping an item navigates to the related screen. Full title/subtitle and time shown without truncation.
+
+### Appointments: room and time rules
+- **Slot limit:** Up to 3 main sessions + 1 extra slot per time slot per day.
+- **Room conflict:** You cannot book an appointment in a room on a date if that room already has another (non-cancelled) appointment whose session time overlaps (any overlap between start and end time). Prevents double-booking the same room.
 
 ---
 
@@ -310,6 +316,8 @@ lib/
 │   ├── doctor_model.dart
 │   ├── room_model.dart
 │   ├── income_expense_models.dart
+│   ├── package_model.dart
+│   ├── service_model.dart
 │   ├── admin_todo_model.dart
 │   ├── center_requirement_model.dart
 │   └── audit_log_model.dart
@@ -335,6 +343,8 @@ lib/
 │   ├── admin_todos/
 │   ├── rooms/
 │   ├── doctors/
+│   ├── services/
+│   ├── packages/
 │   └── audit/
 ├── services/
 │   ├── auth_service.dart
