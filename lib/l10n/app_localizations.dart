@@ -53,6 +53,7 @@ class AppLocalizations {
   String get income => _map['income']!;
   String get expenses => _map['expenses']!;
   String get net => _map['net']!;
+  String get netProfit => _map['netProfit']!;
   String get totalIncome => _map['totalIncome']!;
   String get totalExpenses => _map['totalExpenses']!;
   String get addIncome => _map['addIncome']!;
@@ -69,6 +70,13 @@ class AppLocalizations {
   String get sessions => _map['sessions']!;
   String get documents => _map['documents']!;
   String get amount => _map['amount']!;
+  String get discountPercent => _map['discountPercent']!;
+  String get amountAfterDiscount => _map['amountAfterDiscount']!;
+  String get sessionPayment => _map['sessionPayment']!;
+  String get paid => _map['paid']!;
+  String get partialPaid => _map['partialPaid']!;
+  String get notPaid => _map['notPaid']!;
+  String get amountPaid => _map['amountPaid']!;
   String get source => _map['source']!;
   String get category => _map['category']!;
   String get description => _map['description']!;
@@ -87,8 +95,24 @@ class AppLocalizations {
   String get pending => _map['pending']!;
   String get confirmed => _map['confirmed']!;
   String get completed => _map['completed']!;
+  String get attended => _map['attended']!;
+  String get apologized => _map['apologized']!;
   String get cancelled => _map['cancelled']!;
   String get noShow => _map['noShow']!;
+  String get absent => _map['absent']!;
+  String get absentWithCause => _map['absentWithCause']!;
+  String get absentWithoutCause => _map['absentWithoutCause']!;
+  String get absentAll => _map['absentAll']!;
+  String get newPatient => _map['newPatient']!;
+  String get filterDay => _map['filterDay']!;
+  String get filterMonth => _map['filterMonth']!;
+  String get filterYear => _map['filterYear']!;
+  String get sessionsFiltered => _map['sessionsFiltered']!;
+  String get sessionsThisWeek => _map['sessionsThisWeek']!;
+  String get extraSlot => _map['extraSlot']!;
+  String get scheduleView => _map['scheduleView']!;
+  String get listView => _map['listView']!;
+  String get slotFull => _map['slotFull']!;
   String get updateStatus => _map['updateStatus']!;
   String get name => _map['name']!;
   String get service => _map['service']!;
@@ -99,6 +123,12 @@ class AppLocalizations {
   String get activeUsers => _map['activeUsers']!;
   String get todayAppointments => _map['todayAppointments']!;
   String get thisWeekAppointments => _map['thisWeekAppointments']!;
+  String get thisMonthAppointments => _map['thisMonthAppointments']!;
+  String get thisYearAppointments => _map['thisYearAppointments']!;
+  String get filterToday => _map['filterToday']!;
+  String get filterThisWeek => _map['filterThisWeek']!;
+  String get filterThisMonth => _map['filterThisMonth']!;
+  String get filterThisYear => _map['filterThisYear']!;
   String get openTodos => _map['openTodos']!;
   String get manageUsers => _map['manageUsers']!;
   String get inviteUserHint => _map['inviteUserHint']!;
@@ -114,6 +144,8 @@ class AppLocalizations {
   String get editUser => _map['editUser']!;
   String get deleteUser => _map['deleteUser']!;
   String get search => _map['search']!;
+  String get searchAppointmentsHint => _map['searchAppointmentsHint']!;
+  String get searchUsersHint => _map['searchUsersHint']!;
   String get about => _map['about']!;
   String get addNote => _map['addNote']!;
   String get addImage => _map['addImage']!;
@@ -149,7 +181,11 @@ class AppLocalizations {
   String get feesType => _map['feesType']!;
   String get diagnosis => _map['diagnosis']!;
   String get gender => _map['gender']!;
+  String get male => _map['male']!;
+  String get female => _map['female']!;
   String get dateOfBirth => _map['dateOfBirth']!;
+  String get age => _map['age']!;
+  String get yearsOld => _map['yearsOld']!;
   String get addRequirement => _map['addRequirement']!;
   String get addTodo => _map['addTodo']!;
   String get dueDate => _map['dueDate']!;
@@ -165,6 +201,19 @@ class AppLocalizations {
   String get rooms => _map['rooms']!;
   String get addRoom => _map['addRoom']!;
   String get editRoom => _map['editRoom']!;
+  String get services => _map['services']!;
+  String get addService => _map['addService']!;
+  String get editService => _map['editService']!;
+  String get serviceAmount => _map['serviceAmount']!;
+  String get packages => _map['packages']!;
+  String get addPackage => _map['addPackage']!;
+  String get editPackage => _map['editPackage']!;
+  String get numberOfSessions => _map['numberOfSessions']!;
+  String get packageAmount => _map['packageAmount']!;
+  String get packageServices => _map['packageServices']!;
+  String get linkToPackageOptional => _map['linkToPackageOptional']!;
+  String get packageCompleted => _map['packageCompleted']!;
+  String get delete => _map['delete']!;
   String get deleteConfirm => _map['deleteConfirm']!;
   String get confirmAction => _map['confirmAction']!;
   String get quantity => _map['quantity']!;
@@ -181,6 +230,12 @@ class AppLocalizations {
   String get addDoctor => _map['addDoctor']!;
   String get edit => _map['edit']!;
   String get quickAccess => _map['quickAccess']!;
+  String get addNewPatient => _map['addNewPatient']!;
+  String get findPatient => _map['findPatient']!;
+  String get patientAdded => _map['patientAdded']!;
+  String get appointmentBooked => _map['appointmentBooked']!;
+  String get noPatientsYet => _map['noPatientsYet']!;
+  String get noSearchResults => _map['noSearchResults']!;
   String get notifications => _map['notifications']!;
   String get noNotifications => _map['noNotifications']!;
   String get retry => _map['retry']!;
@@ -195,6 +250,9 @@ class AppLocalizations {
 
   /// User-friendly auth error message for login/register. Returns localized text for known keys, or [key] if unknown.
   String authErrorMessage(String? key) => key == null ? '' : (_map[key] ?? key);
+
+  /// User-friendly message for Firestore/general errors. Returns localized text for known keys, or a generic message.
+  String generalErrorMessage(String? key) => key == null ? '' : (_map[key] ?? _map['errorTryAgain'] ?? 'Something went wrong. Please try again.');
 
   Map<String, String> get _map => locale.languageCode == 'ar' ? _ar : _en;
 
@@ -233,6 +291,7 @@ class AppLocalizations {
     'income': 'Income',
     'expenses': 'Expenses',
     'net': 'Net',
+    'netProfit': 'Net Profit',
     'totalIncome': 'Total income',
     'totalExpenses': 'Total expenses',
     'addIncome': 'Add income',
@@ -249,6 +308,13 @@ class AppLocalizations {
     'sessions': 'Sessions',
     'documents': 'Documents',
     'amount': 'Amount',
+    'discountPercent': 'Discount %',
+    'amountAfterDiscount': 'Amount after discount',
+    'sessionPayment': 'Session payment',
+    'paid': 'Paid',
+    'partialPaid': 'Partial paid',
+    'notPaid': 'Not paid',
+    'amountPaid': 'Amount paid',
     'source': 'Source',
     'category': 'Category',
     'description': 'Description',
@@ -267,8 +333,24 @@ class AppLocalizations {
     'pending': 'Pending',
     'confirmed': 'Confirmed',
     'completed': 'Completed',
+    'attended': 'Attended',
+    'apologized': 'Apologized',
     'cancelled': 'Cancelled',
     'noShow': 'No show',
+    'absent': 'Absent',
+    'absentWithCause': 'Absent (with cause)',
+    'absentWithoutCause': 'Absent (without cause)',
+    'absentAll': 'Absents all (both)',
+    'newPatient': 'New Patient',
+    'filterDay': 'Day',
+    'filterMonth': 'Month',
+    'filterYear': 'Year',
+    'sessionsFiltered': 'Sessions (filtered)',
+    'sessionsThisWeek': 'Sessions this week',
+    'extraSlot': 'Extra slot (optional)',
+    'scheduleView': 'Schedule',
+    'listView': 'List',
+    'slotFull': 'This time slot is full (max 3 sessions + 1 extra).',
     'updateStatus': 'Update status',
     'name': 'Name',
     'service': 'Service',
@@ -279,6 +361,12 @@ class AppLocalizations {
     'activeUsers': 'Active users',
     'todayAppointments': 'Today\'s appointments',
     'thisWeekAppointments': 'This week\'s appointments',
+    'thisMonthAppointments': 'This month\'s appointments',
+    'thisYearAppointments': 'This year\'s appointments',
+    'filterToday': 'Today',
+    'filterThisWeek': 'This week',
+    'filterThisMonth': 'This month',
+    'filterThisYear': 'This year',
     'openTodos': 'Open to-dos',
     'manageUsers': 'Manage users',
     'inviteUserHint': 'User will get this role when they register with this email.',
@@ -294,6 +382,8 @@ class AppLocalizations {
     'editUser': 'Edit user',
     'deleteUser': 'Delete user',
     'search': 'Search',
+    'searchAppointmentsHint': 'Search by patient, doctor or service',
+    'searchUsersHint': 'Search by name, email or phone',
     'about': 'About',
     'addNote': 'Add note',
     'addImage': 'Add image',
@@ -329,7 +419,11 @@ class AppLocalizations {
     'feesType': 'Fees type',
     'diagnosis': 'Diagnosis',
     'gender': 'Gender',
+    'male': 'Male',
+    'female': 'Female',
     'dateOfBirth': 'Date of birth',
+    'age': 'Age',
+    'yearsOld': 'years old',
     'addRequirement': 'Add requirement',
     'addTodo': 'Add to-do',
     'dueDate': 'Due date',
@@ -345,6 +439,19 @@ class AppLocalizations {
     'rooms': 'Rooms',
     'addRoom': 'Add room',
     'editRoom': 'Edit room',
+    'services': 'Services',
+    'addService': 'Add service',
+    'editService': 'Edit service',
+    'serviceAmount': 'Amount (per session)',
+    'packages': 'Packages',
+    'addPackage': 'Add package',
+    'editPackage': 'Edit package',
+    'numberOfSessions': 'Number of sessions',
+    'packageAmount': 'Package amount',
+    'packageServices': 'Services in package',
+    'linkToPackageOptional': 'Link to package (optional)',
+    'packageCompleted': 'Package completed (all sessions done)',
+    'delete': 'Delete',
     'deleteConfirm': 'Delete?',
     'confirmAction': 'Confirm',
     'quantity': 'Quantity',
@@ -361,6 +468,12 @@ class AppLocalizations {
     'addDoctor': 'Add doctor',
     'edit': 'Edit',
     'quickAccess': 'Quick access',
+    'addNewPatient': 'Add new patient',
+    'findPatient': 'Find patient',
+    'patientAdded': 'Patient added',
+    'appointmentBooked': 'Appointment booked',
+    'noPatientsYet': 'No patients yet. Add your first patient.',
+    'noSearchResults': 'No patients match your search.',
     'notifications': 'Notifications',
     'noNotifications': 'No notifications',
     'retry': 'Retry',
@@ -381,6 +494,11 @@ class AppLocalizations {
     'authErrorNetwork': 'Connection error. Check your internet and try again.',
     'authErrorTryAgain': 'Something went wrong. Please try again.',
     'authErrorNoAccountWithEmail': 'No account found with this email.',
+    'errorPermissionDenied': 'You don\'t have permission to perform this action. Please contact your administrator.',
+    'errorNetwork': 'Connection error. Please check your internet and try again.',
+    'errorSaveFailed': 'Could not save. Please try again.',
+    'errorLoadFailed': 'Could not load data. Please try again.',
+    'errorTryAgain': 'Something went wrong. Please try again.',
   };
 
   static const Map<String, String> _ar = {
@@ -418,6 +536,7 @@ class AppLocalizations {
     'income': 'الإيرادات',
     'expenses': 'المصروفات',
     'net': 'صافي',
+    'netProfit': 'صافي الربح',
     'totalIncome': 'إجمالي الإيرادات',
     'totalExpenses': 'إجمالي المصروفات',
     'addIncome': 'إضافة إيراد',
@@ -434,6 +553,13 @@ class AppLocalizations {
     'sessions': 'الجلسات',
     'documents': 'المستندات',
     'amount': 'المبلغ',
+    'discountPercent': 'خصم %',
+    'amountAfterDiscount': 'المبلغ بعد الخصم',
+    'sessionPayment': 'دفع الجلسة',
+    'paid': 'مدفوع',
+    'partialPaid': 'مدفوع جزئياً',
+    'notPaid': 'غير مدفوع',
+    'amountPaid': 'المبلغ المدفوع',
     'source': 'المصدر',
     'category': 'الفئة',
     'description': 'الوصف',
@@ -452,8 +578,24 @@ class AppLocalizations {
     'pending': 'قيد الانتظار',
     'confirmed': 'مؤكد',
     'completed': 'مكتمل',
+    'attended': 'حضر',
+    'apologized': 'اعتذر',
     'cancelled': 'ملغي',
     'noShow': 'لم يحضر',
+    'absent': 'غائب',
+    'absentWithCause': 'غائب (بعذر)',
+    'absentWithoutCause': 'غائب (بدون عذر)',
+    'absentAll': 'الغياب الكل (كلاهما)',
+    'newPatient': 'مريض جديد',
+    'filterDay': 'يوم',
+    'filterMonth': 'شهر',
+    'filterYear': 'سنة',
+    'sessionsFiltered': 'الجلسات (المصفاة)',
+    'sessionsThisWeek': 'جلسات هذا الأسبوع',
+    'extraSlot': 'جلسة إضافية (اختياري)',
+    'scheduleView': 'الجدول',
+    'listView': 'قائمة',
+    'slotFull': 'هذا الموعد ممتلئ (٣ جلسات + ١ إضافية).',
     'updateStatus': 'تحديث الحالة',
     'name': 'الاسم',
     'service': 'الخدمة',
@@ -464,6 +606,12 @@ class AppLocalizations {
     'activeUsers': 'المستخدمون النشطون',
     'todayAppointments': 'مواعيد اليوم',
     'thisWeekAppointments': 'مواعيد هذا الأسبوع',
+    'thisMonthAppointments': 'مواعيد هذا الشهر',
+    'thisYearAppointments': 'مواعيد هذه السنة',
+    'filterToday': 'اليوم',
+    'filterThisWeek': 'هذا الأسبوع',
+    'filterThisMonth': 'هذا الشهر',
+    'filterThisYear': 'هذه السنة',
     'openTodos': 'مهام مفتوحة',
     'manageUsers': 'إدارة المستخدمين',
     'inviteUserHint': 'سيحصل المستخدم على هذا الدور عند التسجيل بهذا البريد.',
@@ -479,6 +627,8 @@ class AppLocalizations {
     'editUser': 'تعديل المستخدم',
     'deleteUser': 'حذف المستخدم',
     'search': 'بحث',
+    'searchAppointmentsHint': 'البحث بالمرضى أو الطبيب أو الخدمة',
+    'searchUsersHint': 'البحث بالاسم أو البريد أو الهاتف',
     'about': 'نبذة',
     'addNote': 'إضافة ملاحظة',
     'addImage': 'إضافة صورة',
@@ -514,7 +664,11 @@ class AppLocalizations {
     'feesType': 'نوع الرسوم',
     'diagnosis': 'التشخيص',
     'gender': 'الجنس',
+    'male': 'ذكر',
+    'female': 'أنثى',
     'dateOfBirth': 'تاريخ الميلاد',
+    'age': 'العمر',
+    'yearsOld': 'سنوات',
     'addRequirement': 'إضافة متطلب',
     'addTodo': 'إضافة مهمة',
     'dueDate': 'تاريخ الاستحقاق',
@@ -530,6 +684,19 @@ class AppLocalizations {
     'rooms': 'الغرف',
     'addRoom': 'إضافة غرفة',
     'editRoom': 'تعديل الغرفة',
+    'services': 'الخدمات',
+    'addService': 'إضافة خدمة',
+    'editService': 'تعديل الخدمة',
+    'serviceAmount': 'المبلغ (لكل جلسة)',
+    'packages': 'الباقات',
+    'addPackage': 'إضافة باقة',
+    'editPackage': 'تعديل الباقة',
+    'numberOfSessions': 'عدد الجلسات',
+    'packageAmount': 'مبلغ الباقة',
+    'packageServices': 'الخدمات في الباقة',
+    'linkToPackageOptional': 'ربط بباقة (اختياري)',
+    'packageCompleted': 'تم إكمال الباقة (جميع الجلسات)',
+    'delete': 'حذف',
     'deleteConfirm': 'حذف؟',
     'confirmAction': 'تأكيد',
     'quantity': 'الكمية',
@@ -546,6 +713,12 @@ class AppLocalizations {
     'addDoctor': 'إضافة طبيب',
     'edit': 'تعديل',
     'quickAccess': 'وصول سريع',
+    'addNewPatient': 'إضافة مريض جديد',
+    'findPatient': 'البحث عن مريض',
+    'patientAdded': 'تمت إضافة المريض',
+    'appointmentBooked': 'تم حجز الموعد',
+    'noPatientsYet': 'لا يوجد مرضى بعد. أضف أول مريض.',
+    'noSearchResults': 'لا توجد نتائج تطابق البحث.',
     'notifications': 'الإشعارات',
     'noNotifications': 'لا توجد إشعارات',
     'retry': 'إعادة المحاولة',
@@ -566,6 +739,11 @@ class AppLocalizations {
     'authErrorNetwork': 'خطأ في الاتصال. تحقق من الإنترنت وحاول مرة أخرى.',
     'authErrorTryAgain': 'حدث خطأ. حاول مرة أخرى.',
     'authErrorNoAccountWithEmail': 'لا يوجد حساب بهذا البريد الإلكتروني.',
+    'errorPermissionDenied': 'ليس لديك صلاحية لتنفيذ هذا الإجراء. يرجى التواصل مع المسؤول.',
+    'errorNetwork': 'خطأ في الاتصال. تحقق من الإنترنت وحاول مرة أخرى.',
+    'errorSaveFailed': 'تعذر الحفظ. يرجى المحاولة مرة أخرى.',
+    'errorLoadFailed': 'تعذر تحميل البيانات. يرجى المحاولة مرة أخرى.',
+    'errorTryAgain': 'حدث خطأ. يرجى المحاولة مرة أخرى.',
   };
 }
 

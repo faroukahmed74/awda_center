@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/doctor_model.dart';
 import '../models/room_model.dart';
+import '../models/service_model.dart';
 import '../models/user_model.dart';
 import '../services/firestore_service.dart';
 
@@ -15,27 +16,32 @@ class DataCacheProvider with ChangeNotifier {
   List<DoctorModel> _doctors = [];
   List<UserModel> _users = [];
   List<RoomModel> _rooms = [];
+  List<ServiceModel> _services = [];
   final Map<String, String> _userNames = {};
   final Map<String, List<DoctorAvailabilityModel>> _doctorAvailability = {};
 
   bool _doctorsLoading = true;
   bool _usersLoading = true;
   bool _roomsLoading = true;
+  bool _servicesLoading = true;
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _doctorsSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _roomsSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _servicesSub;
 
   List<DoctorModel> get doctors => List.unmodifiable(_doctors);
   List<UserModel> get users => List.unmodifiable(_users);
   List<UserModel> get patients => List.unmodifiable(_users.where((u) => u.roles.contains('patient')).toList());
   List<RoomModel> get rooms => List.unmodifiable(_rooms);
+  List<ServiceModel> get services => List.unmodifiable(_services);
   Map<String, String> get userNames => Map.unmodifiable(_userNames);
 
   bool get doctorsLoading => _doctorsLoading;
   bool get usersLoading => _usersLoading;
   bool get roomsLoading => _roomsLoading;
-  bool get isLoading => _doctorsLoading || _usersLoading || _roomsLoading;
+  bool get servicesLoading => _servicesLoading;
+  bool get isLoading => _doctorsLoading || _usersLoading || _roomsLoading || _servicesLoading;
 
   String? userName(String? userId) => userId == null ? null : _userNames[userId];
 
@@ -105,6 +111,24 @@ class DataCacheProvider with ChangeNotifier {
         notifyListeners();
       },
     );
+
+    _servicesSub?.cancel();
+    _servicesSub = _firestore.servicesStream().listen(
+      (snapshot) {
+        var list = snapshot.docs
+            .map((d) => ServiceModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>))
+            .toList();
+        list.sort((a, b) => (a.nameEn ?? a.nameAr ?? a.id).compareTo(b.nameEn ?? b.nameAr ?? b.id));
+        _services = list;
+        _servicesLoading = false;
+        notifyListeners();
+      },
+      onError: (e, st) {
+        debugPrint('DataCacheProvider servicesStream error: $e');
+        _servicesLoading = false;
+        notifyListeners();
+      },
+    );
   }
 
   Future<void> _loadDoctorAvailabilityAndNames() async {
@@ -154,6 +178,7 @@ class DataCacheProvider with ChangeNotifier {
     _doctorsSub?.cancel();
     _usersSub?.cancel();
     _roomsSub?.cancel();
+    _servicesSub?.cancel();
     super.dispose();
   }
 }

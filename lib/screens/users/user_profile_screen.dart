@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/general_error_helper.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/user_model.dart';
@@ -50,7 +51,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _errorMessage = e.toString();
+        _errorMessage = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
       });
     }
   }

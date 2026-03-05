@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
+import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
 import '../../providers/auth_provider.dart';
@@ -74,7 +75,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
         if (mounted) {
           setState(() {
             _loading = false;
-            _errorMessage = e.toString();
+            _errorMessage = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
           });
         }
       },
@@ -105,9 +106,11 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
     switch (s) {
       case AppointmentStatus.pending: return l10n.pending;
       case AppointmentStatus.confirmed: return l10n.confirmed;
-      case AppointmentStatus.completed: return l10n.completed;
+      case AppointmentStatus.completed: return l10n.attended;
       case AppointmentStatus.cancelled: return l10n.cancelled;
-      case AppointmentStatus.noShow: return l10n.noShow;
+      case AppointmentStatus.noShow: return l10n.absent;
+      case AppointmentStatus.absentWithCause: return l10n.apologized;
+      case AppointmentStatus.absentWithoutCause: return l10n.absent;
     }
   }
 
@@ -116,10 +119,10 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
     if (q.isEmpty) return _list;
     return _list.where((a) {
       final doctorName = (_doctorNames[a.doctorId] ?? a.doctorId).toLowerCase();
-      final service = (a.service ?? '').toLowerCase();
+      final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
       final dateStr = DateFormat.yMd().format(a.appointmentDate).toLowerCase();
       final timeStr = '${a.startTime}-${a.endTime}'.toLowerCase();
-      return doctorName.contains(q) || service.contains(q) || dateStr.contains(q) || timeStr.contains(q);
+      return doctorName.contains(q) || serviceMatch || dateStr.contains(q) || timeStr.contains(q);
     }).toList();
   }
 
@@ -246,7 +249,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                           margin: const EdgeInsets.only(bottom: 8),
                           child: ListTile(
                             title: Text(_doctorNames[a.doctorId] ?? a.doctorId),
-                            subtitle: Text('$dateStr ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status, l10n)}'),
+                            subtitle: Text('$dateStr ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status, l10n)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}'),
                           ),
                         );
                       },

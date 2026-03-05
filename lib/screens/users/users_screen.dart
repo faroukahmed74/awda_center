@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/general_error_helper.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/user_model.dart';
@@ -23,14 +24,27 @@ class UsersScreen extends StatefulWidget {
 class _UsersScreenState extends State<UsersScreen> {
   final FirestoreService _firestore = FirestoreService();
   String? _roleFilter;
+  String _searchQuery = '';
   List<UserModel> _allUsers = [];
   bool _loading = true;
   String? _errorMessage;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
 
   List<UserModel> get _users {
-    if (_roleFilter == null || _roleFilter!.isEmpty) return _allUsers;
-    return _allUsers.where((u) => u.roles.contains(_roleFilter)).toList();
+    var out = _allUsers;
+    if (_roleFilter != null && _roleFilter!.isNotEmpty) {
+      out = out.where((u) => u.roles.contains(_roleFilter)).toList();
+    }
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      out = out.where((u) {
+        final name = u.displayName.toLowerCase();
+        final email = u.email.toLowerCase();
+        final phone = (u.phone ?? '').toLowerCase();
+        return name.contains(q) || email.contains(q) || phone.contains(q);
+      }).toList();
+    }
+    return out;
   }
 
   @override
@@ -63,7 +77,7 @@ class _UsersScreenState extends State<UsersScreen> {
       onError: (e, st) {
         if (mounted) setState(() {
           _loading = false;
-          _errorMessage = e.toString();
+          _errorMessage = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
         });
       },
     );
@@ -110,10 +124,32 @@ class _UsersScreenState extends State<UsersScreen> {
             ),
           ],
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? Center(
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: TextField(
+                onChanged: (v) => setState(() => _searchQuery = v),
+                decoration: InputDecoration(
+                  hintText: l10n.searchUsersHint,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _searchQuery = ''),
+                        ),
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(
@@ -128,9 +164,9 @@ class _UsersScreenState extends State<UsersScreen> {
                       ),
                     ),
                   )
-                : _users.isEmpty
-                    ? Center(child: Text(l10n.noData))
-                    : ListView.builder(
+                                : _users.isEmpty
+                                    ? Center(child: Text(l10n.noData))
+                                    : ListView.builder(
                     padding: responsiveListPadding(context),
                     itemCount: _users.length,
                     itemBuilder: (context, i) {
@@ -242,6 +278,9 @@ class _UsersScreenState extends State<UsersScreen> {
                       );
                     },
                   ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/responsive.dart';
+import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
 import '../../models/patient_profile_model.dart';
@@ -101,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _errorMessage = e.toString();
+        _errorMessage = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
       });
     }
   }
@@ -344,7 +345,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         date: a.appointmentDate,
         startTime: a.startTime,
         endTime: a.endTime,
-        service: a.service,
+        service: a.hasServices ? a.servicesDisplay : null,
         statusLabel: statusLabel,
       ));
     }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 
 import '../core/responsive.dart';
+import '../core/general_error_helper.dart';
 import '../l10n/app_localizations.dart';
 import '../models/app_notification.dart';
 import '../models/user_model.dart';
@@ -93,7 +94,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
           _loading = false;
         });
       }

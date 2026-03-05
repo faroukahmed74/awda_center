@@ -3,11 +3,16 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
-import '../../widgets/notifications_button.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/data_cache_provider.dart';
+import '../../widgets/notifications_button.dart';
+import 'add_patient_dialog.dart';
 
 class PatientsScreen extends StatefulWidget {
-  const PatientsScreen({super.key});
+  final String? initialSearchQuery;
+  final bool focusSearch;
+
+  const PatientsScreen({super.key, this.initialSearchQuery, this.focusSearch = false});
 
   @override
   State<PatientsScreen> createState() => _PatientsScreenState();
@@ -15,16 +20,26 @@ class PatientsScreen extends StatefulWidget {
 
 class _PatientsScreenState extends State<PatientsScreen> {
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
+    if (widget.initialSearchQuery != null && widget.initialSearchQuery!.isNotEmpty) {
+      _searchController.text = widget.initialSearchQuery!;
+    }
     _searchController.addListener(() => setState(() {}));
+    if (widget.focusSearch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _searchFocusNode.requestFocus();
+      });
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -40,7 +55,8 @@ class _PatientsScreenState extends State<PatientsScreen> {
         : cache.patients.where((u) {
             final name = u.displayName.toLowerCase();
             final email = u.email.toLowerCase();
-            return name.contains(q) || email.contains(q);
+            final phone = (u.phone ?? '').toLowerCase();
+            return name.contains(q) || email.contains(q) || phone.contains(q);
           }).toList();
 
     final showLoading = cache.usersLoading && cache.patients.isEmpty;
@@ -62,12 +78,31 @@ class _PatientsScreenState extends State<PatientsScreen> {
           ),
           actions: const [NotificationsButton()],
         ),
+        floatingActionButton: context.watch<AuthProvider>().currentUser?.canAccessPatients == true
+            ? FloatingActionButton.extended(
+                onPressed: () async {
+                  final patientId = await showDialog<String>(
+                    context: context,
+                    builder: (_) => const AddPatientDialog(),
+                  );
+                  if (patientId != null && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l10n.patientAdded)),
+                    );
+                    context.push('/patients/$patientId');
+                  }
+                },
+                icon: const Icon(Icons.person_add),
+                label: Text(l10n.addNewPatient),
+              )
+            : null,
         body: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: TextField(
                 controller: _searchController,
+                focusNode: _searchFocusNode,
                 decoration: InputDecoration(
                   hintText: l10n.search,
                   prefixIcon: const Icon(Icons.search),
@@ -80,7 +115,26 @@ class _PatientsScreenState extends State<PatientsScreen> {
               child: showLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filtered.isEmpty
-                      ? Center(child: Text(l10n.noData))
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  cache.patients.isEmpty ? l10n.noPatientsYet : l10n.noSearchResults,
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                                if (cache.patients.isEmpty && context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 12),
+                                    child: Text(l10n.addNewPatient, style: Theme.of(context).textTheme.bodySmall),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        )
                       : RefreshIndicator(
                           onRefresh: () async => setState(() {}),
                           child: ListView.builder(

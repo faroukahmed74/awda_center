@@ -9,6 +9,8 @@ import '../models/income_expense_models.dart';
 import '../models/center_requirement_model.dart';
 import '../models/admin_todo_model.dart';
 import '../models/audit_log_model.dart';
+import '../models/service_model.dart';
+import '../models/package_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -145,6 +147,71 @@ class FirestoreService {
     await _firestore.collection('rooms').doc(id).delete();
   }
 
+  // Services (admin-managed; active ones used in appointment form)
+  Stream<QuerySnapshot<Map<String, dynamic>>> servicesStream() {
+    return _firestore.collection('services').where('isActive', isEqualTo: true).snapshots();
+  }
+
+  Future<List<ServiceModel>> getServices() async {
+    final snapshot = await _firestore.collection('services').where('isActive', isEqualTo: true).get();
+    var list = snapshot.docs.map((d) => ServiceModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
+    list.sort((a, b) => (a.nameEn ?? a.nameAr ?? a.id).compareTo(b.nameEn ?? b.nameAr ?? b.id));
+    return list;
+  }
+
+  Future<List<ServiceModel>> getAllServices() async {
+    final snapshot = await _firestore.collection('services').get();
+    var list = snapshot.docs.map((d) => ServiceModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
+    list.sort((a, b) => (a.nameEn ?? a.nameAr ?? a.id).compareTo(b.nameEn ?? b.nameAr ?? b.id));
+    return list;
+  }
+
+  Future<void> addService(ServiceModel service) async {
+    await _firestore.collection('services').add(service.toFirestore());
+  }
+
+  Future<void> updateService(String id, Map<String, dynamic> data) async {
+    await _firestore.collection('services').doc(id).update(data);
+  }
+
+  Future<void> deleteService(String id) async {
+    await _firestore.collection('services').doc(id).delete();
+  }
+
+  // Packages — bundle of services, number of sessions, fixed amount
+  Future<List<PackageModel>> getPackages() async {
+    final snapshot = await _firestore.collection('packages').get();
+    final list = snapshot.docs.map((d) => PackageModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
+    list.sort((a, b) => (a.nameEn ?? a.nameAr ?? a.id).compareTo(b.nameEn ?? b.nameAr ?? b.id));
+    return list;
+  }
+
+  Future<List<PackageModel>> getAllPackages() async {
+    final snapshot = await _firestore.collection('packages').get();
+    final list = snapshot.docs.map((d) => PackageModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
+    list.sort((a, b) => (a.nameEn ?? a.nameAr ?? a.id).compareTo(b.nameEn ?? b.nameAr ?? b.id));
+    return list;
+  }
+
+  Future<void> addPackage(PackageModel pkg) async {
+    await _firestore.collection('packages').add(pkg.toFirestore());
+  }
+
+  Future<void> updatePackage(String id, Map<String, dynamic> data) async {
+    await _firestore.collection('packages').doc(id).update(data);
+  }
+
+  Future<void> deletePackage(String id) async {
+    await _firestore.collection('packages').doc(id).delete();
+  }
+
+  Future<PackageModel?> getPackageById(String id) async {
+    final doc = await _firestore.collection('packages').doc(id).get();
+    final data = doc.data();
+    if (data == null) return null;
+    return PackageModel.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>);
+  }
+
   // Appointments — use patientId or doctorId; date filter in memory to avoid composite index
   Stream<QuerySnapshot<Map<String, dynamic>>> appointmentsStream({
     String? doctorId,
@@ -210,6 +277,39 @@ class FirestoreService {
   }
 
   // Patient profile
+  /// Creates a patient user (Firestore only; no Firebase Auth). Used by staff to add patients in phase 1.
+  /// Returns the new user document id. Also creates an empty patient_profile for that user.
+  Future<String> createPatientUser({
+    required String? fullNameAr,
+    required String? fullNameEn,
+    required String? phone,
+    required String? email,
+    String? dateOfBirth,
+    String? gender,
+  }) async {
+    final ref = _firestore.collection('users').doc();
+    final uid = ref.id;
+    final emailVal = (email ?? '').trim();
+    await ref.set({
+      'email': emailVal.isEmpty ? 'patient_$uid@awda.local' : emailVal.toLowerCase(),
+      'fullNameAr': fullNameAr?.trim(),
+      'fullNameEn': fullNameEn?.trim(),
+      'phone': phone?.trim(),
+      'roles': ['patient'],
+      'permissions': [],
+      'isActive': true,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await _firestore.collection('patient_profiles').doc(uid).set({
+      'userId': uid,
+      'dateOfBirth': dateOfBirth?.trim(),
+      'gender': gender?.trim(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return uid;
+  }
+
   Future<PatientProfileModel?> getPatientProfile(String userId) async {
     final doc = await _firestore.collection('patient_profiles').doc(userId).get();
     if (!doc.exists) return null;
@@ -290,8 +390,24 @@ class FirestoreService {
     await _firestore.collection('income_records').add(record.toFirestore());
   }
 
+  Future<void> updateIncomeRecord(String id, Map<String, dynamic> data) async {
+    await _firestore.collection('income_records').doc(id).update(data);
+  }
+
+  Future<void> deleteIncomeRecord(String id) async {
+    await _firestore.collection('income_records').doc(id).delete();
+  }
+
   Future<void> addExpenseRecord(ExpenseRecordModel record) async {
     await _firestore.collection('expense_records').add(record.toFirestore());
+  }
+
+  Future<void> updateExpenseRecord(String id, Map<String, dynamic> data) async {
+    await _firestore.collection('expense_records').doc(id).update(data);
+  }
+
+  Future<void> deleteExpenseRecord(String id) async {
+    await _firestore.collection('expense_records').doc(id).delete();
   }
 
   // Invites (admin creates; applied when user registers with that email)

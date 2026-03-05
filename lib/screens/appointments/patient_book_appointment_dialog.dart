@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
+import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
 import '../../models/doctor_model.dart';
@@ -54,7 +55,7 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
       if (!mounted) return;
       setState(() {
         _loadingDoctors = false;
-        _errorMessage = e.toString();
+        _errorMessage = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
       });
     }
   }
@@ -75,7 +76,7 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
         startTime: _startTime,
         endTime: _endTime,
         status: AppointmentStatus.pending,
-        service: _service.isEmpty ? null : _service,
+        services: _service.isEmpty ? const [] : [_service],
         costAmount: null,
         notes: _notes.isEmpty ? null : _notes,
         createdByUserId: widget.patientId,
@@ -96,7 +97,7 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _errorMessage = e.toString();
+        _errorMessage = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
       });
     }
   }

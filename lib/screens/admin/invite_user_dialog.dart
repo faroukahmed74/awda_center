@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
@@ -48,7 +49,7 @@ class _InviteUserDialogState extends State<InviteUserDialog> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
         _loading = false;
       });
     }

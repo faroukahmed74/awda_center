@@ -16,9 +16,17 @@ import '../../providers/theme_provider.dart';
 import '../../router/app_router.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
+import '../patients/add_patient_dialog.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int? _todayAppointmentsCount;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +112,16 @@ class DashboardScreen extends StatelessWidget {
                         leading: const Icon(Icons.meeting_room),
                         title: Text(l10n.rooms),
                         onTap: () { Navigator.pop(context); context.push('/rooms'); },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.miscellaneous_services),
+                        title: Text(l10n.services),
+                        onTap: () { Navigator.pop(context); context.push('/services'); },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.inventory_2_outlined),
+                        title: Text(l10n.packages),
+                        onTap: () { Navigator.pop(context); context.push('/packages'); },
                       ),
                       ListTile(
                         leading: const Icon(Icons.badge),
@@ -228,8 +246,70 @@ class DashboardScreen extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodyLarge,
                             textAlign: TextAlign.center,
                           ),
+                          if (canAccessRoute(user, '/patients') || canAccessRoute(user, '/appointments')) ...[
+                            const SizedBox(height: 20),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                if (canAccessRoute(user, '/patients')) ...[
+                                  FilledButton.tonalIcon(
+                                    icon: const Icon(Icons.person_add, size: 20),
+                                    label: Text(l10n.addNewPatient),
+                                    onPressed: () async {
+                                      final patientId = await showDialog<String>(
+                                        context: context,
+                                        builder: (_) => const AddPatientDialog(),
+                                      );
+                                      if (patientId != null && context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(l10n.patientAdded)),
+                                        );
+                                        context.push('/patients/$patientId');
+                                      }
+                                    },
+                                  ),
+                                  FilledButton.tonalIcon(
+                                    icon: const Icon(Icons.search, size: 20),
+                                    label: Text(l10n.findPatient),
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      context.push('/patients?focus=search');
+                                    },
+                                  ),
+                                ],
+                                if (canAccessRoute(user, '/appointments')) ...[
+                                  FilledButton.tonalIcon(
+                                    icon: const Icon(Icons.calendar_today, size: 20),
+                                    label: Text(l10n.bookAppointment),
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      context.push('/appointments');
+                                    },
+                                  ),
+                                  FilledButton.tonalIcon(
+                                    icon: const Icon(Icons.today, size: 20),
+                                    label: Text(_todayAppointmentsCount != null
+                                        ? '${l10n.todayAppointments} ($_todayAppointmentsCount)'
+                                        : l10n.todayAppointments),
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      context.push('/appointments');
+                                    },
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 24),
-                          _DashboardAppointmentsSection(user: user, l10n: l10n),
+                          _DashboardAppointmentsSection(
+                            user: user,
+                            l10n: l10n,
+                            onTodayCountChanged: (count) {
+                              if (mounted) setState(() => _todayAppointmentsCount = count);
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -280,12 +360,20 @@ class _DrawerVersionFooterState extends State<_DrawerVersionFooter> {
   }
 }
 
-/// Loads and shows today/upcoming appointments for the current user (patient or doctor) on the home screen.
+/// Period filter for dashboard appointments.
+enum _DashboardPeriod { today, week, month, year }
+
+/// Loads and shows appointments for the current user with period filter, search, and count.
 class _DashboardAppointmentsSection extends StatefulWidget {
   final UserModel user;
   final AppLocalizations l10n;
+  final void Function(int)? onTodayCountChanged;
 
-  const _DashboardAppointmentsSection({required this.user, required this.l10n});
+  const _DashboardAppointmentsSection({
+    required this.user,
+    required this.l10n,
+    this.onTodayCountChanged,
+  });
 
   @override
   State<_DashboardAppointmentsSection> createState() => _DashboardAppointmentsSectionState();
@@ -295,24 +383,30 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
   final FirestoreService _firestore = FirestoreService();
   List<AppointmentModel> _appointments = [];
   Map<String, String> _names = {};
+  /// Patient id -> (name, email, phone) for search by name/email/phone.
+  final Map<String, ({String name, String email, String phone})> _patientData = {};
   bool _loading = true;
+  _DashboardPeriod _period = _DashboardPeriod.today;
+  final _searchController = TextEditingController();
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+  int? _lastReportedTodayCount;
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() => setState(() {}));
     _listen();
   }
 
   @override
   void dispose() {
     _subscription?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _listen() {
     final user = widget.user;
-
     setState(() => _loading = true);
     if (user.hasRole(UserRole.patient)) {
       _subscription?.cancel();
@@ -336,7 +430,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
   void _onSnapshot(QuerySnapshot<Map<String, dynamic>> snapshot) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
-    final to = todayStart.add(const Duration(days: 14));
+    final to = todayStart.add(const Duration(days: 400));
     var list = snapshot.docs
         .map((d) => AppointmentModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>))
         .where((a) => a.status != AppointmentStatus.cancelled)
@@ -350,10 +444,10 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     if (!mounted) return;
     setState(() => _appointments = list);
     if (list.isEmpty) setState(() => _loading = false);
-    else _loadNames(list);
+    else _loadNamesAndPatientData(list);
   }
 
-  Future<void> _loadNames(List<AppointmentModel> list) async {
+  Future<void> _loadNamesAndPatientData(List<AppointmentModel> list) async {
     final ids = <String>{};
     for (final a in list) {
       ids.add(a.patientId);
@@ -364,6 +458,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
       final u = await _firestore.getUser(id);
       if (u != null) {
         names[id] = u.displayName;
+        _patientData[id] = (name: u.displayName, email: u.email, phone: u.phone ?? '');
       } else {
         final d = await _firestore.getDoctorById(id);
         if (d != null) {
@@ -378,6 +473,59 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     });
   }
 
+  /// Date range for current period (start inclusive, end exclusive).
+  (DateTime start, DateTime end) _periodRange() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    switch (_period) {
+      case _DashboardPeriod.today:
+        return (today, today.add(const Duration(days: 1)));
+      case _DashboardPeriod.week:
+        return (today, today.add(const Duration(days: 7)));
+      case _DashboardPeriod.month:
+        return (today, today.add(const Duration(days: 31)));
+      case _DashboardPeriod.year:
+        return (today, today.add(const Duration(days: 366)));
+    }
+  }
+
+  List<AppointmentModel> get _filteredAppointments {
+    final (start, end) = _periodRange();
+    final q = _searchController.text.trim().toLowerCase();
+    var list = _appointments
+        .where((a) => !a.appointmentDate.isBefore(start) && a.appointmentDate.isBefore(end))
+        .toList();
+    if (q.isNotEmpty && _patientData.isNotEmpty) {
+      list = list.where((a) {
+        final p = _patientData[a.patientId];
+        if (p == null) return true;
+        return p.name.toLowerCase().contains(q) ||
+            p.email.toLowerCase().contains(q) ||
+            p.phone.contains(q);
+      }).toList();
+    }
+    list.sort((a, b) {
+      int c = a.appointmentDate.compareTo(b.appointmentDate);
+      if (c != 0) return c;
+      return a.startTime.compareTo(b.startTime);
+    });
+    return list;
+  }
+
+  String _periodTitle() {
+    final l10n = widget.l10n;
+    switch (_period) {
+      case _DashboardPeriod.today:
+        return l10n.todayAppointments;
+      case _DashboardPeriod.week:
+        return l10n.thisWeekAppointments;
+      case _DashboardPeriod.month:
+        return l10n.thisMonthAppointments;
+      case _DashboardPeriod.year:
+        return l10n.thisYearAppointments;
+    }
+  }
+
   String _statusLabel(AppointmentStatus s) {
     final l10n = widget.l10n;
     switch (s) {
@@ -385,7 +533,9 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
       case AppointmentStatus.confirmed: return l10n.confirmed;
       case AppointmentStatus.completed: return l10n.completed;
       case AppointmentStatus.cancelled: return l10n.cancelled;
-      case AppointmentStatus.noShow: return l10n.noShow;
+      case AppointmentStatus.noShow: return l10n.absentWithoutCause;
+      case AppointmentStatus.absentWithCause: return l10n.absentWithCause;
+      case AppointmentStatus.absentWithoutCause: return l10n.absentWithoutCause;
     }
   }
 
@@ -396,10 +546,18 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     final isPatient = user.hasRole(UserRole.patient);
     final isDoctor = user.hasRole(UserRole.doctor);
     final canSeeAppointments = user.canAccessFeature('appointments');
-    // Show section for patients (their appointments), doctors (their appointments), or users with appointments feature
     if (!isPatient && !isDoctor && !canSeeAppointments) return const SizedBox.shrink();
 
     final padding = ResponsivePadding.all(context);
+    final filtered = _filteredAppointments;
+    final count = filtered.length;
+
+    if (!_loading && _period == _DashboardPeriod.today && _lastReportedTodayCount != count) {
+      _lastReportedTodayCount = count;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onTodayCountChanged?.call(count);
+      });
+    }
 
     if (_loading) {
       return Card(
@@ -429,7 +587,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
               children: [
                 Flexible(
                   child: Text(
-                    l10n.todayAppointments,
+                    '${_periodTitle()} ($count)',
                     style: Theme.of(context).textTheme.titleMedium,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -444,19 +602,59 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                 ),
               ],
             ),
-            if (_appointments.isEmpty)
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                ChoiceChip(
+                  label: Text(l10n.filterToday),
+                  selected: _period == _DashboardPeriod.today,
+                  onSelected: (_) => setState(() => _period = _DashboardPeriod.today),
+                ),
+                ChoiceChip(
+                  label: Text(l10n.filterThisWeek),
+                  selected: _period == _DashboardPeriod.week,
+                  onSelected: (_) => setState(() => _period = _DashboardPeriod.week),
+                ),
+                ChoiceChip(
+                  label: Text(l10n.filterThisMonth),
+                  selected: _period == _DashboardPeriod.month,
+                  onSelected: (_) => setState(() => _period = _DashboardPeriod.month),
+                ),
+                ChoiceChip(
+                  label: Text(l10n.filterThisYear),
+                  selected: _period == _DashboardPeriod.year,
+                  onSelected: (_) => setState(() => _period = _DashboardPeriod.year),
+                ),
+              ],
+            ),
+            if (!isPatient) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: l10n.search,
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (filtered.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(l10n.noData, style: Theme.of(context).textTheme.bodyMedium),
               )
             else
-              ..._appointments.take(10).map((a) {
+              ...filtered.take(15).map((a) {
                 final otherName = isPatient
                     ? (_names[a.doctorId] ?? a.doctorId)
                     : isDoctor
                         ? (_names[a.patientId] ?? a.patientId)
                         : '${_names[a.patientId] ?? a.patientId} • ${_names[a.doctorId] ?? a.doctorId}';
-                final subtitle = '${DateFormat.yMd().format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.service != null && a.service!.isNotEmpty ? ' • ${a.service}' : ''}';
+                final subtitle = '${DateFormat.yMd().format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}';
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: ListTile(

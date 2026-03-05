@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
+import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
@@ -47,7 +48,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _errorMessage = e.toString();
+        _errorMessage = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
       });
     }
   }

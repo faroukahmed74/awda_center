@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import '../../core/general_error_helper.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
@@ -195,7 +196,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final sb = StringBuffer();
     sb.writeln('Date,Start,End,PatientId,DoctorId,Status,Service');
     for (final a in appointments) {
-      sb.writeln('${DateFormat.yMd().format(a.appointmentDate)},${a.startTime},${a.endTime},${a.patientId},${a.doctorId},${a.status.value},${a.service ?? ''}');
+      sb.writeln('${DateFormat.yMd().format(a.appointmentDate)},${a.startTime},${a.endTime},${a.patientId},${a.doctorId},${a.status.value},${a.servicesDisplay}');
     }
     await Share.share(sb.toString(), subject: '${l10n.exportAppointments} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}', sharePositionOrigin: sharePositionOrigin);
   }
@@ -240,7 +241,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       case 'confirmed': return l10n.confirmed;
       case 'completed': return l10n.completed;
       case 'cancelled': return l10n.cancelled;
-      case 'no_show': return l10n.noShow;
+      case 'no_show': return l10n.absentWithoutCause;
+      case 'absent_with_cause': return l10n.absentWithCause;
+      case 'absent_without_cause': return l10n.absentWithoutCause;
       default: return value;
     }
   }
@@ -306,7 +309,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           pw.SizedBox(height: 8),
           pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(1), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(1)}, children: [
             pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.time)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.status)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.service))]),
-            ..._appointments.take(100).map((a) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(DateFormat.yMd().format(a.appointmentDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('${a.startTime}-${a.endTime}')), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(_statusLabel(a.status.value, l10n))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(a.service ?? ''))])),
+            ..._appointments.take(100).map((a) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(DateFormat.yMd().format(a.appointmentDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('${a.startTime}-${a.endTime}')), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(_statusLabel(a.status.value, l10n))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(a.servicesDisplay))])),
           ]),
         ],
       ));
@@ -368,7 +371,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           TextCellValue(DateFormat.yMd().format(a.appointmentDate)),
           TextCellValue('${a.startTime} - ${a.endTime}'),
           TextCellValue(_statusLabel(a.status.value, l10n)),
-          TextCellValue(a.service ?? ''),
+          TextCellValue(a.servicesDisplay),
         ]);
       }
     } else {
@@ -428,7 +431,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('${l10n.export}: $e'),
+                        content: Text(AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e))),
                         duration: const Duration(seconds: 5),
                       ),
                     );
@@ -629,7 +632,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       title: Text(DateFormat.yMd().format(a.appointmentDate)),
-                      subtitle: Text('${a.startTime} - ${a.endTime} • ${_statusLabel(a.status.value, l10n)} ${a.service != null && a.service!.isNotEmpty ? '• ${a.service}' : ''}'),
+                      subtitle: Text('${a.startTime} - ${a.endTime} • ${_statusLabel(a.status.value, l10n)} ${a.hasServices ? '• ${a.servicesDisplay}' : ''}'),
                       trailing: Text(a.status.value),
                     ),
                   )),

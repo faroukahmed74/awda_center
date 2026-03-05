@@ -22,6 +22,8 @@ import '../screens/reports/reports_screen.dart';
 import '../screens/requirements/requirements_screen.dart';
 import '../screens/admin_todos/admin_todos_screen.dart';
 import '../screens/rooms/rooms_screen.dart';
+import '../screens/services/services_screen.dart';
+import '../screens/packages/packages_screen.dart';
 import '../screens/audit/audit_log_screen.dart';
 import '../screens/doctors/doctors_admin_screen.dart';
 
@@ -87,7 +89,10 @@ GoRouter createAppRouter(BuildContext context) {
       ),
       GoRoute(
         path: '/patients',
-        builder: (context, state) => const PatientsScreen(),
+        builder: (context, state) => PatientsScreen(
+          initialSearchQuery: state.uri.queryParameters['q'],
+          focusSearch: state.uri.queryParameters['focus'] == 'search',
+        ),
       ),
       GoRoute(
         path: '/patients/:id',
@@ -123,6 +128,14 @@ GoRouter createAppRouter(BuildContext context) {
       GoRoute(
         path: '/rooms',
         builder: (context, state) => const RoomsScreen(),
+      ),
+      GoRoute(
+        path: '/services',
+        builder: (context, state) => const ServicesScreen(),
+      ),
+      GoRoute(
+        path: '/packages',
+        builder: (context, state) => const PackagesScreen(),
       ),
       GoRoute(
         path: '/audit-log',
@@ -166,6 +179,8 @@ bool canAccessRoute(UserModel? user, String path) {
     case '/admin-todos':
       return user.canAccessFeature('admin_todos');
     case '/rooms':
+    case '/services':
+    case '/packages':
     case '/audit-log':
     case '/doctors-admin':
       return user.canAccessFeature('admin_dashboard');

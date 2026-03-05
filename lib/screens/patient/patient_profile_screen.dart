@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
+import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
+import '../../models/package_model.dart';
 import '../../models/patient_profile_model.dart';
 import '../../models/session_model.dart';
 import '../../providers/auth_provider.dart';
@@ -26,6 +28,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   PatientProfileModel? _profile;
   List<SessionModel> _sessions = [];
   List<AppointmentModel> _appointmentSessions = [];
+  List<PackageModel> _packages = [];
   List<PatientDocumentModel> _documents = [];
   bool _loading = true;
   String? _errorMessage;
@@ -77,11 +80,18 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       } catch (_) {
         docs = [];
       }
+      List<PackageModel> packages = [];
+      try {
+        packages = await _firestore.getAllPackages();
+      } catch (_) {
+        packages = [];
+      }
       if (!mounted) return;
       setState(() {
         _profile = profile;
         _sessions = sessions;
         _appointmentSessions = appointmentSessions;
+        _packages = packages;
         _documents = docs;
         _loading = false;
         _errorMessage = null;
@@ -91,7 +101,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _errorMessage = e.toString();
+        _errorMessage = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
       });
     }
   }
@@ -116,12 +126,28 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         date: a.appointmentDate,
         startTime: a.startTime,
         endTime: a.endTime,
-        service: a.service,
+        service: a.hasServices ? a.servicesDisplay : null,
         statusLabel: statusLabel,
       ));
     }
     rows.sort((a, b) => b.date.compareTo(a.date));
     return rows.take(50).toList();
+  }
+
+  List<({PackageModel pkg, int completed, int total})> _packageProgress() {
+    final out = <({PackageModel pkg, int completed, int total})>[];
+    final byPackage = <String, List<AppointmentModel>>{};
+    for (final a in _appointmentSessions) {
+      if (a.packageId == null || a.packageId!.isEmpty) continue;
+      byPackage.putIfAbsent(a.packageId!, () => []).add(a);
+    }
+    for (final pkg in _packages) {
+      final list = byPackage[pkg.id];
+      if (list == null) continue;
+      final completed = list.where((a) => a.status == AppointmentStatus.completed).length;
+      out.add((pkg: pkg, completed: completed, total: pkg.numberOfSessions));
+    }
+    return out;
   }
 
   @override
@@ -212,6 +238,26 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           ),
                         ),
                       ),
+                    const SizedBox(height: 16),
+                    Text(l10n.packages, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Builder(
+                      builder: (context) {
+                        final progress = _packageProgress();
+                        if (progress.isEmpty)
+                          return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)));
+                        return Column(
+                          children: progress.map((e) => Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: const Icon(Icons.inventory_2_outlined),
+                              title: Text(e.pkg.displayName),
+                              subtitle: Text('${e.completed} / ${e.total} ${l10n.sessions}'),
+                            ),
+                          )).toList(),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 16),
                     Text(l10n.sessions, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),

@@ -111,7 +111,7 @@ class InAppNotificationsService {
         id: 'status_${log.id}',
         type: AppNotificationType.appointment,
         title: title,
-        subtitle: '${appointment.service ?? ''} · $dateStr $timeStr'.trim(),
+        subtitle: '${appointment.servicesDisplay} · $dateStr $timeStr'.trim(),
         time: time,
         route: '/appointments',
       ));
@@ -158,7 +158,7 @@ class InAppNotificationsService {
       return AppNotification(
         id: 'appointment_${a.id}',
         type: AppNotificationType.appointment,
-        title: a.service ?? (forPatient ? 'Appointment' : 'Session'),
+        title: a.hasServices ? a.servicesDisplay : (forPatient ? 'Appointment' : 'Session'),
         subtitle: '$dateStr · $timeStr',
         time: when,
         route: '/appointments',

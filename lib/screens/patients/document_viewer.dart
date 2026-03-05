@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/patient_profile_model.dart';
 
@@ -42,7 +43,9 @@ Future<void> _openPdfInApp(BuildContext context, String url, AppLocalizations l1
     }
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l10n.openLink}: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e)))),
+      );
     }
   }
 }

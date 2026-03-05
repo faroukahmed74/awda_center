@@ -5,12 +5,16 @@ import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
+import '../../models/package_model.dart';
 import '../../models/patient_profile_model.dart';
 import '../../models/session_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/data_cache_provider.dart';
+import '../../core/patient_date_utils.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
+import '../appointments/appointment_form_dialog.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'patient_profile_edit_dialog.dart';
 import 'patient_document_dialog.dart';
@@ -31,6 +35,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
   PatientProfileModel? _profile;
   List<SessionModel> _sessions = [];
   List<AppointmentModel> _appointmentSessions = [];
+  List<PackageModel> _packages = [];
   List<PatientDocumentModel> _documents = [];
   bool _loading = true;
   StreamSubscription<dynamic>? _appointmentsSubscription;
@@ -66,6 +71,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     final profile = await _firestore.getPatientProfile(widget.patientId);
     final sessions = await _firestore.getSessionsForPatient(widget.patientId);
     final appointments = await _firestore.getAppointments(patientId: widget.patientId);
+    final packages = await _firestore.getAllPackages();
     final appointmentSessions = appointments
         .where((a) =>
             a.status == AppointmentStatus.confirmed ||
@@ -78,9 +84,27 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       _profile = profile;
       _sessions = sessions;
       _appointmentSessions = appointmentSessions;
+      _packages = packages;
       _documents = docs;
       _loading = false;
     });
+  }
+
+  /// Package progress for this patient: list of (package, completedCount, totalSessions).
+  List<({PackageModel pkg, int completed, int total})> _packageProgress() {
+    final out = <({PackageModel pkg, int completed, int total})>[];
+    final byPackage = <String, List<AppointmentModel>>{};
+    for (final a in _appointmentSessions) {
+      if (a.packageId == null || a.packageId!.isEmpty) continue;
+      byPackage.putIfAbsent(a.packageId!, () => []).add(a);
+    }
+    for (final pkg in _packages) {
+      final list = byPackage[pkg.id];
+      if (list == null) continue;
+      final completed = list.where((a) => a.status == AppointmentStatus.completed).length;
+      out.add((pkg: pkg, completed: completed, total: pkg.numberOfSessions));
+    }
+    return out;
   }
 
   /// Merged session rows: from sessions collection and from confirmed/completed appointments, sorted by date desc.
@@ -103,7 +127,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         date: a.appointmentDate,
         startTime: a.startTime,
         endTime: a.endTime,
-        service: a.service,
+        service: a.hasServices ? a.servicesDisplay : null,
         statusLabel: statusLabel,
       ));
     }
@@ -156,7 +180,18 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                                 if (_user!.email.isNotEmpty) Text(_user!.email, style: Theme.of(context).textTheme.bodyMedium),
                                 if (_user!.phone != null && _user!.phone!.isNotEmpty) Text(_user!.phone!, style: Theme.of(context).textTheme.bodyMedium),
                                 if (_profile != null) ...[
-                                  if (_profile!.dateOfBirth != null) Text('${l10n.date}: ${_profile!.dateOfBirth}', style: Theme.of(context).textTheme.bodySmall),
+                                  if (_profile!.dateOfBirth != null) ...[
+                                    Text(
+                                      () {
+                                        final dob = _profile!.dateOfBirth!;
+                                        final parsed = parseDateOfBirth(dob);
+                                        final dateStr = parsed != null ? DateFormat.yMMMd().format(parsed) : dob;
+                                        final age = ageFromDateOfBirth(dob);
+                                        return '${l10n.date}: $dateStr${age != null ? ' (${l10n.age}: $age ${l10n.yearsOld})' : ''}';
+                                      }(),
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
                                   if (_profile!.diagnosis != null) Text('Diagnosis: ${_profile!.diagnosis}', style: Theme.of(context).textTheme.bodySmall),
                                   if (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty)
                                     Padding(padding: const EdgeInsets.only(top: 8), child: Text('${l10n.medicalHistory}: ${_profile!.medicalHistory}', style: Theme.of(context).textTheme.bodySmall)),
@@ -168,6 +203,57 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                               ],
                             ),
                           ),
+                        ),
+                        if (context.watch<AuthProvider>().currentUser?.canAccessAppointments == true)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: FilledButton.icon(
+                              icon: const Icon(Icons.calendar_today, size: 20),
+                              label: Text(l10n.bookAppointment),
+                              onPressed: () async {
+                                final cache = context.read<DataCacheProvider>();
+                                final currentUserId = context.read<AuthProvider>().currentUser?.id;
+                                final ok = await showDialog<bool>(
+                                  context: context,
+                                  builder: (_) => AppointmentFormDialog(
+                                    currentUserId: currentUserId,
+                                    patients: cache.patients,
+                                    doctors: cache.doctors,
+                                    rooms: cache.rooms,
+                                    services: cache.services,
+                                    packages: _packages,
+                                    initialPatientId: widget.patientId,
+                                  ),
+                                );
+                                if (ok == true && mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(l10n.appointmentBooked)),
+                                  );
+                                  _load();
+                                }
+                              },
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        Text(l10n.packages, style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (context) {
+                            final progress = _packageProgress();
+                            if (progress.isEmpty) {
+                              return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)));
+                            }
+                            return Column(
+                              children: progress.map((e) => Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  leading: const Icon(Icons.inventory_2_outlined),
+                                  title: Text(e.pkg.displayName),
+                                  subtitle: Text('${e.completed} / ${e.total} ${l10n.sessions}'),
+                                ),
+                              )).toList(),
+                            );
+                          },
                         ),
                         const SizedBox(height: 16),
                         Text(l10n.sessions, style: Theme.of(context).textTheme.titleMedium),

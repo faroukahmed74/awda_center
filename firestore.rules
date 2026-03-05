@@ -34,10 +34,16 @@ service cloud.firestore {
       return 'permissions' in d && perm in d.permissions;
     }
 
-    // users: authenticated can read; user can create own doc (uid); admin or self can update/delete
+    // users: authenticated can read; user can create own doc (uid); staff can create patient users; admin or self can update/delete
     match /users/{userId} {
       allow read: if isAuth();
-      allow create: if isAuth() && request.auth.uid == userId;
+      allow create: if isAuth() && (
+        request.auth.uid == userId
+        || isAdmin()
+        || isSecretary()
+        || isDoctor()
+        || hasPermission('patients')
+      );
       allow update, delete: if isAuth() && (request.auth.uid == userId || isAdmin());
     }
 
@@ -62,6 +68,18 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // services: read by authenticated; write by admin (used in appointment form dropdown)
+    match /services/{serviceId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // packages: bundle of services, sessions, amount; read by authenticated; write by admin
+    match /packages/{packageId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
     // appointments: authenticated read; admin/secretary/doctor can write; patient can create own (book session)
     match /appointments/{appointmentId} {
       allow read: if isAuth();
@@ -75,11 +93,11 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin() || isDoctor();
     }
 
-    // patient_profiles: patient can create/read/update own (profileId == userId); admin/doctor full access
+    // patient_profiles: patient can create/read/update own; admin/secretary/doctor or patients permission can create/update
     match /patient_profiles/{profileId} {
       allow read: if isAuth();
-      allow create: if isAdmin() || isDoctor() || (isAuth() && request.auth.uid == profileId);
-      allow update: if isAdmin() || isDoctor() || (isAuth() && request.auth.uid == profileId);
+      allow create: if isAdmin() || isSecretary() || isDoctor() || hasPermission('patients') || (isAuth() && request.auth.uid == profileId);
+      allow update: if isAdmin() || isSecretary() || isDoctor() || hasPermission('patients') || (isAuth() && request.auth.uid == profileId);
       allow delete: if isAdmin();
     }
 

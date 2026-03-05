@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/patient_profile_model.dart';
 import '../../services/firestore_service.dart';
@@ -96,7 +97,7 @@ class _PatientDocumentDialogState extends State<PatientDocumentDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e)))),
         );
       }
     } finally {
@@ -158,11 +159,11 @@ class _PatientDocumentDialogState extends State<PatientDocumentDialog> {
                             }
                           } catch (e) {
                             if (mounted) {
-                              final msg = e.toString().contains('object-not-found') || e.toString().contains('object_not_found')
-                                  ? 'Upload failed. Enable Firebase Storage and deploy storage rules (firebase deploy --only storage).'
-                                  : 'Upload failed: $e';
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
+                                SnackBar(
+                                  content: Text(AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e))),
+                                  duration: const Duration(seconds: 5),
+                                ),
                               );
                             }
                           }
