@@ -32,6 +32,8 @@ class UserModel {
   final DateTime? updatedAt;
   /// Preferred language for notifications: 'en' or 'ar'. Set by app from current locale.
   final String? locale;
+  /// Optional: mark patient as starred (VIP); same star icon as "new patient". Admin can set via edit user.
+  final bool isStarred;
 
   const UserModel({
     required this.id,
@@ -45,6 +47,7 @@ class UserModel {
     this.createdAt,
     this.updatedAt,
     this.locale,
+    this.isStarred = false,
   });
 
   /// Primary role for display (first in list).
@@ -110,6 +113,7 @@ class UserModel {
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
       locale: d['locale'] as String?,
+      isStarred: d['isStarred'] as bool? ?? false,
     );
   }
 
@@ -124,6 +128,7 @@ class UserModel {
       'isActive': isActive,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      'isStarred': isStarred,
     };
   }
 
@@ -134,6 +139,7 @@ class UserModel {
     List<String>? roles,
     List<String>? permissions,
     bool? isActive,
+    bool? isStarred,
   }) {
     return UserModel(
       id: id,
@@ -146,6 +152,8 @@ class UserModel {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
+      locale: locale,
+      isStarred: isStarred ?? this.isStarred,
     );
   }
 }

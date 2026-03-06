@@ -173,6 +173,10 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> updateUserStarred(String uid, bool isStarred) async {
+    await _authService.updateUserStarred(uid, isStarred);
+  }
+
   /// Change password for current user (email/password only). Reauthenticates then updates.
   Future<void> changePassword(String currentPassword, String newPassword) async {
     await _authService.updatePassword(currentPassword, newPassword);

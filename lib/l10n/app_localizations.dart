@@ -104,6 +104,8 @@ class AppLocalizations {
   String get absentWithoutCause => _map['absentWithoutCause']!;
   String get absentAll => _map['absentAll']!;
   String get newPatient => _map['newPatient']!;
+  String get starredPatientVip => _map['starredPatientVip']!;
+  String get starredSessionVip => _map['starredSessionVip']!;
   String get filterDay => _map['filterDay']!;
   String get filterMonth => _map['filterMonth']!;
   String get filterYear => _map['filterYear']!;
@@ -343,6 +345,8 @@ class AppLocalizations {
     'absentWithoutCause': 'Absent (without cause)',
     'absentAll': 'Absents all (both)',
     'newPatient': 'New Patient',
+    'starredPatientVip': 'Patient (VIP)',
+    'starredSessionVip': ' Session (VIP)',
     'filterDay': 'Day',
     'filterMonth': 'Month',
     'filterYear': 'Year',
@@ -589,6 +593,8 @@ class AppLocalizations {
     'absentWithoutCause': 'غائب (بدون عذر)',
     'absentAll': 'الغياب الكل (كلاهما)',
     'newPatient': 'مريض جديد',
+    'starredPatientVip': 'مميز (VIP)',
+    'starredSessionVip': 'جلسة مميزة (VIP)',
     'filterDay': 'يوم',
     'filterMonth': 'شهر',
     'filterYear': 'سنة',

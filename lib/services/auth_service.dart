@@ -186,6 +186,14 @@ class AuthService {
     await _firestore.collection('users').doc(uid).update(data);
   }
 
+  /// Admin: set starred (VIP) flag for a patient. Same star icon as "new patient" in schedule.
+  Future<void> updateUserStarred(String uid, bool isStarred) async {
+    await _firestore.collection('users').doc(uid).update({
+      'isStarred': isStarred,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   /// Admin: delete user document from Firestore. Does not remove Firebase Auth account (use Admin SDK/Cloud Function for that).
   Future<void> deleteUserDocument(String uid) async {
     await _firestore.collection('users').doc(uid).delete();

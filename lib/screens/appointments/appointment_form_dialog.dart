@@ -61,7 +61,9 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   double? _costAmount;
   bool _saving = false;
   bool _isExtraSlot = false;
+  bool _isStarred = false;
   String? _selectedPackageId;
+  String? _errorMessage;
   double? _discountPercent; // 0–100
   final _patientSearchController = TextEditingController();
   final _amountController = TextEditingController();
@@ -124,6 +126,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     _startTime = e?.startTime ?? widget.initialStartTime ?? '12:00';
     _endTime = e?.endTime ?? widget.initialEndTime ?? '12:30';
     _isExtraSlot = e?.isExtraSlot ?? widget.initialIsExtraSlot ?? false;
+    _isStarred = e?.isStarred ?? false;
     _selectedServiceIds = [];
     if (e != null && e.services.isNotEmpty) {
       for (final name in e.services) {
@@ -200,8 +203,10 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
           .toList();
       final hasOverlap = sameRoom.any((a) => _timeRangesOverlap(a.startTime, a.endTime, _startTime, _endTime));
       if (hasOverlap && mounted) {
-        setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).roomTimeConflict)));
+        setState(() {
+          _saving = false;
+          _errorMessage = AppLocalizations.of(context).roomTimeConflict;
+        });
         return;
       }
     }
@@ -213,19 +218,25 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
       final extraCount = sameSlot.where((a) => a.isExtraSlot).length;
       if (!_isExtraSlot && mainCount >= 3) {
         if (mounted) {
-          setState(() => _saving = false);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).slotFull)));
+          setState(() {
+            _saving = false;
+            _errorMessage = AppLocalizations.of(context).slotFull;
+          });
           return;
         }
       }
       if (_isExtraSlot && extraCount >= 1) {
         if (mounted) {
-          setState(() => _saving = false);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).slotFull)));
+          setState(() {
+            _saving = false;
+            _errorMessage = AppLocalizations.of(context).slotFull;
+          });
           return;
         }
       }
     }
+
+    _errorMessage = null;
     if (widget.existing != null) {
       await fs.updateAppointment(widget.existing!.id, {
         'patientId': _patientId,
@@ -239,6 +250,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         'discountPercent': _discountPercent,
         'notes': _notes.isEmpty ? null : _notes,
         'isExtraSlot': _isExtraSlot,
+        'isStarred': _isStarred,
         'packageId': _selectedPackageId,
       });
     } else {
@@ -255,6 +267,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         discountPercent: _discountPercent,
         notes: _notes.isEmpty ? null : _notes,
         isExtraSlot: _isExtraSlot,
+        isStarred: _isStarred,
         packageId: _selectedPackageId,
         createdByUserId: widget.currentUserId,
       ));
@@ -346,7 +359,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                 const DropdownMenuItem(value: null, child: Text('—')),
                 ...widget.rooms.map((r) => DropdownMenuItem(value: r.id, child: Text(r.displayName))),
               ],
-              onChanged: (v) => setState(() => _roomId = v),
+              onChanged: (v) => setState(() { _roomId = v; _errorMessage = null; }),
             ),
             const SizedBox(height: 8),
             ListTile(
@@ -360,7 +373,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                   lastDate: DateTime.now().add(const Duration(days: 365)),
                   selectableDayPredicate: (day) => day.weekday != DateTime.friday,
                 );
-                if (d != null) setState(() => _date = d);
+                if (d != null) setState(() { _date = d; _errorMessage = null; });
               },
             ),
             Row(
@@ -377,7 +390,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                         value: _timeSlots.contains(_startTime) ? _startTime : _timeSlots.first,
                         decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                         items: _timeSlots.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                        onChanged: (v) => setState(() => _startTime = v ?? _startTime),
+                        onChanged: (v) => setState(() { _startTime = v ?? _startTime; _errorMessage = null; }),
                       ),
                     ],
                   ),
@@ -394,7 +407,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                         value: _timeSlots.contains(_endTime) ? _endTime : _timeSlots[1],
                         decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                         items: _timeSlots.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                        onChanged: (v) => setState(() => _endTime = v ?? _endTime),
+                        onChanged: (v) => setState(() { _endTime = v ?? _endTime; _errorMessage = null; }),
                       ),
                     ],
                   ),
@@ -476,6 +489,17 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                 value: _isExtraSlot,
                 onChanged: (v) => setState(() => _isExtraSlot = v ?? false),
               ),
+            CheckboxListTile(
+              title: Row(
+                children: [
+                  Icon(Icons.star, size: 20, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(l10n.starredSessionVip),
+                ],
+              ),
+              value: _isStarred,
+              onChanged: (v) => setState(() => _isStarred = v ?? false),
+            ),
             const SizedBox(height: 8),
             TextFormField(
               controller: _amountController,
@@ -518,8 +542,29 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: Text(l10n.cancel)),
-        FilledButton(onPressed: _saving ? null : _save, child: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(l10n.save)),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: Text(l10n.cancel)),
+                FilledButton(onPressed: _saving ? null : _save, child: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(l10n.save)),
+              ],
+            ),
+            if (_errorMessage != null && _errorMessage!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
+                child: Text(
+                  _errorMessage!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ],
+          ],
+        ),
       ],
     );
   }

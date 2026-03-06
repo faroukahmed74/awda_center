@@ -378,16 +378,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  /// Status colors: Attended=green, Pending=orange, Absent=red, Apologized=amber.
+  /// Status colors: Attended=green, Pending=blue, Absent=red, Apologized=orange.
   static Color? _colorForStatus(AppointmentStatus? status) {
     if (status == null) return null;
     switch (status) {
       case AppointmentStatus.completed: return const Color(0xFF4CAF50); // green
       case AppointmentStatus.pending:
-      case AppointmentStatus.confirmed: return const Color(0xFFFF9800); // orange
+      case AppointmentStatus.confirmed: return const Color(0xFF2196F3); // blue (pending)
       case AppointmentStatus.noShow:
       case AppointmentStatus.absentWithoutCause: return const Color(0xFFF44336); // red
-      case AppointmentStatus.absentWithCause: return const Color(0xFF2196F3); // blue (apologized)
+      case AppointmentStatus.absentWithCause: return const Color(0xFFFF9800); // orange (apologized)
       case AppointmentStatus.cancelled: return null;
     }
   }
@@ -400,10 +400,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         runSpacing: 6,
         children: [
           _legendChip(context, const Color(0xFF4CAF50), l10n.attended),
-          _legendChip(context, const Color(0xFFFF9800), l10n.pending),
+          _legendChip(context, const Color(0xFF2196F3), l10n.pending),
           _legendChip(context, const Color(0xFFF44336), l10n.absent),
-          _legendChip(context, const Color(0xFF2196F3), l10n.apologized),
+          _legendChip(context, const Color(0xFFFF9800), l10n.apologized),
           _legendChipWithIcon(context, const Color(0xFFE8EAF6), l10n.newPatient, Icons.star),
+          _legendChipWithIcon(context, const Color(0xFFE8EAF6), l10n.starredSessionVip, Icons.star),
         ],
       ),
     );
@@ -451,9 +452,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final label = a != null ? (cache.userName(a.patientId) ?? a.patientId) : '—';
     final statusColor = _colorForStatus(a?.status);
     final isFirstSession = a != null && firstSessionIds.contains(a.id);
+    final isStarredSession = a?.isStarred == true;
+    final showStar = isFirstSession || isStarredSession;
     final bgColor = statusColor != null
         ? statusColor.withValues(alpha: 0.4)
-        : (isFirstSession ? const Color(0xFFE8EAF6).withValues(alpha: 0.5) : null);
+        : (showStar ? const Color(0xFFE8EAF6).withValues(alpha: 0.5) : null);
     return InkWell(
       onTap: canUpdate
           ? () async {
@@ -502,7 +505,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         ),
         child: Row(
           children: [
-            if (isFirstSession)
+            if (showStar)
               Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: Icon(Icons.star, size: 16, color: Theme.of(context).colorScheme.primary),
@@ -797,13 +800,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                       final statusColor = _colorForStatus(a.status);
                                       final bgColor = statusColor?.withValues(alpha: 0.35) ?? Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface;
                                       final isFirstSession = firstSessionIds.contains(a.id);
+                                      final isStarredSession = a.isStarred;
+                                      final showStar = isFirstSession || isStarredSession;
                                       return Card(
                                     margin: const EdgeInsets.only(bottom: 8),
                                     color: bgColor,
                                     child: ListTile(
                                       title: Row(
                                         children: [
-                                          if (isFirstSession)
+                                          if (showStar)
                                             Padding(
                                               padding: const EdgeInsets.only(right: 6),
                                               child: Icon(Icons.star, size: 16, color: Theme.of(context).colorScheme.primary),

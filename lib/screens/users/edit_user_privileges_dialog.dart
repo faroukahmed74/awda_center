@@ -23,6 +23,7 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
   late TextEditingController _nameEnController;
   late TextEditingController _phoneController;
   late bool _isActive;
+  late bool _isStarred;
   bool _loading = false;
 
   @override
@@ -34,6 +35,7 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
     _nameEnController = TextEditingController(text: widget.user.fullNameEn ?? '');
     _phoneController = TextEditingController(text: widget.user.phone ?? '');
     _isActive = widget.user.isActive;
+    _isStarred = widget.user.isStarred;
   }
 
   @override
@@ -71,6 +73,9 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
     await auth.updateUserRoles(uid, _roles);
     await auth.updateUserPermissions(uid, _permissions);
     await auth.updateUserActive(uid, _isActive);
+    if (widget.user.hasRole(UserRole.patient)) {
+      await auth.updateUserStarred(uid, _isStarred);
+    }
     final current = auth.currentUser;
     if (current != null) {
       AuditService.log(
@@ -122,6 +127,21 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
               value: _isActive,
               onChanged: (v) => setState(() => _isActive = v),
             ),
+            if (widget.user.hasRole(UserRole.patient)) ...[
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                title: Row(
+                  children: [
+                    Icon(Icons.star, size: 20, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(l10n.starredPatientVip),
+                  ],
+                ),
+                value: _isStarred,
+                onChanged: (v) => setState(() => _isStarred = v ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ],
             const SizedBox(height: 16),
             Text(l10n.role, style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 4),

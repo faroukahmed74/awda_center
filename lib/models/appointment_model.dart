@@ -43,6 +43,8 @@ class AppointmentModel {
   final bool isExtraSlot;
   /// When set, this appointment is one session of the linked package (first or later session). Rest of sessions booked later.
   final String? packageId;
+  /// True if this session was marked as VIP/starred when booking. Same star icon as "new patient" on schedule.
+  final bool isStarred;
   final String? createdByUserId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -62,6 +64,7 @@ class AppointmentModel {
     this.notes,
     this.isExtraSlot = false,
     this.packageId,
+    this.isStarred = false,
     this.createdByUserId,
     this.createdAt,
     this.updatedAt,
@@ -99,6 +102,7 @@ class AppointmentModel {
       notes: d['notes'] as String?,
       isExtraSlot: d['isExtraSlot'] as bool? ?? false,
       packageId: d['packageId'] as String?,
+      isStarred: d['isStarred'] as bool? ?? false,
       createdByUserId: d['createdByUserId'] as String?,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
@@ -120,13 +124,14 @@ class AppointmentModel {
       'notes': notes,
       'isExtraSlot': isExtraSlot,
       'packageId': packageId,
+      'isStarred': isStarred,
       'createdByUserId': createdByUserId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 
-  AppointmentModel copyWith({AppointmentStatus? status}) {
+  AppointmentModel copyWith({AppointmentStatus? status, bool? isStarred}) {
     return AppointmentModel(
       id: id,
       patientId: patientId,
@@ -142,6 +147,7 @@ class AppointmentModel {
       notes: notes,
       isExtraSlot: isExtraSlot,
       packageId: packageId,
+      isStarred: isStarred ?? this.isStarred,
       createdByUserId: createdByUserId,
       createdAt: createdAt,
       updatedAt: DateTime.now(),

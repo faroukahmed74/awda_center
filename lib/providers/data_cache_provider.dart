@@ -45,6 +45,15 @@ class DataCacheProvider with ChangeNotifier {
 
   String? userName(String? userId) => userId == null ? null : _userNames[userId];
 
+  /// True if patient (user) is marked as starred (VIP). Same star icon as "new patient" in schedule.
+  bool isPatientStarred(String? patientId) {
+    if (patientId == null) return false;
+    for (final u in _users) {
+      if (u.id == patientId) return u.isStarred;
+    }
+    return false;
+  }
+
   /// Display name for a doctor (by doctors collection doc id). Use for appointments list.
   String? doctorDisplayName(String? doctorId) {
     if (doctorId == null) return null;
