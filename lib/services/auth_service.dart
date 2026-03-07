@@ -51,6 +51,21 @@ class AuthService {
     return getCurrentUserProfile();
   }
 
+  /// Sign in with email or patient code. If [identifier] contains '@', treats as email; otherwise looks up user by patientCode and signs in with their email.
+  Future<UserModel?> signInWithEmailOrPatientCode(String identifier, String password) async {
+    final trimmed = identifier.trim();
+    if (trimmed.isEmpty) return null;
+    String email = trimmed;
+    if (!trimmed.contains('@')) {
+      final fs = FirestoreService();
+      final user = await fs.getUserByPatientCode(trimmed);
+      if (user == null) return null;
+      email = user.email;
+      if (email.isEmpty) return null;
+    }
+    return signInWithEmailAndPassword(email, password);
+  }
+
   Future<UserModel?> signInWithGoogle() async {
     User? user;
     if (kIsWeb) {
@@ -111,7 +126,7 @@ class AuthService {
       email: user.email ?? email,
       fullNameAr: fullNameAr ?? invite?['fullNameAr'] as String?,
       fullNameEn: fullNameEn ?? invite?['fullNameEn'] as String?,
-      phone: phone,
+      phone: phone ?? invite?['phone'] as String?,
       roles: roles,
       isActive: true,
       createdAt: DateTime.now(),
@@ -119,7 +134,22 @@ class AuthService {
     );
 
     await _firestore.collection('users').doc(user.uid).set(userModel.toFirestore());
-    if (roles.contains('doctor')) await firestoreService.ensureDoctorDocForUser(user.uid, user.displayName ?? user.email ?? '');
+    if (roles.contains('doctor')) {
+      await firestoreService.ensureDoctorDocForUser(user.uid, user.displayName ?? user.email ?? '');
+      final doc = await firestoreService.getDoctorByUserId(user.uid);
+      if (doc != null && invite != null) {
+        final updates = <String, dynamic>{};
+        if (invite['specializationAr'] != null) updates['specializationAr'] = invite['specializationAr'];
+        if (invite['specializationEn'] != null) updates['specializationEn'] = invite['specializationEn'];
+        if (invite['qualificationsAr'] != null) updates['qualificationsAr'] = invite['qualificationsAr'];
+        if (invite['qualificationsEn'] != null) updates['qualificationsEn'] = invite['qualificationsEn'];
+        if (invite['certificationsAr'] != null) updates['certificationsAr'] = invite['certificationsAr'];
+        if (invite['certificationsEn'] != null) updates['certificationsEn'] = invite['certificationsEn'];
+        if (invite['bio'] != null) updates['bio'] = invite['bio'];
+        if (updates.isNotEmpty) await firestoreService.updateDoctor(doc.id, updates);
+      }
+    }
+    if (roles.contains('patient')) await firestoreService.ensurePatientCode(user.uid);
     return getCurrentUserProfile();
   }
 

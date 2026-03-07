@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/user_model.dart';
 import '../models/doctor_model.dart';
 import '../models/room_model.dart';
@@ -41,6 +42,19 @@ class FirestoreService {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (!doc.exists) return null;
     return UserModel.fromFirestore(doc);
+  }
+
+  /// Returns the user (patient) with this patient code, if any. Used for login with patient code.
+  Future<UserModel?> getUserByPatientCode(String code) async {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) return null;
+    final snapshot = await _firestore
+        .collection('users')
+        .where('patientCode', isEqualTo: trimmed)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+    return UserModel.fromFirestore(snapshot.docs.first);
   }
 
   Future<void> updateUserFcmToken(String uid, String? token) async {
@@ -209,7 +223,7 @@ class FirestoreService {
     final doc = await _firestore.collection('packages').doc(id).get();
     final data = doc.data();
     if (data == null) return null;
-    return PackageModel.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>);
+    return PackageModel.fromFirestore(doc);
   }
 
   // Appointments — use patientId or doctorId; date filter in memory to avoid composite index
@@ -277,33 +291,106 @@ class FirestoreService {
   }
 
   // Patient profile
-  /// Creates a patient user (Firestore only; no Firebase Auth). Used by staff to add patients in phase 1.
-  /// Returns the new user document id. Also creates an empty patient_profile for that user.
+
+  /// Returns next patient code: a simple symmetric (palindromic) number, e.g. 1, 2, 101, 121, 12321.
+  static String _palindromeFromCounter(int n) {
+    final s = n.toString();
+    if (s.length <= 1) return s;
+    final rev = s.substring(0, s.length - 1).split('').reversed.join();
+    return s + rev;
+  }
+
+  /// Gets the next unique patient code (symmetric number) and increments the counter. Call inside transaction if needed.
+  Future<String> getNextPatientCode() async {
+    final counterRef = _firestore.collection('counters').doc('patient_code');
+    final result = await _firestore.runTransaction<String>((tx) async {
+      final snap = await tx.get(counterRef);
+      final next = ((snap.data()?['value'] as num?)?.toInt() ?? 0) + 1;
+      tx.set(counterRef, {'value': next}, SetOptions(merge: true));
+      return _palindromeFromCounter(next);
+    });
+    return result;
+  }
+
+  /// Returns user ids of staff-created patients (email contains @awda.local). For migration to Auth login.
+  Future<List<String>> getStaffCreatedPatientIds() async {
+    final snapshot = await _firestore.collection('users').orderBy('createdAt', descending: true).get();
+    return snapshot.docs
+        .where((doc) {
+          final data = doc.data();
+          final roles = data['roles'];
+          final isPatient = roles is List && roles.contains('patient');
+          final email = ((data['email'] as String?) ?? '').toLowerCase();
+          return isPatient && email.contains('@awda.local');
+        })
+        .map((doc) => doc.id)
+        .toList();
+  }
+
+  /// Migrates one staff-created patient to Auth login (code@awda.com / code). Call after ensurePatientCode if needed.
+  /// Returns new uid and code. Throws on failure.
+  Future<Map<String, dynamic>> migrateStaffCreatedPatient(String oldUserId) async {
+    final callable = FirebaseFunctions.instance.httpsCallable('migrateStaffCreatedPatient');
+    final result = await callable.call({'oldUserId': oldUserId});
+    final data = result.data;
+    if (data == null) throw Exception('migrateStaffCreatedPatient did not return data');
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  /// Assigns next patient code to user [uid] if they are a patient and have no code. Idempotent.
+  Future<void> ensurePatientCode(String uid) async {
+    final userRef = _firestore.collection('users').doc(uid);
+    final doc = await userRef.get();
+    if (!doc.exists) return;
+    final d = doc.data() ?? {};
+    final roles = d['roles'];
+    final isPatient = roles is List && roles.contains('patient');
+    if (!isPatient) return;
+    final existing = d['patientCode'] as String?;
+    if (existing != null && existing.isNotEmpty) return;
+    final code = await getNextPatientCode();
+    await userRef.update({
+      'patientCode': code,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Creates a patient user with Firebase Auth login (code@awda.com / password = code). Used by staff.
+  /// Returns the new user document id (= Auth uid). Patient can later log in with email "{code}@awda.com" and password "{code}", or with identifier "{code}" and password "{code}".
   Future<String> createPatientUser({
     required String? fullNameAr,
     required String? fullNameEn,
     required String? phone,
     required String? email,
     String? dateOfBirth,
+    int? age,
     String? gender,
   }) async {
-    final ref = _firestore.collection('users').doc();
-    final uid = ref.id;
-    final emailVal = (email ?? '').trim();
-    await ref.set({
-      'email': emailVal.isEmpty ? 'patient_$uid@awda.local' : emailVal.toLowerCase(),
+    final patientCode = await getNextPatientCode();
+    final callable = FirebaseFunctions.instance.httpsCallable('createPatientAuthAccount');
+    final result = await callable.call({'code': patientCode});
+    final data = result.data as Map?;
+    if (data == null || data['uid'] == null) {
+      throw Exception('createPatientAuthAccount did not return uid');
+    }
+    final uid = data['uid'] as String;
+
+    await _firestore.collection('users').doc(uid).set({
+      'email': '${patientCode}@awda.com',
       'fullNameAr': fullNameAr?.trim(),
       'fullNameEn': fullNameEn?.trim(),
       'phone': phone?.trim(),
       'roles': ['patient'],
       'permissions': [],
       'isActive': true,
+      'patientCode': patientCode,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
     await _firestore.collection('patient_profiles').doc(uid).set({
       'userId': uid,
       'dateOfBirth': dateOfBirth?.trim(),
+      'age': age,
       'gender': gender?.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -320,6 +407,7 @@ class FirestoreService {
     await _firestore.collection('patient_profiles').doc(profile.id).set({
       'userId': profile.userId,
       'dateOfBirth': profile.dateOfBirth,
+      'age': profile.age,
       'gender': profile.gender,
       'address': profile.address,
       'occupation': profile.occupation,
@@ -332,6 +420,11 @@ class FirestoreService {
       'medicalHistory': profile.medicalHistory,
       'treatmentProgress': profile.treatmentProgress,
       'progressNotes': profile.progressNotes,
+      'chiefComplaint': profile.chiefComplaint,
+      'painLevel': profile.painLevel,
+      'treatmentGoals': profile.treatmentGoals,
+      'contraindications': profile.contraindications,
+      'previousTreatment': profile.previousTreatment,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -423,16 +516,33 @@ class FirestoreService {
     required String role,
     String? fullNameAr,
     String? fullNameEn,
+    String? phone,
     required String invitedBy,
+    // Doctor profile (used when role is doctor and they register)
+    String? specializationAr,
+    String? specializationEn,
+    String? qualificationsAr,
+    String? qualificationsEn,
+    String? certificationsAr,
+    String? certificationsEn,
+    String? bio,
   }) async {
     await _firestore.collection('invites').add({
       'email': email.trim().toLowerCase(),
       'role': role,
       'fullNameAr': fullNameAr,
       'fullNameEn': fullNameEn,
+      'phone': phone,
       'invitedBy': invitedBy,
       'used': false,
       'createdAt': FieldValue.serverTimestamp(),
+      if (specializationAr != null) 'specializationAr': specializationAr,
+      if (specializationEn != null) 'specializationEn': specializationEn,
+      if (qualificationsAr != null) 'qualificationsAr': qualificationsAr,
+      if (qualificationsEn != null) 'qualificationsEn': qualificationsEn,
+      if (certificationsAr != null) 'certificationsAr': certificationsAr,
+      if (certificationsEn != null) 'certificationsEn': certificationsEn,
+      if (bio != null) 'bio': bio,
     });
   }
 

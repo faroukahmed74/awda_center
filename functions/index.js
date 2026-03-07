@@ -4,7 +4,171 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const db = admin.firestore();
+const auth = admin.auth();
 const messaging = admin.messaging();
+
+const AWDA_EMAIL_SUFFIX = '@awda.com';
+
+function palindromeFromCounter(n) {
+  const s = String(n);
+  if (s.length <= 1) return s;
+  const rev = s.slice(0, -1).split('').reverse().join('');
+  return s + rev;
+}
+
+/** Get next patient code (symmetric number) and increment counter. Use in migration when user has no code. */
+async function getNextPatientCode() {
+  const counterRef = db.collection('counters').doc('patient_code');
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(counterRef);
+    const next = ((snap.exists && snap.data().value) || 0) + 1;
+    tx.set(counterRef, { value: next }, { merge: true });
+    return palindromeFromCounter(next);
+  });
+}
+
+/**
+ * Callable: Create a Firebase Auth account for a staff-created patient.
+ * email = {code}@awda.com, password = code. Returns { uid }.
+ * Caller must then create Firestore users/{uid} and patient_profiles/{uid}.
+ */
+exports.createPatientAuthAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+  }
+  const code = data && data.code;
+  if (!code || typeof code !== 'string' || code.trim() === '') {
+    throw new functions.https.HttpsError('invalid-argument', 'code is required');
+  }
+  const email = `${String(code).trim()}${AWDA_EMAIL_SUFFIX}`;
+  const password = String(code).trim();
+  try {
+    const userRecord = await auth.createUser({
+      email,
+      password,
+      emailVerified: false,
+    });
+    return { uid: userRecord.uid };
+  } catch (err) {
+    if (err.code === 'auth/email-already-exists') {
+      throw new functions.https.HttpsError('already-exists', 'Patient login already exists for this code');
+    }
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+});
+
+/**
+ * Callable: Migrate one staff-created patient (Firestore-only) to have Auth login.
+ * oldUserId = Firestore users doc id. User must have email like patient_*@awda.local (staff-created).
+ * Assigns patientCode if missing, creates Auth (code@awda.com / code), creates users/newUid, migrates profile and all refs, deletes old docs.
+ */
+exports.migrateStaffCreatedPatient = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+  }
+  const oldUserId = data && data.oldUserId;
+  if (!oldUserId || typeof oldUserId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'oldUserId is required');
+  }
+
+  const userRef = db.collection('users').doc(oldUserId);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'User not found');
+  }
+  const userData = userSnap.data();
+  const email = (userData.email || '').toLowerCase();
+  if (!email.includes('@awda.local')) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'User is not a staff-created patient (email must be @awda.local)'
+    );
+  }
+  const roles = userData.roles || [];
+  if (!roles.includes('patient')) {
+    throw new functions.https.HttpsError('invalid-argument', 'User is not a patient');
+  }
+
+  let code = (userData.patientCode || '').trim();
+  if (!code) {
+    code = await getNextPatientCode();
+    await userRef.update({
+      patientCode: code,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  const loginEmail = `${code}${AWDA_EMAIL_SUFFIX}`;
+  const loginPassword = code;
+
+  let newUid;
+  try {
+    const userRecord = await auth.createUser({
+      email: loginEmail,
+      password: loginPassword,
+      emailVerified: false,
+    });
+    newUid = userRecord.uid;
+  } catch (err) {
+    if (err.code === 'auth/email-already-exists') {
+      const existing = await auth.getUserByEmail(loginEmail);
+      newUid = existing.uid;
+    } else {
+      throw new functions.https.HttpsError('internal', err.message);
+    }
+  }
+
+  const newUserData = {
+    ...userData,
+    email: loginEmail,
+    patientCode: code,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  delete newUserData.createdAt;
+  await db.collection('users').doc(newUid).set({
+    ...newUserData,
+    createdAt: userData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const profileRef = db.collection('patient_profiles').doc(oldUserId);
+  const profileSnap = await profileRef.get();
+  if (profileSnap.exists) {
+    const profileData = profileSnap.data();
+    await db.collection('patient_profiles').doc(newUid).set({
+      ...profileData,
+      userId: newUid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } else {
+    await db.collection('patient_profiles').doc(newUid).set({
+      userId: newUid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  }
+
+  const batch = db.batch();
+
+  const appointmentsSnap = await db.collection('appointments').where('patientId', '==', oldUserId).get();
+  appointmentsSnap.docs.forEach((d) => batch.update(d.ref, { patientId: newUid }));
+
+  const sessionsSnap = await db.collection('sessions').where('patientId', '==', oldUserId).get();
+  sessionsSnap.docs.forEach((d) => batch.update(d.ref, { patientId: newUid }));
+
+  const incomeSnap = await db.collection('income_records').where('patientId', '==', oldUserId).get();
+  incomeSnap.docs.forEach((d) => batch.update(d.ref, { patientId: newUid }));
+
+  const docsSnap = await db.collection('patient_documents').where('patientId', '==', oldUserId).get();
+  docsSnap.docs.forEach((d) => batch.update(d.ref, { patientId: newUid }));
+
+  await batch.commit();
+
+  const deleteBatch = db.batch();
+  deleteBatch.delete(userRef);
+  if (profileSnap.exists) deleteBatch.delete(profileRef);
+  await deleteBatch.commit();
+
+  return { newUid, code };
+});
 
 const notificationTitles = {
   en: { confirmed: 'Appointment confirmed', completed: 'Appointment completed', cancelled: 'Appointment cancelled', no_show: 'Appointment marked no-show', pending: 'New pending appointment' },

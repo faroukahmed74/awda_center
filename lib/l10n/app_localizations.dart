@@ -33,6 +33,8 @@ class AppLocalizations {
   String get logout => _map['logout']!;
   String get email => _map['email']!;
   String get password => _map['password']!;
+  String get emailOrPatientCode => _map['emailOrPatientCode']!;
+  String get emailOrPatientCodeHint => _map['emailOrPatientCodeHint']!;
   String get changePassword => _map['changePassword']!;
   String get currentPassword => _map['currentPassword']!;
   String get newPassword => _map['newPassword']!;
@@ -76,6 +78,7 @@ class AppLocalizations {
   String get paid => _map['paid']!;
   String get partialPaid => _map['partialPaid']!;
   String get notPaid => _map['notPaid']!;
+  String get prepaid => _map['prepaid']!;
   String get amountPaid => _map['amountPaid']!;
   String get source => _map['source']!;
   String get category => _map['category']!;
@@ -107,6 +110,10 @@ class AppLocalizations {
   String get starredPatientVip => _map['starredPatientVip']!;
   String get starredSessionVip => _map['starredSessionVip']!;
   String get filterDay => _map['filterDay']!;
+  String get filterByDoctor => _map['filterByDoctor']!;
+  String get incomeByDoctor => _map['incomeByDoctor']!;
+  String get expenseByDoctor => _map['expenseByDoctor']!;
+  String get paidByDoctor => _map['paidByDoctor']!;
   String get filterMonth => _map['filterMonth']!;
   String get filterYear => _map['filterYear']!;
   String get sessionsFiltered => _map['sessionsFiltered']!;
@@ -163,6 +170,16 @@ class AppLocalizations {
   String get titleOrFileName => _map['titleOrFileName']!;
   String get type => _map['type']!;
   String get required => _map['required']!;
+  String get optional => _map['optional']!;
+  String get addDoctorInviteHint => _map['addDoctorInviteHint']!;
+  String get doctorProfile => _map['doctorProfile']!;
+  String get sendInvite => _map['sendInvite']!;
+  String get inviteNewDoctor => _map['inviteNewDoctor']!;
+  String get inviteNewDoctorHint => _map['inviteNewDoctorHint']!;
+  String get linkExistingUser => _map['linkExistingUser']!;
+  String get linkExistingUserDoctorHint => _map['linkExistingUserDoctorHint']!;
+  String get inviteSent => _map['inviteSent']!;
+  String get noUsersWithDoctorRoleToLink => _map['noUsersWithDoctorRoleToLink']!;
   String get uploadOrPasteUrl => _map['uploadOrPasteUrl']!;
   String get editDocument => _map['editDocument']!;
   String get reports => _map['reports']!;
@@ -183,12 +200,19 @@ class AppLocalizations {
   String get areasToTreat => _map['areasToTreat']!;
   String get feesType => _map['feesType']!;
   String get diagnosis => _map['diagnosis']!;
+  String get medicalDetails => _map['medicalDetails']!;
+  String get chiefComplaint => _map['chiefComplaint']!;
+  String get painLevel => _map['painLevel']!;
+  String get treatmentGoals => _map['treatmentGoals']!;
+  String get contraindications => _map['contraindications']!;
+  String get previousTreatment => _map['previousTreatment']!;
   String get gender => _map['gender']!;
   String get male => _map['male']!;
   String get female => _map['female']!;
   String get dateOfBirth => _map['dateOfBirth']!;
   String get age => _map['age']!;
   String get yearsOld => _map['yearsOld']!;
+  String get ageIfNoDateOfBirth => _map['ageIfNoDateOfBirth']!;
   String get addRequirement => _map['addRequirement']!;
   String get addTodo => _map['addTodo']!;
   String get dueDate => _map['dueDate']!;
@@ -230,6 +254,13 @@ class AppLocalizations {
   String get viewPdf => _map['viewPdf']!;
   String get createProfile => _map['createProfile']!;
   String get manageDoctors => _map['manageDoctors']!;
+  String get migrateStaffCreatedPatients => _map['migrateStaffCreatedPatients']!;
+  String get migrateStaffCreatedPatientsDialogTitle => _map['migrateStaffCreatedPatientsDialogTitle']!;
+  String migrateStaffCreatedPatientsDialogMessage(int count) => (_map['migrateStaffCreatedPatientsDialogMessage']!).replaceAll('{count}', '$count');
+  String migrateStaffCreatedPatientsProgress(int current, int total) => (_map['migrateStaffCreatedPatientsProgress']!).replaceAll('{current}', '$current').replaceAll('{total}', '$total');
+  String get migrateStaffCreatedPatientsDone => _map['migrateStaffCreatedPatientsDone']!;
+  String get migrateStaffCreatedPatientsNone => _map['migrateStaffCreatedPatientsNone']!;
+  String get migrateStaffCreatedPatientsError => _map['migrateStaffCreatedPatientsError']!;
   String get addDoctor => _map['addDoctor']!;
   String get edit => _map['edit']!;
   String get quickAccess => _map['quickAccess']!;
@@ -239,6 +270,9 @@ class AppLocalizations {
   String get appointmentBooked => _map['appointmentBooked']!;
   String get noPatientsYet => _map['noPatientsYet']!;
   String get noSearchResults => _map['noSearchResults']!;
+  String get patientCode => _map['patientCode']!;
+  String get searchByPatientCodeHint => _map['searchByPatientCodeHint']!;
+  String get assignPatientCode => _map['assignPatientCode']!;
   String get notifications => _map['notifications']!;
   String get noNotifications => _map['noNotifications']!;
   String get retry => _map['retry']!;
@@ -274,6 +308,8 @@ class AppLocalizations {
     'logout': 'Logout',
     'email': 'Email',
     'password': 'Password',
+    'emailOrPatientCode': 'Email or patient code',
+    'emailOrPatientCodeHint': 'Email address or your patient ID code',
     'changePassword': 'Change password',
     'currentPassword': 'Current password',
     'newPassword': 'New password',
@@ -317,6 +353,7 @@ class AppLocalizations {
     'paid': 'Paid',
     'partialPaid': 'Partial paid',
     'notPaid': 'Not paid',
+    'prepaid': 'Prepaid',
     'amountPaid': 'Amount paid',
     'source': 'Source',
     'category': 'Category',
@@ -348,6 +385,10 @@ class AppLocalizations {
     'starredPatientVip': 'Patient (VIP)',
     'starredSessionVip': ' Session (VIP)',
     'filterDay': 'Day',
+    'filterByDoctor': 'Filter by doctor',
+    'incomeByDoctor': 'Income by doctor',
+    'expenseByDoctor': 'Expense by doctor',
+    'paidByDoctor': 'Paid by (doctor)',
     'filterMonth': 'Month',
     'filterYear': 'Year',
     'sessionsFiltered': 'Sessions (filtered)',
@@ -388,8 +429,11 @@ class AppLocalizations {
     'editUser': 'Edit user',
     'deleteUser': 'Delete user',
     'search': 'Search',
-    'searchAppointmentsHint': 'Search by patient, doctor or service',
-    'searchUsersHint': 'Search by name, email or phone',
+    'searchAppointmentsHint': 'Search by patient, code, doctor or service',
+    'searchUsersHint': 'Search by name, email, phone or patient code',
+    'searchByPatientCodeHint': 'Search by name, email, phone or code',
+    'patientCode': 'Patient code',
+    'assignPatientCode': 'Assign patient code',
     'about': 'About',
     'addNote': 'Add note',
     'addImage': 'Add image',
@@ -404,6 +448,16 @@ class AppLocalizations {
     'titleOrFileName': 'Title / file name',
     'type': 'Type',
     'required': 'Required',
+    'optional': 'Optional',
+    'addDoctorInviteHint': 'Send an invite to the doctor\'s email. They will register and get the doctor role with this profile.',
+    'doctorProfile': 'Doctor profile',
+    'sendInvite': 'Send invite',
+    'inviteNewDoctor': 'Invite new doctor',
+    'inviteNewDoctorHint': 'Add doctor with email and profile; they register to join.',
+    'linkExistingUser': 'Link existing user',
+    'linkExistingUserDoctorHint': 'User already has doctor role; create doctor profile.',
+    'inviteSent': 'Invite sent. Doctor can register with that email.',
+    'noUsersWithDoctorRoleToLink': 'No users with doctor role to link. Invite or assign role first.',
     'uploadOrPasteUrl': 'Upload a file or paste URL',
     'editDocument': 'Edit',
     'reports': 'Reports',
@@ -424,12 +478,19 @@ class AppLocalizations {
     'areasToTreat': 'Areas to treat',
     'feesType': 'Fees type',
     'diagnosis': 'Diagnosis',
+    'medicalDetails': 'Medical details',
+    'chiefComplaint': 'Chief complaint / Reason for referral',
+    'painLevel': 'Pain level (e.g. VAS 0-10)',
+    'treatmentGoals': 'Treatment goals',
+    'contraindications': 'Contraindications / Precautions',
+    'previousTreatment': 'Previous PT / Surgery',
     'gender': 'Gender',
     'male': 'Male',
     'female': 'Female',
     'dateOfBirth': 'Date of birth',
     'age': 'Age',
     'yearsOld': 'years old',
+    'ageIfNoDateOfBirth': 'Optional — if patient does not share date of birth',
     'addRequirement': 'Add requirement',
     'addTodo': 'Add to-do',
     'dueDate': 'Due date',
@@ -471,6 +532,13 @@ class AppLocalizations {
     'viewPdf': 'View PDF',
     'createProfile': 'Create profile',
     'manageDoctors': 'Manage doctors',
+    'migrateStaffCreatedPatients': 'Migrate staff-created patients',
+    'migrateStaffCreatedPatientsDialogTitle': 'Migrate to login',
+    'migrateStaffCreatedPatientsDialogMessage': 'There are {count} patient(s) created by staff (no Auth login). Migrate them to login with code@awda.com / code?',
+    'migrateStaffCreatedPatientsProgress': 'Migrating {current} / {total}…',
+    'migrateStaffCreatedPatientsDone': 'Migration completed.',
+    'migrateStaffCreatedPatientsNone': 'No staff-created patients to migrate.',
+    'migrateStaffCreatedPatientsError': 'Migration failed',
     'addDoctor': 'Add doctor',
     'edit': 'Edit',
     'quickAccess': 'Quick access',
@@ -522,6 +590,8 @@ class AppLocalizations {
     'logout': 'تسجيل الخروج',
     'email': 'البريد الإلكتروني',
     'password': 'كلمة المرور',
+    'emailOrPatientCode': 'البريد أو رمز المريض',
+    'emailOrPatientCodeHint': 'البريد الإلكتروني أو رمز المريض',
     'changePassword': 'تغيير كلمة المرور',
     'currentPassword': 'كلمة المرور الحالية',
     'newPassword': 'كلمة المرور الجديدة',
@@ -565,6 +635,7 @@ class AppLocalizations {
     'paid': 'مدفوع',
     'partialPaid': 'مدفوع جزئياً',
     'notPaid': 'غير مدفوع',
+    'prepaid': 'مدفوع مسبقاً',
     'amountPaid': 'المبلغ المدفوع',
     'source': 'المصدر',
     'category': 'الفئة',
@@ -596,6 +667,10 @@ class AppLocalizations {
     'starredPatientVip': 'مميز (VIP)',
     'starredSessionVip': 'جلسة مميزة (VIP)',
     'filterDay': 'يوم',
+    'filterByDoctor': 'تصفية حسب الطبيب',
+    'incomeByDoctor': 'الدخل حسب الطبيب',
+    'expenseByDoctor': 'المصروفات حسب الطبيب',
+    'paidByDoctor': 'مدفوع من (الطبيب)',
     'filterMonth': 'شهر',
     'filterYear': 'سنة',
     'sessionsFiltered': 'الجلسات (المصفاة)',
@@ -636,8 +711,11 @@ class AppLocalizations {
     'editUser': 'تعديل المستخدم',
     'deleteUser': 'حذف المستخدم',
     'search': 'بحث',
-    'searchAppointmentsHint': 'البحث بالمرضى أو الطبيب أو الخدمة',
-    'searchUsersHint': 'البحث بالاسم أو البريد أو الهاتف',
+    'searchAppointmentsHint': 'البحث بالمريض أو الرمز أو الطبيب أو الخدمة',
+    'searchUsersHint': 'البحث بالاسم أو البريد أو الهاتف أو رمز المريض',
+    'searchByPatientCodeHint': 'البحث بالاسم أو البريد أو الهاتف أو الرمز',
+    'patientCode': 'رمز المريض',
+    'assignPatientCode': 'تعيين رمز المريض',
     'about': 'نبذة',
     'addNote': 'إضافة ملاحظة',
     'addImage': 'إضافة صورة',
@@ -652,6 +730,16 @@ class AppLocalizations {
     'titleOrFileName': 'العنوان / اسم الملف',
     'type': 'النوع',
     'required': 'مطلوب',
+    'optional': 'اختياري',
+    'addDoctorInviteHint': 'إرسال دعوة إلى بريد الطبيب. سيسجل ويحصل على دور الطبيب مع هذا الملف.',
+    'doctorProfile': 'الملف المهني للطبيب',
+    'sendInvite': 'إرسال الدعوة',
+    'inviteNewDoctor': 'دعوة طبيب جديد',
+    'inviteNewDoctorHint': 'إضافة طبيب بالبريد والملف؛ يسجل للانضمام.',
+    'linkExistingUser': 'ربط مستخدم موجود',
+    'linkExistingUserDoctorHint': 'المستخدم لديه دور الطبيب؛ إنشاء الملف المهني.',
+    'inviteSent': 'تم إرسال الدعوة. يمكن للطبيب التسجيل بهذا البريد.',
+    'noUsersWithDoctorRoleToLink': 'لا يوجد مستخدمون بدور الطبيب للربط. ادعُ أو عيّن الدور أولاً.',
     'uploadOrPasteUrl': 'ارفع ملفاً أو الصق الرابط',
     'editDocument': 'تعديل',
     'reports': 'التقارير',
@@ -672,12 +760,19 @@ class AppLocalizations {
     'areasToTreat': 'مناطق العلاج',
     'feesType': 'نوع الرسوم',
     'diagnosis': 'التشخيص',
+    'medicalDetails': 'البيانات الطبية',
+    'chiefComplaint': 'الشكوى الرئيسية / سبب الإحالة',
+    'painLevel': 'مستوى الألم (مثلاً 0-10)',
+    'treatmentGoals': 'أهداف العلاج',
+    'contraindications': 'موانع الاستعمال / احتياطات',
+    'previousTreatment': 'علاج طبيعي أو جراحة سابقة',
     'gender': 'الجنس',
     'male': 'ذكر',
     'female': 'أنثى',
     'dateOfBirth': 'تاريخ الميلاد',
     'age': 'العمر',
     'yearsOld': 'سنوات',
+    'ageIfNoDateOfBirth': 'اختياري — إذا لم يذكر المريض تاريخ الميلاد',
     'addRequirement': 'إضافة متطلب',
     'addTodo': 'إضافة مهمة',
     'dueDate': 'تاريخ الاستحقاق',
@@ -719,6 +814,13 @@ class AppLocalizations {
     'viewPdf': 'عرض PDF',
     'createProfile': 'إنشاء الملف الشخصي',
     'manageDoctors': 'إدارة الأطباء',
+    'migrateStaffCreatedPatients': 'ترحيل المرضى المضافين من الموظفين',
+    'migrateStaffCreatedPatientsDialogTitle': 'الترحيل لتسجيل الدخول',
+    'migrateStaffCreatedPatientsDialogMessage': 'يوجد {count} مريض/مرضى أضافهم الموظفون (بدون حساب دخول). ترحيلهم لتسجيل الدخول بـ code@awda.com / code؟',
+    'migrateStaffCreatedPatientsProgress': 'جاري الترحيل {current} / {total}…',
+    'migrateStaffCreatedPatientsDone': 'تم الترحيل.',
+    'migrateStaffCreatedPatientsNone': 'لا يوجد مرضى مضافون من الموظفين لترحيلهم.',
+    'migrateStaffCreatedPatientsError': 'فشل الترحيل',
     'addDoctor': 'إضافة طبيب',
     'edit': 'تعديل',
     'quickAccess': 'وصول سريع',

@@ -64,14 +64,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 32),
                     TextFormField(
                       controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
+                      keyboardType: TextInputType.text,
                       decoration: InputDecoration(
-                        labelText: l10n.email,
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        labelText: l10n.emailOrPatientCode,
+                        hintText: l10n.emailOrPatientCodeHint,
+                        prefixIcon: const Icon(Icons.person_outline),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return l10n.email;
-                        if (!v.contains('@')) return 'Invalid email';
+                        if (v == null || v.trim().isEmpty) return l10n.emailOrPatientCode;
                         return null;
                       },
                     ),

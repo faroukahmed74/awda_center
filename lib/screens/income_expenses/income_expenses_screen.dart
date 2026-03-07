@@ -28,6 +28,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   DateTime? _filterDay;
   int? _filterYear;
   int? _filterMonth;
+  String? _filterDoctorId;
+  String? _filterPatientId;
   String _searchQuery = '';
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _incomeSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _expenseSub;
@@ -41,6 +43,12 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
       out = out.where((r) => r.incomeDate.year == _filterYear && r.incomeDate.month == _filterMonth).toList();
     } else if (_filterYear != null) {
       out = out.where((r) => r.incomeDate.year == _filterYear).toList();
+    }
+    if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
+      out = out.where((r) => r.doctorId == _filterDoctorId).toList();
+    }
+    if (_filterPatientId != null && _filterPatientId!.isNotEmpty) {
+      out = out.where((r) => r.patientId == _filterPatientId).toList();
     }
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
@@ -64,6 +72,9 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     } else if (_filterYear != null) {
       out = out.where((r) => r.expenseDate.year == _filterYear).toList();
     }
+    if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
+      out = out.where((r) => r.paidByDoctorId == _filterDoctorId).toList();
+    }
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       out = out.where((r) {
@@ -75,6 +86,46 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
       }).toList();
     }
     return out;
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _filterDay = null;
+      _filterYear = null;
+      _filterMonth = null;
+      _filterDoctorId = null;
+      _filterPatientId = null;
+    });
+  }
+
+  /// Per-doctor totals from [income] for the "Income by doctor" breakdown.
+  List<({String doctorId, String doctorName, double total})> _incomeByDoctorEntries(List<IncomeRecordModel> income, DataCacheProvider cache, AppLocalizations l10n) {
+    final byDoctor = <String, double>{};
+    for (final r in income) {
+      final id = r.doctorId ?? '';
+      byDoctor[id] = (byDoctor[id] ?? 0) + r.amount;
+    }
+    return byDoctor.entries.map((e) {
+      final name = e.key.isEmpty
+          ? l10n.filterAll
+          : (cache.doctorDisplayName(e.key) ?? cache.userName(e.key) ?? e.key);
+      return (doctorId: e.key, doctorName: name, total: e.value);
+    }).toList()..sort((a, b) => b.total.compareTo(a.total));
+  }
+
+  /// Per-doctor totals from [expense] for the "Expense by doctor" breakdown (who paid).
+  List<({String doctorId, String doctorName, double total})> _expenseByDoctorEntries(List<ExpenseRecordModel> expense, DataCacheProvider cache, AppLocalizations l10n) {
+    final byDoctor = <String, double>{};
+    for (final r in expense) {
+      final id = r.paidByDoctorId ?? '';
+      byDoctor[id] = (byDoctor[id] ?? 0) + r.amount;
+    }
+    return byDoctor.entries.map((e) {
+      final name = e.key.isEmpty
+          ? l10n.filterAll
+          : (cache.doctorDisplayName(e.key) ?? cache.userName(e.key) ?? e.key);
+      return (doctorId: e.key, doctorName: name, total: e.value);
+    }).toList()..sort((a, b) => b.total.compareTo(a.total));
   }
 
   @override
@@ -169,6 +220,12 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                         child: Row(
                           children: [
                             FilterChip(
+                              label: Text(l10n.filterAll),
+                              selected: _filterDay == null && _filterYear == null && _filterMonth == null && _filterDoctorId == null && _filterPatientId == null,
+                              onSelected: (_) => _clearAllFilters(),
+                            ),
+                            const SizedBox(width: 8),
+                            FilterChip(
                               label: Text(l10n.filterDay),
                               selected: _filterDay != null,
                               onSelected: (_) async {
@@ -243,7 +300,59 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                 });
                               },
                             ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 180,
+                              child: DropdownButtonFormField<String?>(
+                                value: _filterDoctorId,
+                                decoration: InputDecoration(
+                                  labelText: l10n.filterByDoctor,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                items: [
+                                  DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
+                                  ...cache.doctors.map((d) => DropdownMenuItem<String?>(
+                                    value: d.id,
+                                    child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
+                                  )),
+                                ],
+                                onChanged: (v) => setState(() => _filterDoctorId = v),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 160,
+                              child: DropdownButtonFormField<String?>(
+                                value: _filterPatientId,
+                                decoration: InputDecoration(
+                                  labelText: l10n.patient,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                items: [
+                                  DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
+                                  ...cache.patients.map((p) {
+                                    final label = p.patientCode != null && p.patientCode!.isNotEmpty
+                                        ? '${p.displayName} (${p.patientCode})'
+                                        : p.displayName;
+                                    return DropdownMenuItem<String?>(
+                                      value: p.id,
+                                      child: Text(label, overflow: TextOverflow.ellipsis),
+                                    );
+                                  }),
+                                ],
+                                onChanged: (v) => setState(() => _filterPatientId = v),
+                              ),
+                            ),
                           ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          '${l10n.income}: ${filteredIncome.length} · ${l10n.expenses}: ${filteredExpense.length}',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
                       Padding(
@@ -320,6 +429,46 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                           ),
                         ],
                       ),
+                      if (filteredIncome.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(l10n.incomeByDoctor, style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _incomeByDoctorEntries(filteredIncome, cache, l10n).map((e) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: FilterChip(
+                                  label: Text('${e.doctorName}: ${NumberFormat.currency(symbol: '').format(e.total)}'),
+                                  selected: _filterDoctorId == e.doctorId,
+                                  onSelected: (_) => setState(() => _filterDoctorId = _filterDoctorId == e.doctorId ? null : e.doctorId),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                      if (filteredExpense.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(l10n.expenseByDoctor, style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _expenseByDoctorEntries(filteredExpense, cache, l10n).map((e) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: FilterChip(
+                                  label: Text('${e.doctorName}: ${NumberFormat.currency(symbol: '').format(e.total)}'),
+                                  selected: _filterDoctorId == e.doctorId,
+                                  onSelected: (_) => setState(() => _filterDoctorId = _filterDoctorId == e.doctorId ? null : e.doctorId),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       Text(l10n.income, style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 8),
@@ -415,6 +564,11 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                     ),
                                     const SizedBox(height: 6),
                                     Text('${l10n.date}: ${DateFormat.yMd().format(r.expenseDate)}', style: Theme.of(context).textTheme.bodySmall),
+                                    if (r.paidByDoctorId != null && r.paidByDoctorId!.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Text('${l10n.paidByDoctor}: ${cache.doctorDisplayName(r.paidByDoctorId) ?? cache.userName(r.paidByDoctorId) ?? r.paidByDoctorId}', style: Theme.of(context).textTheme.bodySmall),
+                                      ),
                                     Text('${l10n.category}: ${r.category}', style: Theme.of(context).textTheme.bodySmall),
                                     if (r.description != null && r.description!.isNotEmpty)
                                       Padding(
@@ -600,8 +754,10 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     final descriptionController = TextEditingController();
     DateTime selectedDate = DateTime.now();
     UserModel? selectedEmployee;
+    String? selectedPaidByDoctorId;
     final staff = await _firestore.getUsers();
     final staffList = staff.where((u) => u.hasAnyRole([UserRole.doctor, UserRole.secretary, UserRole.trainee])).toList();
+    final cache = context.read<DataCacheProvider>();
 
     if (!context.mounted) return;
     await showDialog(
@@ -644,6 +800,19 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   ),
                 ],
                 const SizedBox(height: 8),
+                DropdownButtonFormField<String?>(
+                  value: selectedPaidByDoctorId,
+                  decoration: InputDecoration(labelText: l10n.paidByDoctor),
+                  items: [
+                    const DropdownMenuItem<String?>(value: null, child: Text('—')),
+                    ...cache.doctors.map((d) => DropdownMenuItem<String?>(
+                      value: d.id,
+                      child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
+                    )),
+                  ],
+                  onChanged: (v) => setState(() => selectedPaidByDoctorId = v),
+                ),
+                const SizedBox(height: 8),
                 TextField(
                   controller: descriptionController,
                   decoration: InputDecoration(labelText: l10n.description),
@@ -674,6 +843,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
                   recipientUserId: selectedEmployee?.id,
                   recipientName: selectedEmployee?.displayName,
+                  paidByDoctorId: selectedPaidByDoctorId,
                   recordedByUserId: uid,
                   expenseDate: selectedDate,
                 ));
@@ -693,6 +863,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     final categoryController = TextEditingController(text: r.category);
     final descriptionController = TextEditingController(text: r.description ?? '');
     DateTime selectedDate = r.expenseDate;
+    String? selectedPaidByDoctorId = r.paidByDoctorId;
     final staff = await _firestore.getUsers();
     final staffList = staff.where((u) => u.hasAnyRole([UserRole.doctor, UserRole.secretary, UserRole.trainee])).toList();
     UserModel? selectedEmployee;
@@ -703,6 +874,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         selectedEmployee = null;
       }
     }
+    final cache = context.read<DataCacheProvider>();
 
     if (!context.mounted) return;
     await showDialog(
@@ -745,6 +917,19 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                     ),
                   ],
                   const SizedBox(height: 8),
+                  DropdownButtonFormField<String?>(
+                    value: selectedPaidByDoctorId,
+                    decoration: InputDecoration(labelText: l10n.paidByDoctor),
+                    items: [
+                      const DropdownMenuItem<String?>(value: null, child: Text('—')),
+                      ...cache.doctors.map((d) => DropdownMenuItem<String?>(
+                        value: d.id,
+                        child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
+                      )),
+                    ],
+                    onChanged: (v) => setState(() => selectedPaidByDoctorId = v),
+                  ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: descriptionController,
                     decoration: InputDecoration(labelText: l10n.description),
@@ -774,6 +959,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                     'description': descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
                     'recipientUserId': selectedEmployee?.id,
                     'recipientName': selectedEmployee?.displayName,
+                    'paidByDoctorId': selectedPaidByDoctorId,
                     'expenseDate': Timestamp.fromDate(selectedDate),
                   });
                   if (ctx.mounted) Navigator.pop(ctx);

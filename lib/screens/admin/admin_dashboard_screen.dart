@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
 import 'invite_user_dialog.dart';
+import 'migrate_staff_patients_dialog.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -55,6 +56,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _openInviteUser() async {
     final ok = await showDialog<bool>(context: context, builder: (_) => const InviteUserDialog());
+    if (ok == true && mounted) _loadStats();
+  }
+
+  Future<void> _openMigrateStaffPatients() async {
+    final ok = await showDialog<bool>(context: context, builder: (_) => const MigrateStaffPatientsDialog());
     if (ok == true && mounted) _loadStats();
   }
 
@@ -247,6 +253,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         if (user.canAccessAdminDashboard) ...[
           _AdminTile(icon: Icons.meeting_room, title: l10n.rooms, onTap: () => context.push('/rooms')),
           _AdminTile(icon: Icons.badge, title: l10n.manageDoctors, onTap: () => context.push('/doctors-admin')),
+          _AdminTile(icon: Icons.login, title: l10n.migrateStaffCreatedPatients, onTap: _openMigrateStaffPatients),
           _AdminTile(icon: Icons.history, title: l10n.auditLog, onTap: () => context.push('/audit-log')),
         ],
         if (user.canAccessRequirements)

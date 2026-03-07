@@ -11,6 +11,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/data_cache_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../router/app_router.dart';
@@ -383,10 +384,11 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
   final FirestoreService _firestore = FirestoreService();
   List<AppointmentModel> _appointments = [];
   Map<String, String> _names = {};
-  /// Patient id -> (name, email, phone) for search by name/email/phone.
-  final Map<String, ({String name, String email, String phone})> _patientData = {};
+  /// Patient id -> (name, email, phone, code) for search by name/email/phone/code.
+  final Map<String, ({String name, String email, String phone, String code})> _patientData = {};
   bool _loading = true;
   _DashboardPeriod _period = _DashboardPeriod.today;
+  String? _filterDoctorId;
   final _searchController = TextEditingController();
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
   int? _lastReportedTodayCount;
@@ -458,7 +460,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
       final u = await _firestore.getUser(id);
       if (u != null) {
         names[id] = u.displayName;
-        _patientData[id] = (name: u.displayName, email: u.email, phone: u.phone ?? '');
+        _patientData[id] = (name: u.displayName, email: u.email, phone: u.phone ?? '', code: u.patientCode ?? '');
       } else {
         final d = await _firestore.getDoctorById(id);
         if (d != null) {
@@ -495,13 +497,17 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     var list = _appointments
         .where((a) => !a.appointmentDate.isBefore(start) && a.appointmentDate.isBefore(end))
         .toList();
+    if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
+      list = list.where((a) => a.doctorId == _filterDoctorId).toList();
+    }
     if (q.isNotEmpty && _patientData.isNotEmpty) {
       list = list.where((a) {
         final p = _patientData[a.patientId];
         if (p == null) return true;
         return p.name.toLowerCase().contains(q) ||
             p.email.toLowerCase().contains(q) ||
-            p.phone.contains(q);
+            p.phone.toLowerCase().contains(q) ||
+            p.code.toLowerCase().contains(q);
       }).toList();
     }
     list.sort((a, b) {
@@ -549,6 +555,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     if (!isPatient && !isDoctor && !canSeeAppointments) return const SizedBox.shrink();
 
     final padding = ResponsivePadding.all(context);
+    final cache = context.watch<DataCacheProvider>();
     final filtered = _filteredAppointments;
     final count = filtered.length;
 
@@ -629,6 +636,28 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                 ),
               ],
             ),
+            if (!isPatient && !isDoctor) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: DropdownButtonFormField<String?>(
+                  value: _filterDoctorId,
+                  decoration: InputDecoration(
+                    labelText: l10n.filterByDoctor,
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  items: [
+                    DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
+                    ...cache.doctors.map((d) => DropdownMenuItem<String?>(
+                      value: d.id,
+                      child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
+                    )),
+                  ],
+                  onChanged: (v) => setState(() => _filterDoctorId = v),
+                ),
+              ),
+            ],
             if (!isPatient) ...[
               const SizedBox(height: 8),
               TextField(

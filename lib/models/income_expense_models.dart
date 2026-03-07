@@ -65,6 +65,8 @@ class ExpenseRecordModel {
   /// When category is Salary, optional employee who received the payment.
   final String? recipientUserId;
   final String? recipientName;
+  /// Doctor who paid / is responsible for this expense (for "expense by doctor" and filtering).
+  final String? paidByDoctorId;
   final String? recordedByUserId;
   final DateTime expenseDate;
   final DateTime? createdAt;
@@ -76,6 +78,7 @@ class ExpenseRecordModel {
     this.description,
     this.recipientUserId,
     this.recipientName,
+    this.paidByDoctorId,
     this.recordedByUserId,
     required this.expenseDate,
     this.createdAt,
@@ -91,6 +94,7 @@ class ExpenseRecordModel {
       description: d['description'] as String?,
       recipientUserId: d['recipientUserId'] as String?,
       recipientName: d['recipientName'] as String?,
+      paidByDoctorId: d['paidByDoctorId'] as String?,
       recordedByUserId: d['recordedByUserId'] as String?,
       expenseDate: dateTs?.toDate() ?? DateTime.now(),
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
@@ -104,6 +108,7 @@ class ExpenseRecordModel {
       'description': description,
       'recipientUserId': recipientUserId,
       'recipientName': recipientName,
+      'paidByDoctorId': paidByDoctorId,
       'recordedByUserId': recordedByUserId,
       'expenseDate': Timestamp.fromDate(expenseDate),
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),

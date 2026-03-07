@@ -41,7 +41,8 @@ class _UsersScreenState extends State<UsersScreen> {
         final name = u.displayName.toLowerCase();
         final email = u.email.toLowerCase();
         final phone = (u.phone ?? '').toLowerCase();
-        return name.contains(q) || email.contains(q) || phone.contains(q);
+        final code = (u.patientCode ?? '').toLowerCase();
+        return name.contains(q) || email.contains(q) || phone.contains(q) || code.contains(q);
       }).toList();
     }
     return out;
@@ -187,7 +188,13 @@ class _UsersScreenState extends State<UsersScreen> {
                                 ),
                             ],
                           ),
-                          subtitle: Text('${u.email} • ${u.roles.map((r) => l10n.roleDisplay(r)).join(", ")}'),
+                          subtitle: Text(
+                            [
+                              u.email,
+                              u.roles.map((r) => l10n.roleDisplay(r)).join(', '),
+                              if (u.patientCode != null && u.patientCode!.isNotEmpty) '${l10n.patientCode}: ${u.patientCode}',
+                            ].where((e) => e.isNotEmpty).join(' • '),
+                          ),
                           trailing: auth.currentUser?.canAccessAdminDashboard == true
                               ? PopupMenuButton<String>(
                                   icon: const Icon(Icons.more_vert),

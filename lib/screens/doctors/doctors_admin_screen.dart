@@ -6,6 +6,7 @@ import '../../models/doctor_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
+import 'add_doctor_dialog.dart';
 
 /// Admin: List doctors, add (link user with doctor role), edit.
 class DoctorsAdminScreen extends StatefulWidget {
@@ -95,19 +96,55 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
     );
   }
 
-  Future<void> _addDoctor(BuildContext context, AppLocalizations l10n) async {
+  Future<void> _onAddDoctorPressed(BuildContext context, AppLocalizations l10n) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.addDoctor),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person_add),
+              title: Text(l10n.inviteNewDoctor),
+              subtitle: Text(l10n.inviteNewDoctorHint),
+              onTap: () => Navigator.pop(ctx, 'invite'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: Text(l10n.linkExistingUser),
+              subtitle: Text(l10n.linkExistingUserDoctorHint),
+              onTap: () => Navigator.pop(ctx, 'link'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'invite') {
+      final ok = await showDialog<bool>(context: context, builder: (_) => const AddDoctorDialog());
+      if (ok == true) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.inviteSent)));
+        _load();
+      }
+    } else if (choice == 'link') {
+      await _addDoctorLinkExisting(context, l10n);
+    }
+  }
+
+  Future<void> _addDoctorLinkExisting(BuildContext context, AppLocalizations l10n) async {
     final usersWithoutDoc = _usersWithDoctorRole.where((u) {
       return !_doctors.any((d) => d.userId == u.id);
     }).toList();
     if (usersWithoutDoc.isEmpty) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No users with doctor role left to add. Invite or assign doctor role first.')));
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.noUsersWithDoctorRoleToLink)));
       return;
     }
     String? selectedId;
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.addDoctor),
+        title: Text(l10n.linkExistingUser),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -116,10 +153,10 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
         ),
       ),
     );
-    if (selectedId != null) {
+    if (selectedId != null && mounted) {
       final u = _usersWithDoctorRole.firstWhere((e) => e.id == selectedId);
       await _firestore.ensureDoctorDocForUser(u.id, u.displayName);
-      if (mounted) _load();
+      _load();
     }
   }
 
@@ -136,7 +173,7 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             const NotificationsButton(),
-            IconButton(icon: const Icon(Icons.add), tooltip: l10n.addDoctor, onPressed: () => _addDoctor(context, l10n)),
+            IconButton(icon: const Icon(Icons.add), tooltip: l10n.addDoctor, onPressed: () => _onAddDoctorPressed(context, l10n)),
           ],
         ),
         body: _loading

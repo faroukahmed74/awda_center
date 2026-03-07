@@ -268,6 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_profile!.dateOfBirth != null) Text('${l10n.date}: ${_profile!.dateOfBirth}', style: Theme.of(context).textTheme.bodySmall),
+                  if (_profile!.dateOfBirth == null && _profile!.age != null) Text('${l10n.age}: ${_profile!.age} ${l10n.yearsOld}', style: Theme.of(context).textTheme.bodySmall),
                   if (_profile!.diagnosis != null) Text('Diagnosis: ${_profile!.diagnosis}', style: Theme.of(context).textTheme.bodySmall),
                   if (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty)
                     Padding(padding: const EdgeInsets.only(top: 8), child: Text('${l10n.medicalHistory}: ${_profile!.medicalHistory}', style: Theme.of(context).textTheme.bodySmall)),

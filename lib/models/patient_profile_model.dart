@@ -4,6 +4,8 @@ class PatientProfileModel {
   final String id; // userId
   final String userId;
   final String? dateOfBirth;
+  /// Age in years when patient does not share date of birth. Optional.
+  final int? age;
   final String? gender;
   final String? address;
   final String? occupation;
@@ -16,12 +18,23 @@ class PatientProfileModel {
   final String? medicalHistory;
   final String? treatmentProgress;
   final String? progressNotes;
+  /// Physical therapy: chief complaint / reason for referral.
+  final String? chiefComplaint;
+  /// Pain level (e.g. VAS 0-10).
+  final String? painLevel;
+  /// Treatment goals.
+  final String? treatmentGoals;
+  /// Contraindications / precautions.
+  final String? contraindications;
+  /// Previous PT or surgery.
+  final String? previousTreatment;
   final DateTime? updatedAt;
 
   const PatientProfileModel({
     required this.id,
     required this.userId,
     this.dateOfBirth,
+    this.age,
     this.gender,
     this.address,
     this.occupation,
@@ -34,6 +47,11 @@ class PatientProfileModel {
     this.medicalHistory,
     this.treatmentProgress,
     this.progressNotes,
+    this.chiefComplaint,
+    this.painLevel,
+    this.treatmentGoals,
+    this.contraindications,
+    this.previousTreatment,
     this.updatedAt,
   });
 
@@ -43,6 +61,7 @@ class PatientProfileModel {
       id: doc.id,
       userId: d['userId'] as String? ?? doc.id,
       dateOfBirth: d['dateOfBirth'] as String?,
+      age: (d['age'] as num?)?.toInt(),
       gender: d['gender'] as String?,
       address: d['address'] as String?,
       occupation: d['occupation'] as String?,
@@ -55,6 +74,11 @@ class PatientProfileModel {
       medicalHistory: d['medicalHistory'] as String?,
       treatmentProgress: d['treatmentProgress'] as String?,
       progressNotes: d['progressNotes'] as String?,
+      chiefComplaint: d['chiefComplaint'] as String?,
+      painLevel: d['painLevel'] as String?,
+      treatmentGoals: d['treatmentGoals'] as String?,
+      contraindications: d['contraindications'] as String?,
+      previousTreatment: d['previousTreatment'] as String?,
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -63,6 +87,7 @@ class PatientProfileModel {
     return {
       'userId': userId,
       'dateOfBirth': dateOfBirth,
+      'age': age,
       'gender': gender,
       'address': address,
       'occupation': occupation,
@@ -75,6 +100,11 @@ class PatientProfileModel {
       'medicalHistory': medicalHistory,
       'treatmentProgress': treatmentProgress,
       'progressNotes': progressNotes,
+      'chiefComplaint': chiefComplaint,
+      'painLevel': painLevel,
+      'treatmentGoals': treatmentGoals,
+      'contraindications': contraindications,
+      'previousTreatment': previousTreatment,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }

@@ -135,6 +135,112 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     return rows.take(50).toList();
   }
 
+  Widget _buildPersonalDetails(AppLocalizations l10n) {
+    final theme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.personalData, style: theme.titleMedium),
+        const SizedBox(height: 8),
+        if (_user!.patientCode != null && _user!.patientCode!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text('${l10n.patientCode}: ${_user!.patientCode}', style: theme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
+          )
+        else if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: TextButton.icon(
+              icon: const Icon(Icons.tag, size: 18),
+              label: Text(l10n.assignPatientCode),
+              onPressed: () async {
+                await _firestore.ensurePatientCode(_user!.id);
+                if (mounted) _load();
+              },
+            ),
+          ),
+        Text(_user!.displayName, style: theme.titleSmall),
+        if (_user!.email.isNotEmpty) Text(_user!.email, style: theme.bodySmall),
+        if (_user!.phone != null && _user!.phone!.isNotEmpty) Text(_user!.phone!, style: theme.bodySmall),
+        if (_profile != null) ...[
+          if (_profile!.dateOfBirth != null) ...[
+            Text(
+              () {
+                final dob = _profile!.dateOfBirth!;
+                final parsed = parseDateOfBirth(dob);
+                final dateStr = parsed != null ? DateFormat.yMMMd().format(parsed) : dob;
+                final age = ageFromDateOfBirth(dob);
+                return '${l10n.date}: $dateStr${age != null ? ' (${l10n.age}: $age ${l10n.yearsOld})' : ''}';
+              }(),
+              style: theme.bodySmall,
+            ),
+          ] else if (_profile!.age != null)
+            Text('${l10n.age}: ${_profile!.age} ${l10n.yearsOld}', style: theme.bodySmall),
+          if (_profile!.gender != null && _profile!.gender!.isNotEmpty)
+            Text('${l10n.gender}: ${_profile!.gender}', style: theme.bodySmall),
+          if (_profile!.address != null && _profile!.address!.isNotEmpty)
+            Text('${l10n.address}: ${_profile!.address}', style: theme.bodySmall),
+          if (_profile!.occupation != null && _profile!.occupation!.isNotEmpty)
+            Text('${l10n.occupation}: ${_profile!.occupation}', style: theme.bodySmall),
+          if (_profile!.referredBy != null && _profile!.referredBy!.isNotEmpty)
+            Text('${l10n.referredBy}: ${_profile!.referredBy}', style: theme.bodySmall),
+          if (_profile!.maritalStatus != null && _profile!.maritalStatus!.isNotEmpty)
+            Text('${l10n.maritalStatus}: ${_profile!.maritalStatus}', style: theme.bodySmall),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMedicalDetails(AppLocalizations l10n) {
+    final theme = Theme.of(context).textTheme;
+    final hasAny = _profile != null && (
+      (_profile!.diagnosis != null && _profile!.diagnosis!.isNotEmpty) ||
+      (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty) ||
+      (_profile!.treatmentProgress != null && _profile!.treatmentProgress!.isNotEmpty) ||
+      (_profile!.progressNotes != null && _profile!.progressNotes!.isNotEmpty) ||
+      (_profile!.areasToTreat != null && _profile!.areasToTreat!.isNotEmpty) ||
+      (_profile!.feesType != null && _profile!.feesType!.isNotEmpty) ||
+      (_profile!.chiefComplaint != null && _profile!.chiefComplaint!.isNotEmpty) ||
+      (_profile!.painLevel != null && _profile!.painLevel!.isNotEmpty) ||
+      (_profile!.treatmentGoals != null && _profile!.treatmentGoals!.isNotEmpty) ||
+      (_profile!.contraindications != null && _profile!.contraindications!.isNotEmpty) ||
+      (_profile!.previousTreatment != null && _profile!.previousTreatment!.isNotEmpty)
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.medicalDetails, style: theme.titleMedium),
+        const SizedBox(height: 8),
+        if (!hasAny)
+          Text(l10n.noData, style: theme.bodySmall)
+        else ...[
+          if (_profile!.diagnosis != null && _profile!.diagnosis!.isNotEmpty)
+            Text('${l10n.diagnosis}: ${_profile!.diagnosis}', style: theme.bodySmall),
+          if (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty)
+            Text('${l10n.medicalHistory}: ${_profile!.medicalHistory}', style: theme.bodySmall),
+          if (_profile!.treatmentProgress != null && _profile!.treatmentProgress!.isNotEmpty)
+            Text('${l10n.treatmentProgress}: ${_profile!.treatmentProgress}', style: theme.bodySmall),
+          if (_profile!.progressNotes != null && _profile!.progressNotes!.isNotEmpty)
+            Text('${l10n.progressNotes}: ${_profile!.progressNotes}', style: theme.bodySmall),
+          if (_profile!.areasToTreat != null && _profile!.areasToTreat!.isNotEmpty)
+            Text('${l10n.areasToTreat}: ${_profile!.areasToTreat}', style: theme.bodySmall),
+          if (_profile!.feesType != null && _profile!.feesType!.isNotEmpty)
+            Text('${l10n.feesType}: ${_profile!.feesType}', style: theme.bodySmall),
+          if (_profile!.chiefComplaint != null && _profile!.chiefComplaint!.isNotEmpty)
+            Text('${l10n.chiefComplaint}: ${_profile!.chiefComplaint}', style: theme.bodySmall),
+          if (_profile!.painLevel != null && _profile!.painLevel!.isNotEmpty)
+            Text('${l10n.painLevel}: ${_profile!.painLevel}', style: theme.bodySmall),
+          if (_profile!.treatmentGoals != null && _profile!.treatmentGoals!.isNotEmpty)
+            Text('${l10n.treatmentGoals}: ${_profile!.treatmentGoals}', style: theme.bodySmall),
+          if (_profile!.contraindications != null && _profile!.contraindications!.isNotEmpty)
+            Text('${l10n.contraindications}: ${_profile!.contraindications}', style: theme.bodySmall),
+          if (_profile!.previousTreatment != null && _profile!.previousTreatment!.isNotEmpty)
+            Text('${l10n.previousTreatment}: ${_profile!.previousTreatment}', style: theme.bodySmall),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -173,34 +279,30 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(_user!.displayName, style: Theme.of(context).textTheme.titleLarge),
-                                if (_user!.email.isNotEmpty) Text(_user!.email, style: Theme.of(context).textTheme.bodyMedium),
-                                if (_user!.phone != null && _user!.phone!.isNotEmpty) Text(_user!.phone!, style: Theme.of(context).textTheme.bodyMedium),
-                                if (_profile != null) ...[
-                                  if (_profile!.dateOfBirth != null) ...[
-                                    Text(
-                                      () {
-                                        final dob = _profile!.dateOfBirth!;
-                                        final parsed = parseDateOfBirth(dob);
-                                        final dateStr = parsed != null ? DateFormat.yMMMd().format(parsed) : dob;
-                                        final age = ageFromDateOfBirth(dob);
-                                        return '${l10n.date}: $dateStr${age != null ? ' (${l10n.age}: $age ${l10n.yearsOld})' : ''}';
-                                      }(),
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final twoCols = Breakpoint.isTabletOrWider(context);
+                                final personal = _buildPersonalDetails(l10n);
+                                final medical = _buildMedicalDetails(l10n);
+                                if (twoCols) {
+                                  return Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(child: personal),
+                                      const SizedBox(width: 24),
+                                      Expanded(child: medical),
+                                    ],
+                                  );
+                                }
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    personal,
+                                    const SizedBox(height: 16),
+                                    medical,
                                   ],
-                                  if (_profile!.diagnosis != null) Text('Diagnosis: ${_profile!.diagnosis}', style: Theme.of(context).textTheme.bodySmall),
-                                  if (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty)
-                                    Padding(padding: const EdgeInsets.only(top: 8), child: Text('${l10n.medicalHistory}: ${_profile!.medicalHistory}', style: Theme.of(context).textTheme.bodySmall)),
-                                  if (_profile!.treatmentProgress != null && _profile!.treatmentProgress!.isNotEmpty)
-                                    Padding(padding: const EdgeInsets.only(top: 4), child: Text('${l10n.treatmentProgress}: ${_profile!.treatmentProgress}', style: Theme.of(context).textTheme.bodySmall)),
-                                  if (_profile!.progressNotes != null && _profile!.progressNotes!.isNotEmpty)
-                                    Padding(padding: const EdgeInsets.only(top: 4), child: Text('${l10n.progressNotes}: ${_profile!.progressNotes}', style: Theme.of(context).textTheme.bodySmall)),
-                                ],
-                              ],
+                                );
+                              },
                             ),
                           ),
                         ),

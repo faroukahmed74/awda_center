@@ -142,5 +142,10 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow update, delete: if false;
     }
+
+    // counters: e.g. patient_code for generating unique patient codes; staff only (transaction read+write)
+    match /counters/{docId} {
+      allow read, write: if isAuth() && (isAdmin() || isSecretary() || isDoctor() || hasPermission('patients'));
+    }
   }
 }

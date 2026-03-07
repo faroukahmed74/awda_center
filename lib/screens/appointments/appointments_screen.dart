@@ -36,13 +36,31 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   DateTime? _filterDay;
   int? _filterYear;
   int? _filterMonth; // 1-12 when _filterYear is set
+  /// Filter by doctor (appointments for this doctor only). Combines with status, date, and search.
+  String? _filterDoctorId;
   bool _scheduleView = false;
   DateTime _scheduleDate = DateTime.now();
   List<PackageModel> _packages = [];
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
 
-  /// Hours 12:00–24:00 (center open 12 PM to 12 AM)
-  static const List<String> _scheduleHours = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'];
+  /// Time slots every 30 min from 12:00 to 23:30 (center open 12 PM to 12 AM)
+  static final List<String> _scheduleHours = List.generate(24, (i) {
+    final h = 12 + (i ~/ 2);
+    final m = (i % 2) * 30;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+  });
+
+  /// Next 30-min slot after [startTime] (e.g. 12:00 -> 12:30, 23:30 -> 23:30).
+  static String _nextSlot(String startTime) {
+    final parts = startTime.split(':');
+    final h = int.tryParse(parts[0].trim()) ?? 12;
+    final m = int.tryParse(parts.length > 1 ? parts[1].trim() : '0') ?? 0;
+    if (m == 30) {
+      final nextH = h == 23 ? 23 : h + 1;
+      return nextH == 23 && h == 23 ? '23:30' : '${nextH.toString().padLeft(2, '0')}:00';
+    }
+    return '${h.toString().padLeft(2, '0')}:30';
+  }
 
   /// For schedule view: all appointments at [date] and [startTime] (non-cancelled).
   List<AppointmentModel> _appointmentsForSlot(DateTime date, String startTime, List<AppointmentModel> list) {
@@ -195,17 +213,35 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
   }
 
-  /// Shows session payment dialog. Returns null if cancelled, 0 if not paid, or amount (full/partial) to record as income.
+  /// Shows session payment dialog. Returns null if cancelled, 0 if not paid/prepaid, or amount (full/partial) to record as income.
+  /// Discount is applied in this dialog; book appointment form does not set discount.
   Future<double?> _showSessionPaymentDialog(BuildContext context, AppointmentModel a, AppLocalizations l10n) async {
-    final sessionAmount = a.costAmount ?? 0.0;
+    final costAmount = a.costAmount ?? 0.0;
+    final discountPercent = a.discountPercent;
+    final baseAmount = costAmount > 0 && discountPercent != null && discountPercent > 0 && discountPercent < 100
+        ? costAmount / (1 - discountPercent / 100)
+        : costAmount;
+    final discountController = TextEditingController(
+      text: discountPercent != null ? discountPercent.toStringAsFixed(0) : '0',
+    );
+    final partialController = TextEditingController(
+      text: costAmount > 0 ? costAmount.toStringAsFixed(2) : '',
+    );
+    double getAmountAfterDiscount() {
+      final pct = double.tryParse(discountController.text.trim());
+      if (pct == null || pct <= 0) return baseAmount;
+      if (pct >= 100) return 0.0;
+      return baseAmount * (1 - pct / 100);
+    }
+
     String paymentType = 'not_paid';
-    final partialController = TextEditingController(text: sessionAmount > 0 ? sessionAmount.toStringAsFixed(2) : '');
-    return showDialog<double?>(
+    Future<double?> dialogFuture = showDialog<double?>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final amountAfterDiscount = getAmountAfterDiscount();
             return AlertDialog(
               title: Text(l10n.sessionPayment),
               content: SingleChildScrollView(
@@ -213,7 +249,26 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${l10n.amount}: ${NumberFormat.currency(symbol: '').format(sessionAmount)}'),
+                    Text('${l10n.amount}: ${NumberFormat.currency(symbol: '').format(baseAmount)}'),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: discountController,
+                      decoration: InputDecoration(
+                        labelText: l10n.discountPercent,
+                        hintText: '0',
+                        suffixText: '%',
+                        border: const OutlineInputBorder(),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                    if (amountAfterDiscount != baseAmount || (discountController.text.trim().isNotEmpty && double.tryParse(discountController.text.trim()) != 0)) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        '${l10n.amountAfterDiscount}: ${NumberFormat.currency(symbol: '').format(amountAfterDiscount)}',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     RadioListTile<String>(
                       title: Text(l10n.paid),
@@ -232,11 +287,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         padding: const EdgeInsets.only(left: 24, top: 4),
                         child: TextField(
                           controller: partialController,
-                          decoration: InputDecoration(labelText: l10n.amountPaid),
+                          decoration: InputDecoration(
+                            labelText: l10n.amountPaid,
+                            border: const OutlineInputBorder(),
+                          ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           onChanged: (_) => setDialogState(() {}),
                         ),
                       ),
+                    RadioListTile<String>(
+                      title: Text(l10n.prepaid),
+                      value: 'prepaid',
+                      groupValue: paymentType,
+                      onChanged: (v) => setDialogState(() => paymentType = v!),
+                    ),
                     RadioListTile<String>(
                       title: Text(l10n.notPaid),
                       value: 'not_paid',
@@ -252,12 +316,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   child: Text(l10n.cancel),
                 ),
                 FilledButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    final sessionAmount = getAmountAfterDiscount();
+                    final pctRaw = double.tryParse(discountController.text.trim());
+                    final newDiscountPercent = (pctRaw != null && pctRaw > 0 && pctRaw < 100) ? pctRaw : null;
+                    final costChanged = (a.costAmount != sessionAmount) || (a.discountPercent != newDiscountPercent);
+                    if (costChanged) {
+                      await _firestore.updateAppointment(a.id, {
+                        'costAmount': sessionAmount,
+                        'discountPercent': newDiscountPercent,
+                      });
+                    }
                     if (paymentType == 'paid') {
                       Navigator.pop(ctx, sessionAmount);
                     } else if (paymentType == 'partial') {
                       final v = double.tryParse(partialController.text.trim());
                       Navigator.pop(ctx, v != null && v > 0 ? v : 0.0);
+                    } else if (paymentType == 'prepaid') {
+                      Navigator.pop(ctx, 0.0);
                     } else {
                       Navigator.pop(ctx, 0.0);
                     }
@@ -270,6 +346,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         );
       },
     );
+    return dialogFuture.whenComplete(() {
+      discountController.dispose();
+      partialController.dispose();
+    });
   }
 
   void _logAppointmentAction(BuildContext context, String action, AppointmentModel a, AppointmentStatus newStatus) {
@@ -489,7 +569,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     packages: _packages,
                     initialDate: _scheduleDate,
                     initialStartTime: startTime,
-                    initialEndTime: startTime == '23:00' ? '23:30' : '${int.parse(startTime.split(':')[0]) + 1}:00',
+                    initialEndTime: _nextSlot(startTime),
                     initialIsExtraSlot: isExtraSlotColumn,
                   ),
                 );
@@ -541,14 +621,22 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         out = out.where((a) => a.status == _statusFilter!).toList();
       }
     }
+    if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
+      out = out.where((a) => a.doctorId == _filterDoctorId).toList();
+    }
     out = out.where((a) => !a.appointmentDate.isBefore(weekStart) && !a.appointmentDate.isAfter(weekEnd)).toList();
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
+      final patientIdsByCode = cache.patients
+          .where((p) => (p.patientCode ?? '').toLowerCase().contains(q))
+          .map((p) => p.id)
+          .toSet();
       out = out.where((a) {
         final patientName = (cache.userName(a.patientId) ?? a.patientId).toLowerCase();
         final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId).toLowerCase();
         final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
-        return patientName.contains(q) || doctorName.contains(q) || serviceMatch;
+        final patientCodeMatch = patientIdsByCode.contains(a.patientId);
+        return patientCodeMatch || patientName.contains(q) || doctorName.contains(q) || serviceMatch;
       }).toList();
     }
     return out;
@@ -576,13 +664,21 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     } else if (_filterYear != null) {
       out = out.where((a) => a.appointmentDate.year == _filterYear).toList();
     }
+    if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
+      out = out.where((a) => a.doctorId == _filterDoctorId).toList();
+    }
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
+      final patientIdsByCode = cache.patients
+          .where((p) => (p.patientCode ?? '').toLowerCase().contains(q))
+          .map((p) => p.id)
+          .toSet();
       out = out.where((a) {
         final patientName = (cache.userName(a.patientId) ?? a.patientId).toLowerCase();
         final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId).toLowerCase();
         final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
-        return patientName.contains(q) || doctorName.contains(q) || serviceMatch;
+        final patientCodeMatch = patientIdsByCode.contains(a.patientId);
+        return patientCodeMatch || patientName.contains(q) || doctorName.contains(q) || serviceMatch;
       }).toList();
     }
     out.sort((a, b) {
@@ -669,8 +765,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     padding: const EdgeInsets.only(right: 6),
                     child: FilterChip(
                       label: Text(l10n.filterAll),
-                      selected: _statusFilter == null,
-                      onSelected: (_) => setState(() => _statusFilter = null),
+                      selected: _statusFilter == null && _filterDoctorId == null,
+                      onSelected: (_) => setState(() { _statusFilter = null; _filterDoctorId = null; }),
                     ),
                   ),
                   Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.pending), selected: _statusFilter == AppointmentStatus.pending, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.pending))),
@@ -721,6 +817,26 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         });
                         if (y != null) setState(() { _filterYear = y; _filterMonth = null; _filterDay = null; });
                       },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 180,
+                    child: DropdownButtonFormField<String?>(
+                      value: _filterDoctorId,
+                      decoration: InputDecoration(
+                        labelText: l10n.filterByDoctor,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      items: [
+                        DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
+                        ...cache.doctors.map((d) => DropdownMenuItem<String?>(
+                          value: d.id,
+                          child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
+                        )),
+                      ],
+                      onChanged: (v) => setState(() => _filterDoctorId = v),
                     ),
                   ),
                   Padding(

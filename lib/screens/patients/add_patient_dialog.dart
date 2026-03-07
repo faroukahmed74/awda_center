@@ -23,6 +23,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
   final _fullNameEnController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _ageController = TextEditingController();
   DateTime? _dateOfBirth;
   String? _gender; // 'male' | 'female' | null
   bool _loading = false;
@@ -34,6 +35,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
     _fullNameEnController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -50,12 +52,16 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
       _error = null;
     });
     try {
+      final ageStr = _ageController.text.trim();
+      final ageVal = ageStr.isEmpty ? null : int.tryParse(ageStr);
+      final age = ageVal != null && ageVal >= 0 && ageVal <= 150 ? ageVal : null;
       final uid = await FirestoreService().createPatientUser(
         fullNameAr: nameAr.isEmpty ? null : nameAr,
         fullNameEn: nameEn.isEmpty ? null : nameEn,
         phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
         email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
         dateOfBirth: _dateOfBirth != null ? toIsoDateString(_dateOfBirth!) : null,
+        age: age,
         gender: _gender,
       );
       final currentUserId = context.read<AuthProvider>().currentUser?.id;
@@ -158,6 +164,17 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
                 ),
                 const SizedBox(height: 8),
               ],
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _ageController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: l10n.age,
+                  hintText: '—',
+                  helperText: l10n.ageIfNoDateOfBirth,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String?>(
                 value: _gender,

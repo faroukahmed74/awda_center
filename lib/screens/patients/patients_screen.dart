@@ -56,7 +56,8 @@ class _PatientsScreenState extends State<PatientsScreen> {
             final name = u.displayName.toLowerCase();
             final email = u.email.toLowerCase();
             final phone = (u.phone ?? '').toLowerCase();
-            return name.contains(q) || email.contains(q) || phone.contains(q);
+            final code = (u.patientCode ?? '').toLowerCase();
+            return name.contains(q) || email.contains(q) || phone.contains(q) || code.contains(q);
           }).toList();
 
     final showLoading = cache.usersLoading && cache.patients.isEmpty;
@@ -104,7 +105,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 controller: _searchController,
                 focusNode: _searchFocusNode,
                 decoration: InputDecoration(
-                  hintText: l10n.search,
+                  hintText: l10n.searchByPatientCodeHint,
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   isDense: true,
@@ -142,11 +143,14 @@ class _PatientsScreenState extends State<PatientsScreen> {
                             itemCount: filtered.length,
                             itemBuilder: (context, i) {
                               final u = filtered[i];
+                              final subtitle = u.patientCode != null && u.patientCode!.isNotEmpty
+                                  ? '${u.email} • ${l10n.patientCode}: ${u.patientCode}'
+                                  : u.email;
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(
                                   title: Text(u.displayName),
-                                  subtitle: Text(u.email),
+                                  subtitle: Text(subtitle),
                                   onTap: () => context.push('/patients/${u.id}'),
                                 ),
                               );

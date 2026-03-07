@@ -59,12 +59,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> signIn(String email, String password) async {
+  /// [emailOrPatientCode] can be either email or the patient's ID code for patients.
+  Future<bool> signIn(String emailOrPatientCode, String password) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
-      final user = await _authService.signInWithEmailAndPassword(email, password);
+      final user = await _authService.signInWithEmailOrPatientCode(emailOrPatientCode, password);
       _currentUser = user;
       if (user != null && !user.isActive) {
         _error = AuthErrorKey.accountDeactivated;

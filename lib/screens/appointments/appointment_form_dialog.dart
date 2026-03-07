@@ -64,20 +64,11 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   bool _isStarred = false;
   String? _selectedPackageId;
   String? _errorMessage;
-  double? _discountPercent; // 0–100
   final _patientSearchController = TextEditingController();
   final _amountController = TextEditingController();
-  final _discountController = TextEditingController();
 
-  /// Amount after discount (for display and save).
-  double? get _amountAfterDiscount {
-    final base = _costAmount ?? double.tryParse(_amountController.text);
-    if (base == null) return null;
-    final pct = _discountPercent ?? double.tryParse(_discountController.text);
-    if (pct == null || pct <= 0) return base;
-    if (pct >= 100) return 0.0;
-    return base * (1 - pct / 100);
-  }
+  /// Amount to save (discount is set in session payment dialog, not here).
+  double? get _savedAmount => _costAmount ?? double.tryParse(_amountController.text.trim());
 
   /// Auto-fill amount from selected package or sum of selected services.
   void _updateAmountFromSelection() {
@@ -103,7 +94,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     return names;
   }
 
-  /// Patients filtered by name, email, or phone (partial, case-insensitive).
+  /// Patients filtered by name, email, phone, or patient code (partial, case-insensitive).
   List<UserModel> get _filteredPatients {
     final q = _patientSearchController.text.trim().toLowerCase();
     if (q.isEmpty) return widget.patients;
@@ -111,7 +102,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
       final name = p.displayName.toLowerCase();
       final email = p.email.toLowerCase();
       final phone = (p.phone ?? '').toLowerCase();
-      return name.contains(q) || email.contains(q) || phone.contains(q);
+      final code = (p.patientCode ?? '').toLowerCase();
+      return name.contains(q) || email.contains(q) || phone.contains(q) || code.contains(q);
     }).toList();
   }
 
@@ -140,7 +132,6 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     }
     _notes = e?.notes ?? '';
     _costAmount = e?.costAmount;
-    _discountPercent = e?.discountPercent;
     _selectedPackageId = e?.packageId;
     if (e != null && e.packageId != null && _selectedServiceIds.isEmpty && widget.packages.isNotEmpty) {
       for (final p in widget.packages) {
@@ -150,12 +141,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         }
       }
     }
-    if (e != null && e.costAmount != null && e.discountPercent != null && e.discountPercent! > 0 && e.discountPercent! < 100) {
-      _costAmount = e.costAmount! / (1 - e.discountPercent! / 100);
-    }
     if (e != null) {
       _amountController.text = _costAmount != null ? _costAmount!.toStringAsFixed(2) : '';
-      _discountController.text = _discountPercent != null ? _discountPercent!.toStringAsFixed(0) : '';
     } else {
       _updateAmountFromSelection();
     }
@@ -165,7 +152,6 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   void dispose() {
     _patientSearchController.dispose();
     _amountController.dispose();
-    _discountController.dispose();
     super.dispose();
   }
 
@@ -246,14 +232,17 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         'startTime': _startTime,
         'endTime': _endTime,
         'services': _selectedServicesDisplayNames,
-        'costAmount': _amountAfterDiscount,
-        'discountPercent': _discountPercent,
+        'costAmount': _savedAmount,
+        'discountPercent': null,
         'notes': _notes.isEmpty ? null : _notes,
         'isExtraSlot': _isExtraSlot,
         'isStarred': _isStarred,
         'packageId': _selectedPackageId,
       });
     } else {
+      final currentUser = context.read<AuthProvider>().currentUser;
+      final isPatient = currentUser?.hasRole(UserRole.patient) ?? true;
+      final initialStatus = isPatient ? AppointmentStatus.pending : AppointmentStatus.confirmed;
       final appointmentId = await fs.createAppointment(AppointmentModel(
         id: '',
         patientId: _patientId!,
@@ -262,9 +251,10 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         appointmentDate: _date,
         startTime: _startTime,
         endTime: _endTime,
+        status: initialStatus,
         services: _selectedServicesDisplayNames,
-        costAmount: _amountAfterDiscount,
-        discountPercent: _discountPercent,
+        costAmount: _savedAmount,
+        discountPercent: null,
         notes: _notes.isEmpty ? null : _notes,
         isExtraSlot: _isExtraSlot,
         isStarred: _isStarred,
@@ -314,7 +304,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
               controller: _patientSearchController,
               decoration: InputDecoration(
                 labelText: l10n.patient,
-                hintText: l10n.search,
+                hintText: l10n.searchByPatientCodeHint,
                 prefixIcon: const Icon(Icons.search, size: 20),
               ),
               onChanged: (_) => setState(() {}),
@@ -333,7 +323,10 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                   items: [
                     const DropdownMenuItem(value: null, child: Text('—')),
                     ...list.map((p) {
-                      final subtitle = p.phone != null && p.phone!.isNotEmpty ? ' • ${p.phone}' : '';
+                      var parts = <String>[];
+                      if (p.patientCode != null && p.patientCode!.isNotEmpty) parts.add(p.patientCode!);
+                      if (p.phone != null && p.phone!.isNotEmpty) parts.add(p.phone!);
+                      final subtitle = parts.isEmpty ? '' : ' • ${parts.join(' • ')}';
                       return DropdownMenuItem(value: p.id, child: Text('${p.displayName}$subtitle'));
                     }),
                   ],
@@ -510,27 +503,6 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                 setState(() {});
               },
             ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _discountController,
-              decoration: InputDecoration(
-                labelText: l10n.discountPercent,
-                hintText: '0',
-                suffixText: '%',
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: (v) {
-                _discountPercent = double.tryParse(v);
-                setState(() {});
-              },
-            ),
-            if (_amountAfterDiscount != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                '${l10n.amountAfterDiscount}: ${_amountAfterDiscount!.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            ],
             const SizedBox(height: 8),
             TextFormField(
               initialValue: _notes,
