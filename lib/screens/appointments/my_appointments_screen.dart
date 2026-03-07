@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 import 'patient_book_appointment_dialog.dart';
 
 class MyAppointmentsScreen extends StatefulWidget {
@@ -120,7 +121,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
     return _list.where((a) {
       final doctorName = (_doctorNames[a.doctorId] ?? a.doctorId).toLowerCase();
       final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
-      final dateStr = DateFormat.yMd().format(a.appointmentDate).toLowerCase();
+      final dateStr = AppDateFormat.shortDate.format(a.appointmentDate).toLowerCase();
       final timeStr = '${a.startTime}-${a.endTime}'.toLowerCase();
       return doctorName.contains(q) || serviceMatch || dateStr.contains(q) || timeStr.contains(q);
     }).toList();
@@ -244,7 +245,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                                 itemCount: _displayList().length,
                                 itemBuilder: (context, i) {
                                   final a = _displayList()[i];
-                        final dateStr = DateFormat.yMd().format(a.appointmentDate);
+                        final dateStr = AppDateFormat.shortDate.format(a.appointmentDate);
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
                           child: ListTile(

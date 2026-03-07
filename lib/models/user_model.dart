@@ -1,13 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_permissions.dart';
 
-enum UserRole { admin, doctor, patient, secretary, trainee }
+enum UserRole { admin, supervisor, doctor, patient, secretary, trainee }
 
 extension UserRoleExt on UserRole {
   String get value => name;
   static UserRole fromString(String? v) {
     switch (v?.toLowerCase()) {
       case 'admin': return UserRole.admin;
+      case 'supervisor': return UserRole.supervisor;
       case 'doctor': return UserRole.doctor;
       case 'patient': return UserRole.patient;
       case 'secretary': return UserRole.secretary;

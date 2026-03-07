@@ -5,6 +5,7 @@ import '../../models/patient_profile_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/storage_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 
 /// Add or edit a patient profile item: note (text), image (URL), or PDF (URL).
 /// Each item is stored with createdAt/updatedAt for ordering (newest first).
@@ -200,9 +201,9 @@ class _PatientDocumentDialogState extends State<PatientDocumentDialog> {
 /// Format date and time for display (newest first in list).
 String formatDocumentDateTime(DateTime? createdAt, DateTime? updatedAt, AppLocalizations l10n) {
   if (createdAt == null) return '';
-  final created = '${l10n.addedAt}: ${DateFormat.yMMMd().add_Hm().format(createdAt)}';
+  final created = '${l10n.addedAt}: ${AppDateFormat.shortDateTime.format(createdAt)}';
   if (updatedAt != null && updatedAt.isAfter(createdAt)) {
-    return '$created • ${l10n.updatedAt}: ${DateFormat.yMMMd().add_Hm().format(updatedAt)}';
+    return '$created • ${l10n.updatedAt}: ${AppDateFormat.shortDateTime.format(updatedAt)}';
   }
   return created;
 }

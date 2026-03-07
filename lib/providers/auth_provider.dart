@@ -43,14 +43,38 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> loadUserProfile() async {
+    final firebaseUser = _authService.currentUser;
+    if (firebaseUser == null) {
+      _currentUser = null;
+      _loading = false;
+      _error = null;
+      notifyListeners();
+      return;
+    }
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       _currentUser = await _authService.getCurrentUserProfile();
     } catch (e, st) {
-      _error = authErrorToMessageKey(e, st.toString());
-      _currentUser = null;
+      // Race: right after registration, auth state listener may run before Firestore doc is visible. Retry once.
+      if (_authService.currentUser != null) {
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        if (_authService.currentUser == null) {
+          _currentUser = null;
+          _error = authErrorToMessageKey(e, st.toString());
+        } else {
+          try {
+            _currentUser = await _authService.getCurrentUserProfile();
+          } catch (e2, _) {
+            _error = authErrorToMessageKey(e2, null);
+            _currentUser = null;
+          }
+        }
+      } else {
+        _error = authErrorToMessageKey(e, st.toString());
+        _currentUser = null;
+      }
     }
     _loading = false;
     notifyListeners();

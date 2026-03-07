@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 import 'package:provider/provider.dart';
 import '../../core/general_error_helper.dart';
 import '../../core/patient_date_utils.dart';
@@ -144,7 +145,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
                   ),
                   isEmpty: _dateOfBirth == null,
                   child: Text(
-                    _dateOfBirth != null ? DateFormat.yMMMd().format(_dateOfBirth!) : '',
+                    _dateOfBirth != null ? AppDateFormat.mediumDate().format(_dateOfBirth!) : '',
                     style: _dateOfBirth != null
                         ? null
                         : TextStyle(color: Theme.of(context).hintColor),

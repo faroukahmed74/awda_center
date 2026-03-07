@@ -17,6 +17,7 @@ import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 import 'appointment_form_dialog.dart';
 
 class AppointmentsScreen extends StatefulWidget {
@@ -397,7 +398,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              Text(DateFormat.yMMMd().format(_scheduleDate), style: Theme.of(context).textTheme.titleMedium),
+              Text(AppDateFormat.mediumDate().format(_scheduleDate), style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(width: 12),
               TextButton.icon(
                 icon: const Icon(Icons.calendar_today, size: 18),
@@ -912,7 +913,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                     _scheduleColorLegend(context, l10n),
                                     ...List.generate(displayList.length, (i) {
                                       final a = displayList[i];
-                                      final dateStr = DateFormat.yMd().format(a.appointmentDate);
+                                      final dateStr = AppDateFormat.shortDate.format(a.appointmentDate);
                                       final statusColor = _colorForStatus(a.status);
                                       final bgColor = statusColor?.withValues(alpha: 0.35) ?? Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface;
                                       final isFirstSession = firstSessionIds.contains(a.id);
@@ -971,9 +972,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                             source: 'Session',
                                             doctorId: a.doctorId,
                                             patientId: a.patientId,
-                                            notes: '${a.servicesDisplay.isNotEmpty ? a.servicesDisplay : 'Session'} • ${DateFormat.yMd().format(a.appointmentDate)} ${a.startTime}',
+                                            notes: '${a.servicesDisplay.isNotEmpty ? a.servicesDisplay : 'Session'} • ${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime}',
                                             recordedByUserId: auth.id,
                                             incomeDate: DateTime(a.appointmentDate.year, a.appointmentDate.month, a.appointmentDate.day),
+                                            appointmentId: a.id,
                                           );
                                           await _firestore.addIncomeRecord(income);
                                         }
@@ -998,10 +1000,29 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         _updateListAfterChange(a.id, newStatus: AppointmentStatus.absentWithoutCause);
                                         _logAppointmentAction(context, 'appointment_absent_without_cause', a, AppointmentStatus.absentWithoutCause);
                                         _notifyAppointmentStatusChange(a);
+                                      } else if (v == 'delete') {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: Text(l10n.deleteConfirm),
+                                            content: Text(l10n.deleteAppointmentAndIncomeConfirm),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
+                                              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.delete)),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm != true || !mounted) return;
+                                        await _firestore.deleteAppointment(a.id);
+                                        _logAppointmentAction(context, 'appointment_deleted', a, a.status);
+                                        if (mounted) setState(() => _list.removeWhere((x) => x.id == a.id));
+                                        _notifyAppointmentStatusChange(a);
                                       }
                                     },
                                     itemBuilder: (context) => [
                                       PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
+                                      if (auth.canAccessAdminDashboard)
+                                        PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
                                       if (a.status != AppointmentStatus.completed && a.status != AppointmentStatus.cancelled) ...[
                                         PopupMenuItem(value: 'confirmed', child: Text(l10n.confirmed)),
                                         PopupMenuItem(value: 'completed', child: Text(l10n.attended)),

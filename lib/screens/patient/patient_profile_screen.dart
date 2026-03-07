@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 import '../patients/patient_document_dialog.dart';
 import '../patients/document_viewer.dart';
 import '../patients/patient_profile_edit_dialog.dart';
@@ -271,7 +272,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           children: rows.map((r) => Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
-                              title: Text(DateFormat.yMd().format(r.date)),
+                              title: Text(AppDateFormat.shortDate.format(r.date)),
                               subtitle: Text('${r.startTime} - ${r.endTime} ${r.service ?? ''}${r.statusLabel != null ? ' • ${r.statusLabel}' : ''}'),
                             ),
                           )).toList(),

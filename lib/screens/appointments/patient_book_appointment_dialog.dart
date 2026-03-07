@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 import 'package:provider/provider.dart';
 import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
@@ -130,7 +131,7 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
                       ),
                       const SizedBox(height: 12),
                       ListTile(
-                        title: Text(DateFormat.yMd().format(_date)),
+                        title: Text(AppDateFormat.shortDate.format(_date)),
                         subtitle: Text(l10n.date),
                         onTap: () async {
                           final d = await showDatePicker(

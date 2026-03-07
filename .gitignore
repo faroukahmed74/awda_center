@@ -51,3 +51,8 @@ app.*.map.json
 # iOS/Android Firebase config — contain API keys; do not commit
 ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
+# Firebase deploy cache
+.firebase/
+
+# Local/test files
+test_arabic.pdf

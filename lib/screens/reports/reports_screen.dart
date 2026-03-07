@@ -13,6 +13,7 @@ import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 
 import 'report_file_io_stub.dart' if (dart.library.io) 'report_file_io.dart' as report_io;
 
@@ -83,9 +84,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   String _periodLabel() {
-    if (_period == 'day') return DateFormat.yMd().format(_selectedDate);
-    if (_period == 'month') return DateFormat.yMMM().format(DateTime(_selectedDate.year, _selectedDate.month, 1));
-    return DateFormat.y().format(DateTime(_selectedDate.year, 1, 1));
+    if (_period == 'day') return AppDateFormat.shortDate.format(_selectedDate);
+    if (_period == 'month') return AppDateFormat.monthYear().format(DateTime(_selectedDate.year, _selectedDate.month, 1));
+    return AppDateFormat.yearOnly.format(DateTime(_selectedDate.year, 1, 1));
   }
 
   Future<void> _pickPeriod(BuildContext context) async {
@@ -182,12 +183,12 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final sb = StringBuffer();
     sb.writeln('Date,Type,Amount,Source/Category,Notes');
     for (final r in income) {
-      sb.writeln('${DateFormat.yMd().format(r.incomeDate)},Income,${r.amount},${r.source},${r.notes ?? ''}');
+      sb.writeln('${AppDateFormat.shortDate.format(r.incomeDate)},Income,${r.amount},${r.source},${r.notes ?? ''}');
     }
     for (final r in expense) {
-      sb.writeln('${DateFormat.yMd().format(r.expenseDate)},Expense,${r.amount},${r.category},${r.description ?? ''}');
+      sb.writeln('${AppDateFormat.shortDate.format(r.expenseDate)},Expense,${r.amount},${r.category},${r.description ?? ''}');
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportIncomeExpense} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}', sharePositionOrigin: sharePositionOrigin);
+    await Share.share(sb.toString(), subject: '${l10n.exportIncomeExpense} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}', sharePositionOrigin: sharePositionOrigin);
   }
 
   Future<void> _exportAppointments(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
@@ -196,9 +197,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final sb = StringBuffer();
     sb.writeln('Date,Start,End,PatientId,DoctorId,Status,Service');
     for (final a in appointments) {
-      sb.writeln('${DateFormat.yMd().format(a.appointmentDate)},${a.startTime},${a.endTime},${a.patientId},${a.doctorId},${a.status.value},${a.servicesDisplay}');
+      sb.writeln('${AppDateFormat.shortDate.format(a.appointmentDate)},${a.startTime},${a.endTime},${a.patientId},${a.doctorId},${a.status.value},${a.servicesDisplay}');
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportAppointments} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}', sharePositionOrigin: sharePositionOrigin);
+    await Share.share(sb.toString(), subject: '${l10n.exportAppointments} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}', sharePositionOrigin: sharePositionOrigin);
   }
 
   Future<void> _exportPatients(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
@@ -211,7 +212,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       final u = await _firestore.getUser(id);
       sb.writeln('$id,${u?.displayName ?? id}');
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportPatients} ${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}', sharePositionOrigin: sharePositionOrigin);
+    await Share.share(sb.toString(), subject: '${l10n.exportPatients} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}', sharePositionOrigin: sharePositionOrigin);
   }
 
   Future<void> _exportUsers(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
@@ -230,7 +231,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     sb.writeln('CreatedAt,Action,EntityType,EntityId,UserId,UserEmail,Details');
     for (final e in logs) {
       final details = e.details != null ? e.details!.toString().replaceAll(',', ';') : '';
-      sb.writeln('${e.createdAt != null ? DateFormat.yMd().add_Hms().format(e.createdAt!) : ''},${e.action},${e.entityType},${e.entityId ?? ''},${e.userId},${e.userEmail ?? ''},$details');
+      sb.writeln('${e.createdAt != null ? AppDateFormat.shortDateTimeSec.format(e.createdAt!) : ''},${e.action},${e.entityType},${e.entityId ?? ''},${e.userId},${e.userEmail ?? ''},$details');
     }
     await Share.share(sb.toString(), subject: l10n.exportAuditLog, sharePositionOrigin: sharePositionOrigin);
   }
@@ -250,7 +251,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   Future<void> _exportCurrentAsPdf(AppLocalizations l10n, Rect? shareOrigin) async {
     final (from, to) = _range();
-    final periodLabel = '${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}';
+    final periodLabel = '${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}';
     // Use a static TTF (Amiri) for Arabic; dart_pdf does not support variable fonts.
     pw.ThemeData? pdfTheme;
     try {
@@ -290,13 +291,13 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           pw.Text(l10n.income, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
             pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.source)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.amount))]),
-            ..._income.map((r) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(r.source)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(DateFormat.yMd().format(r.incomeDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(NumberFormat.currency(symbol: '').format(r.amount)))])),
+            ..._income.map((r) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(r.source)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(AppDateFormat.shortDate.format(r.incomeDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(NumberFormat.currency(symbol: '').format(r.amount)))])),
           ]),
           pw.SizedBox(height: 12),
           pw.Text(l10n.expenses, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
             pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.category)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.amount))]),
-            ..._expenses.map((r) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(r.category)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(DateFormat.yMd().format(r.expenseDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(NumberFormat.currency(symbol: '').format(r.amount)))])),
+            ..._expenses.map((r) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(r.category)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(AppDateFormat.shortDate.format(r.expenseDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(NumberFormat.currency(symbol: '').format(r.amount)))])),
           ]),
         ],
       ));
@@ -309,7 +310,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           pw.SizedBox(height: 8),
           pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(1), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(1)}, children: [
             pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.time)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.status)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.service))]),
-            ..._appointments.take(100).map((a) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(DateFormat.yMd().format(a.appointmentDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('${a.startTime}-${a.endTime}')), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(_statusLabel(a.status.value, l10n))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(a.servicesDisplay))])),
+            ..._appointments.take(100).map((a) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(AppDateFormat.shortDate.format(a.appointmentDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('${a.startTime}-${a.endTime}')), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(_statusLabel(a.status.value, l10n))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(a.servicesDisplay))])),
           ]),
         ],
       ));
@@ -339,7 +340,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   Future<void> _exportCurrentAsExcel(AppLocalizations l10n, Rect? shareOrigin) async {
     final (from, to) = _range();
-    final periodLabel = '${DateFormat.yMd().format(from)} - ${DateFormat.yMd().format(to)}';
+    final periodLabel = '${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}';
     final excel = Excel.createExcel();
     final sheet = excel['Sheet1'];
     final int tabIndex = _tabController.index;
@@ -358,17 +359,17 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       sheet.appendRow([]);
       sheet.appendRow([TextCellValue(l10n.income)]);
       sheet.appendRow([TextCellValue(l10n.source), TextCellValue(l10n.date), TextCellValue(l10n.amount)]);
-      for (final r in _income) sheet.appendRow([TextCellValue(r.source), TextCellValue(DateFormat.yMd().format(r.incomeDate)), TextCellValue(r.amount.toString())]);
+      for (final r in _income) sheet.appendRow([TextCellValue(r.source), TextCellValue(AppDateFormat.shortDate.format(r.incomeDate)), TextCellValue(r.amount.toString())]);
       sheet.appendRow([]);
       sheet.appendRow([TextCellValue(l10n.expenses)]);
       sheet.appendRow([TextCellValue(l10n.category), TextCellValue(l10n.date), TextCellValue(l10n.amount)]);
-      for (final r in _expenses) sheet.appendRow([TextCellValue(r.category), TextCellValue(DateFormat.yMd().format(r.expenseDate)), TextCellValue(r.amount.toString())]);
+      for (final r in _expenses) sheet.appendRow([TextCellValue(r.category), TextCellValue(AppDateFormat.shortDate.format(r.expenseDate)), TextCellValue(r.amount.toString())]);
     } else if (tabIndex == 2) {
       sheet.appendRow([TextCellValue(l10n.appointmentsReport), TextCellValue(periodLabel)]);
       sheet.appendRow([TextCellValue(l10n.date), TextCellValue(l10n.time), TextCellValue(l10n.status), TextCellValue(l10n.service)]);
       for (final a in _appointments) {
         sheet.appendRow([
-          TextCellValue(DateFormat.yMd().format(a.appointmentDate)),
+          TextCellValue(AppDateFormat.shortDate.format(a.appointmentDate)),
           TextCellValue('${a.startTime} - ${a.endTime}'),
           TextCellValue(_statusLabel(a.status.value, l10n)),
           TextCellValue(a.servicesDisplay),
@@ -568,7 +569,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               ..._income.map((r) => Card(
                     child: ListTile(
                       title: Text(r.source),
-                      subtitle: Text(DateFormat.yMd().format(r.incomeDate)),
+                      subtitle: Text(AppDateFormat.shortDate.format(r.incomeDate)),
                       trailing: Text(NumberFormat.currency(symbol: '').format(r.amount)),
                     ),
                   )),
@@ -580,7 +581,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               ..._expenses.map((r) => Card(
                     child: ListTile(
                       title: Text(r.category == 'Salary' && r.recipientName != null && r.recipientName!.isNotEmpty ? 'Salary – ${r.recipientName}' : r.category),
-                      subtitle: Text(DateFormat.yMd().format(r.expenseDate)),
+                      subtitle: Text(AppDateFormat.shortDate.format(r.expenseDate)),
                       trailing: Text(NumberFormat.currency(symbol: '').format(r.amount)),
                     ),
                   )),
@@ -631,7 +632,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               ..._appointments.take(50).map((a) => Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      title: Text(DateFormat.yMd().format(a.appointmentDate)),
+                      title: Text(AppDateFormat.shortDate.format(a.appointmentDate)),
                       subtitle: Text('${a.startTime} - ${a.endTime} • ${_statusLabel(a.status.value, l10n)} ${a.hasServices ? '• ${a.servicesDisplay}' : ''}'),
                       trailing: Text(a.status.value),
                     ),
@@ -728,7 +729,7 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
             value: _month,
             isExpanded: true,
             items: List.generate(12, (i) => i + 1)
-                .map((m) => DropdownMenuItem(value: m, child: Text(DateFormat.MMMM().format(DateTime(2000, m)))))
+                .map((m) => DropdownMenuItem(value: m, child: Text(AppDateFormat.monthName().format(DateTime(2000, m)))))
                 .toList(),
             onChanged: (v) => setState(() => _month = v ?? _month),
           ),

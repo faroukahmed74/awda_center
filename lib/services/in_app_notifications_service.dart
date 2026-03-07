@@ -1,5 +1,4 @@
-import 'package:intl/intl.dart' hide TextDirection;
-
+import '../core/date_format.dart';
 import '../models/admin_todo_model.dart';
 import '../models/app_notification.dart';
 import '../models/appointment_model.dart';
@@ -104,7 +103,7 @@ class InAppNotificationsService {
       if (!isPatient && !isDoctor && !hasAppointmentsAccess) continue;
 
       final time = log.createdAt ?? appointment.updatedAt ?? appointment.appointmentDate;
-      final dateStr = DateFormat.yMMMd().format(appointment.appointmentDate);
+      final dateStr = AppDateFormat.mediumDate().format(appointment.appointmentDate);
       final timeStr = '${appointment.startTime} - ${appointment.endTime}';
       final title = _appointmentActionLabel(log.action);
       result.add(AppNotification(
@@ -151,7 +150,7 @@ class InAppNotificationsService {
       return a.startTime.compareTo(b.startTime);
     });
     return filtered.map((a) {
-      final dateStr = DateFormat.yMMMd().format(a.appointmentDate);
+      final dateStr = AppDateFormat.mediumDate().format(a.appointmentDate);
       final timeStr = '${a.startTime} - ${a.endTime}';
       // Use when the appointment was created/updated for the "when" line, not the scheduled date
       final when = a.updatedAt ?? a.createdAt ?? a.appointmentDate;
@@ -210,7 +209,7 @@ class InAppNotificationsService {
   List<AppNotification> _todosToNotifications(List<AdminTodoModel> todos) {
     return todos.map((t) {
       final due = t.dueDate != null
-          ? ' · ${DateFormat.yMMMd().format(t.dueDate!)}'
+          ? ' · ${AppDateFormat.mediumDate().format(t.dueDate!)}'
           : '';
       return AppNotification(
         id: 'todo_${t.id}',

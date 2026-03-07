@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 
+import '../core/date_format.dart';
 import '../core/responsive.dart';
 import '../core/general_error_helper.dart';
 import '../l10n/app_localizations.dart';
@@ -237,7 +237,7 @@ class _NotificationTile extends StatelessWidget {
         break;
     }
     final localTime = notification.time.isUtc ? notification.time.toLocal() : notification.time;
-    final timeStr = DateFormat.MMMd().add_Hm().format(localTime);
+    final timeStr = AppDateFormat.shortDateTime.format(localTime);
 
     return InkWell(
       onTap: onTap,

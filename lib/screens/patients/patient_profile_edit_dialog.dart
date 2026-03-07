@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 import '../../core/patient_date_utils.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
@@ -144,7 +145,7 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
             ),
             isEmpty: _dateOfBirth == null,
             child: Text(
-              _dateOfBirth != null ? DateFormat.yMMMd().format(_dateOfBirth!) : '',
+              _dateOfBirth != null ? AppDateFormat.mediumDate().format(_dateOfBirth!) : '',
               style: _dateOfBirth != null ? null : TextStyle(color: Theme.of(context).hintColor),
             ),
           ),

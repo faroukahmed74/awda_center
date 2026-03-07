@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 import '../../core/responsive.dart';
 import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
@@ -292,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: rows.map((r) => Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  title: Text(DateFormat.yMd().format(r.date)),
+                  title: Text(AppDateFormat.shortDate.format(r.date)),
                   subtitle: Text('${r.startTime} - ${r.endTime} ${r.service ?? ''}${r.statusLabel != null ? ' • ${r.statusLabel}' : ''}'),
                 ),
               )).toList(),

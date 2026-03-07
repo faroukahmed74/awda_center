@@ -9,9 +9,11 @@ import '../../models/income_expense_models.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_cache_provider.dart';
+import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 
 class IncomeExpensesScreen extends StatefulWidget {
   const IncomeExpensesScreen({super.key});
@@ -59,6 +61,13 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         return source.contains(q) || notes.contains(q) || amountStr.contains(q);
       }).toList();
     }
+    out.sort((a, b) {
+      final byDate = b.incomeDate.compareTo(a.incomeDate);
+      if (byDate != 0) return byDate;
+      final at = a.createdAt ?? a.incomeDate;
+      final bt = b.createdAt ?? b.incomeDate;
+      return bt.compareTo(at);
+    });
     return out;
   }
 
@@ -85,6 +94,13 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         return category.contains(q) || desc.contains(q) || amountStr.contains(q) || recipient.contains(q);
       }).toList();
     }
+    out.sort((a, b) {
+      final byDate = b.expenseDate.compareTo(a.expenseDate);
+      if (byDate != 0) return byDate;
+      final at = a.createdAt ?? a.expenseDate;
+      final bt = b.createdAt ?? b.expenseDate;
+      return bt.compareTo(at);
+    });
     return out;
   }
 
@@ -226,7 +242,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                             ),
                             const SizedBox(width: 8),
                             FilterChip(
-                              label: Text(l10n.filterDay),
+                              label: Text(_filterDay != null ? '${l10n.filterDay}: ${AppDateFormat.shortDate.format(_filterDay!)}' : l10n.filterDay),
                               selected: _filterDay != null,
                               onSelected: (_) async {
                                 if (_filterDay != null) {
@@ -248,7 +264,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                             ),
                             const SizedBox(width: 8),
                             FilterChip(
-                              label: Text(l10n.filterMonth),
+                              label: Text(_filterMonth != null && _filterYear != null ? '${l10n.filterMonth}: ${AppDateFormat.monthYear(l10n.isArabic ? 'ar' : 'en').format(DateTime(_filterYear!, _filterMonth!))}' : l10n.filterMonth),
                               selected: _filterMonth != null && _filterYear != null,
                               onSelected: (_) async {
                                 if (_filterMonth != null && _filterYear != null) {
@@ -271,7 +287,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                             ),
                             const SizedBox(width: 8),
                             FilterChip(
-                              label: Text(l10n.filterYear),
+                              label: Text(_filterYear != null && _filterMonth == null ? '${l10n.filterYear}: $_filterYear' : l10n.filterYear),
                               selected: _filterYear != null && _filterMonth == null,
                               onSelected: (_) async {
                                 if (_filterYear != null && _filterMonth == null) {
@@ -506,7 +522,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 6),
-                                    Text('${l10n.date}: ${DateFormat.yMd().format(r.incomeDate)}', style: Theme.of(context).textTheme.bodySmall),
+                                    Text('${l10n.date}: ${AppDateFormat.shortDateTime.format(r.incomeDate)}', style: Theme.of(context).textTheme.bodySmall),
                                     if (r.notes != null && r.notes!.isNotEmpty)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 4),
@@ -563,7 +579,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 6),
-                                    Text('${l10n.date}: ${DateFormat.yMd().format(r.expenseDate)}', style: Theme.of(context).textTheme.bodySmall),
+                                    Text('${l10n.date}: ${AppDateFormat.shortDateTime.format(r.expenseDate)}', style: Theme.of(context).textTheme.bodySmall),
                                     if (r.paidByDoctorId != null && r.paidByDoctorId!.isNotEmpty)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 2),
@@ -627,7 +643,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                 ),
                 const SizedBox(height: 8),
                 ListTile(
-                  title: Text(DateFormat.yMd().format(selectedDate)),
+                  title: Text(AppDateFormat.shortDate.format(selectedDate)),
                   onTap: () async {
                     final d = await showDatePicker(context: ctx, initialDate: selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
                     if (d != null) setState(() => selectedDate = d);
@@ -649,6 +665,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   recordedByUserId: uid,
                   incomeDate: selectedDate,
                 ));
+                final u = ctx.read<AuthProvider>().currentUser;
+                if (u != null) AuditService.log(action: 'income_added', entityType: 'income_record', userId: u.id, userEmail: u.email, details: {'amount': amount, 'source': sourceController.text.trim()});
                 if (ctx.mounted) Navigator.pop(ctx);
               },
               child: Text(l10n.save),
@@ -699,7 +717,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                 ),
                 const SizedBox(height: 8),
                 ListTile(
-                  title: Text(DateFormat.yMd().format(selectedDate)),
+                  title: Text(AppDateFormat.shortDate.format(selectedDate)),
                   onTap: () async {
                     final d = await showDatePicker(context: ctx, initialDate: selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
                     if (d != null) setState(() => selectedDate = d);
@@ -743,10 +761,14 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         ],
       ),
     );
-    if (confirmed == true) await _firestore.deleteIncomeRecord(r.id);
+    if (confirmed == true) {
+      await _firestore.deleteIncomeRecord(r.id);
+      final u = context.read<AuthProvider>().currentUser;
+      if (u != null) AuditService.log(action: 'income_deleted', entityType: 'income_record', entityId: r.id, userId: u.id, userEmail: u.email, details: {'amount': r.amount, 'source': r.source});
+    }
   }
 
-  static const List<String> _expenseCategories = ['Salary', 'Rent', 'Utilities', 'Supplies', 'Equipment', 'Other'];
+  static const List<String> _expenseCategories = ['Salary', 'Rent', 'Supplies', 'Media', 'Other'];
 
   Future<void> _showAddExpense(BuildContext context, String? uid, AppLocalizations l10n) async {
     final amountController = TextEditingController();
@@ -820,7 +842,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                 ),
                 const SizedBox(height: 8),
                 ListTile(
-                  title: Text(DateFormat.yMd().format(selectedDate)),
+                  title: Text(AppDateFormat.shortDate.format(selectedDate)),
                   onTap: () async {
                     final d = await showDatePicker(context: ctx, initialDate: selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
                     if (d != null) setState(() => selectedDate = d);
@@ -847,6 +869,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   recordedByUserId: uid,
                   expenseDate: selectedDate,
                 ));
+                final u = ctx.read<AuthProvider>().currentUser;
+                if (u != null) AuditService.log(action: 'expense_added', entityType: 'expense_record', userId: u.id, userEmail: u.email, details: {'amount': amount, 'category': category});
                 if (ctx.mounted) Navigator.pop(ctx);
               },
               child: Text(l10n.save),
@@ -937,7 +961,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   ),
                   const SizedBox(height: 8),
                   ListTile(
-                    title: Text(DateFormat.yMd().format(selectedDate)),
+                    title: Text(AppDateFormat.shortDate.format(selectedDate)),
                     onTap: () async {
                       final d = await showDatePicker(context: ctx, initialDate: selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
                       if (d != null) setState(() => selectedDate = d);
@@ -985,6 +1009,10 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         ],
       ),
     );
-    if (confirmed == true) await _firestore.deleteExpenseRecord(r.id);
+    if (confirmed == true) {
+      await _firestore.deleteExpenseRecord(r.id);
+      final u = context.read<AuthProvider>().currentUser;
+      if (u != null) AuditService.log(action: 'expense_deleted', entityType: 'expense_record', entityId: r.id, userId: u.id, userEmail: u.email, details: {'amount': r.amount, 'category': r.category});
+    }
   }
 }

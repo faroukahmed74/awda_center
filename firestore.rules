@@ -20,6 +20,10 @@ service cloud.firestore {
       return isAuth() && hasRole('admin');
     }
 
+    function isSupervisor() {
+      return isAuth() && hasRole('supervisor');
+    }
+
     function isSecretary() {
       return isAuth() && hasRole('secretary');
     }
@@ -136,10 +140,10 @@ service cloud.firestore {
       allow read, write: if isAdmin() || isSecretary();
     }
 
-    // audit_log: authenticated can create; admin can read
+    // audit_log: authenticated can create; admin and supervisor can read
     match /audit_log/{logId} {
       allow create: if isAuth();
-      allow read: if isAdmin();
+      allow read: if isAdmin() || isSupervisor();
       allow update, delete: if false;
     }
 

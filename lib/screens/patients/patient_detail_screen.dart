@@ -16,6 +16,7 @@ import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import '../appointments/appointment_form_dialog.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 import 'patient_profile_edit_dialog.dart';
 import 'patient_document_dialog.dart';
 import 'document_viewer.dart';
@@ -168,7 +169,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
               () {
                 final dob = _profile!.dateOfBirth!;
                 final parsed = parseDateOfBirth(dob);
-                final dateStr = parsed != null ? DateFormat.yMMMd().format(parsed) : dob;
+                final dateStr = parsed != null ? AppDateFormat.mediumDate().format(parsed) : dob;
                 final age = ageFromDateOfBirth(dob);
                 return '${l10n.date}: $dateStr${age != null ? ' (${l10n.age}: $age ${l10n.yearsOld})' : ''}';
               }(),
@@ -370,7 +371,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                               children: rows.map((r) => Card(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(
-                                  title: Text(DateFormat.yMd().format(r.date)),
+                                  title: Text(AppDateFormat.shortDate.format(r.date)),
                                   subtitle: Text([
                                     '${r.startTime} - ${r.endTime}',
                                     if (r.service != null && r.service!.isNotEmpty) r.service,

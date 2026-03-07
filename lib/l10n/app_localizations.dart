@@ -93,6 +93,7 @@ class AppLocalizations {
   String get filterAll => _map['filterAll']!;
   String get allRoles => _map['allRoles']!;
   String get admin => _map['admin']!;
+  String get supervisor => _map['supervisor']!;
   String get secretary => _map['secretary']!;
   String get trainee => _map['trainee']!;
   String get pending => _map['pending']!;
@@ -242,10 +243,14 @@ class AppLocalizations {
   String get packageCompleted => _map['packageCompleted']!;
   String get delete => _map['delete']!;
   String get deleteConfirm => _map['deleteConfirm']!;
+  String get deleteAppointmentAndIncomeConfirm => _map['deleteAppointmentAndIncomeConfirm']!;
   String get confirmAction => _map['confirmAction']!;
   String get quantity => _map['quantity']!;
   String get address => _map['address']!;
   String get auditLog => _map['auditLog']!;
+  String get auditWho => _map['auditWho']!;
+  String get auditWhen => _map['auditWhen']!;
+  String get auditAction => _map['auditAction']!;
   String get export => _map['export']!;
   String get exportIncomeExpense => _map['exportIncomeExpense']!;
   String get exportAppointments => _map['exportAppointments']!;
@@ -368,6 +373,7 @@ class AppLocalizations {
     'filterAll': 'All',
     'allRoles': 'All roles',
     'admin': 'Admin',
+    'supervisor': 'Supervisor',
     'secretary': 'Secretary',
     'trainee': 'Trainee',
     'pending': 'Pending',
@@ -520,10 +526,14 @@ class AppLocalizations {
     'packageCompleted': 'Package completed (all sessions done)',
     'delete': 'Delete',
     'deleteConfirm': 'Delete?',
+    'deleteAppointmentAndIncomeConfirm': 'Delete this appointment? Any session income linked to it will be removed.',
     'confirmAction': 'Confirm',
     'quantity': 'Quantity',
     'address': 'Address',
     'auditLog': 'Audit log',
+    'auditWho': 'Who',
+    'auditWhen': 'When',
+    'auditAction': 'Action',
     'export': 'Export',
     'exportIncomeExpense': 'Export income & expense',
     'exportAppointments': 'Export appointments',
@@ -650,6 +660,7 @@ class AppLocalizations {
     'filterAll': 'الكل',
     'allRoles': 'جميع الأدوار',
     'admin': 'مدير',
+    'supervisor': 'مشرف',
     'secretary': 'سكرتير',
     'trainee': 'متدرب',
     'pending': 'قيد الانتظار',
@@ -802,10 +813,14 @@ class AppLocalizations {
     'packageCompleted': 'تم إكمال الباقة (جميع الجلسات)',
     'delete': 'حذف',
     'deleteConfirm': 'حذف؟',
+    'deleteAppointmentAndIncomeConfirm': 'حذف هذا الموعد؟ سيتم إزالة أي إيراد مرتبط بالجلسة.',
     'confirmAction': 'تأكيد',
     'quantity': 'الكمية',
     'address': 'العنوان',
     'auditLog': 'سجل التدقيق',
+    'auditWho': 'من',
+    'auditWhen': 'متى',
+    'auditAction': 'الإجراء',
     'export': 'تصدير',
     'exportIncomeExpense': 'تصدير الإيرادات والمصروفات',
     'exportAppointments': 'تصدير المواعيد',

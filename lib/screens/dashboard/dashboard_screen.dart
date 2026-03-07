@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/app_logo.dart';
+import '../../core/date_format.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
@@ -683,7 +684,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                     : isDoctor
                         ? (_names[a.patientId] ?? a.patientId)
                         : '${_names[a.patientId] ?? a.patientId} • ${_names[a.doctorId] ?? a.doctorId}';
-                final subtitle = '${DateFormat.yMd().format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}';
+                final subtitle = '${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}';
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: ListTile(

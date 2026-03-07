@@ -280,6 +280,18 @@ class FirestoreService {
     });
   }
 
+  /// Deletes an appointment and any income records linked to it (session income). Admin only.
+  Future<void> deleteAppointment(String appointmentId) async {
+    final incomeSnap = await _firestore
+        .collection('income_records')
+        .where('appointmentId', isEqualTo: appointmentId)
+        .get();
+    for (final doc in incomeSnap.docs) {
+      await doc.reference.delete();
+    }
+    await _firestore.collection('appointments').doc(appointmentId).delete();
+  }
+
   // Sessions (for a patient)
   Future<List<SessionModel>> getSessionsForPatient(String patientId) async {
     final snapshot = await _firestore

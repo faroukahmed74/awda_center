@@ -9,6 +9,7 @@ import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
 import '../../services/notification_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/date_format.dart';
 
 /// Admin to-do list with due date and reminder. Reschedules local reminders on change.
 class AdminTodosScreen extends StatefulWidget {
@@ -62,14 +63,14 @@ class _AdminTodosScreenState extends State<AdminTodosScreen> {
                 TextField(controller: description, decoration: InputDecoration(labelText: l10n.description), maxLines: 2),
                 const SizedBox(height: 8),
                 ListTile(
-                  title: Text(dueDate == null ? l10n.dueDate : DateFormat.yMd().format(dueDate!)),
+                  title: Text(dueDate == null ? l10n.dueDate : AppDateFormat.shortDate.format(dueDate!)),
                   onTap: () async {
                     final d = await showDatePicker(context: ctx, initialDate: dueDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
                     if (d != null) setState(() => dueDate = d);
                   },
                 ),
                 ListTile(
-                  title: Text(reminderAt == null ? l10n.reminder : DateFormat.yMd().add_Hm().format(reminderAt!)),
+                  title: Text(reminderAt == null ? l10n.reminder : AppDateFormat.shortDateTime.format(reminderAt!)),
                   onTap: () async {
                     final d = await showDatePicker(context: ctx, initialDate: reminderAt ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
                     if (d != null && ctx.mounted) {
@@ -183,8 +184,8 @@ class _AdminTodosScreenState extends State<AdminTodosScreen> {
                                 style: t.completed ? TextStyle(decoration: TextDecoration.lineThrough) : null,
                               ),
                               subtitle: Text([
-                                if (t.dueDate != null) '${l10n.dueDate}: ${DateFormat.yMd().format(t.dueDate!)}',
-                                if (t.reminderAt != null) '${l10n.reminder}: ${DateFormat.yMd().add_Hm().format(t.reminderAt!)}',
+                                if (t.dueDate != null) '${l10n.dueDate}: ${AppDateFormat.shortDate.format(t.dueDate!)}',
+                                if (t.reminderAt != null) '${l10n.reminder}: ${AppDateFormat.shortDateTime.format(t.reminderAt!)}',
                                 t.description,
                               ].where((e) => e != null && e.toString().isNotEmpty).join(' • ')),
                               trailing: IconButton(

@@ -39,6 +39,8 @@ List<String> defaultFeaturesForRole(String roleValue) {
   switch (roleValue) {
     case 'admin':
       return List.from(kAllFeatureKeys);
+    case 'supervisor':
+      return ['admin_dashboard', 'users', 'appointments', 'patients', 'income_expenses', 'reports'];
     case 'secretary':
       return ['users', 'appointments', 'reports'];
     case 'doctor':
