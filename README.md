@@ -1,6 +1,8 @@
 # Awda Center — عودة للعلاج الطبيعي
 
-A Flutter app for a physical therapy clinic: appointments, patient profiles, sessions, income/expenses, and multi-role users. Single codebase for **Web**, **Android**, **iOS**, and **Windows**. Backend: **Firebase** (Auth, Firestore, Storage, Messaging).
+A Flutter app for a physical therapy clinic: appointments, patient profiles, sessions, income/expenses, finance summary, and multi-role users. Single codebase for **Web**, **Android**, **iOS**, and **Windows**. Backend: **Firebase** (Auth, Firestore, Storage, Messaging).
+
+**Version 1.0.7** — Finance summary PDF with Arabic/English and **Arabic letter shaping** (correct joining in PDF); PDF and Excel reports on all platforms (web download, mobile share); colored report PDFs; light/dark mode and full localization on all screens.
 
 ---
 
@@ -29,7 +31,8 @@ Role-based dashboards and navigation. Admins can grant **per-feature privileges*
 | Patients | Patient list and search (cached); add patient (create user + profile) |
 | Patient detail | Profile, documents (images open full-screen), sessions, appointments |
 | Income & expenses | **Full details** per income (source, amount, date, notes, doctor/patient names) and expense (category, amount, date, description, recipient); **edit** and **delete** any record; summaries by day/month/year; filter and search |
-| Reports | Clinic reports; filters by day/month/year; export (PDF, Excel, share) |
+| Finance summary | Income per doctor, 30% target, bonus, commission % (slice-based), consumables/media, rent, receptionist; NET, MANG, BASKET, profit; commission table by income range; **PDF report** (download/share on all platforms); **Arabic** and **English** in PDF with Amiri font and **Arabic reshaper** for correct letter joining |
+| Reports | Clinic reports; filters by day/month/year; **PDF** and **Excel** export (download on web, share on mobile); **colored PDFs**; responsive layout; export current tab as PDF from app bar |
 | Requirements | Center requirements (e.g. compliance) |
 | Admin todos | Admin task list with reminders |
 | Rooms | Room management |
@@ -42,11 +45,11 @@ Role-based dashboards and navigation. Admins can grant **per-feature privileges*
 | Notifications (app bar) | Bell icon on all main screens; role-based list (upcoming appointments, audit entries for admins, open todos); responsive panel (dialog on desktop, bottom sheet on mobile) |
 
 ### Internationalization (i18n)
-- **Arabic** and **English** with RTL support for Arabic.
+- **Arabic** and **English** on all screens; RTL support for Arabic. Finance summary and reports PDFs use Arabic font (Amiri) and an in-app **Arabic reshaper** (presentation forms) so Arabic text renders with correct letter joining in PDFs.
 - Language choice persisted; app restarts with selected locale.
 
 ### Theme
-- **Light** and **dark** mode; preference persisted.
+- **Light** and **dark** mode across the app; preference persisted.
 
 ### Responsive layout
 - Layout adapts to phone, tablet, and desktop (constrained width on large screens, responsive padding, two-column admin dashboard on desktop). Notifications panel and list tiles scale for all screen sizes.
@@ -304,6 +307,7 @@ lib/
 ├── core/
 │   ├── app_logo.dart
 │   ├── app_permissions.dart  # Feature keys and role defaults
+│   ├── arabic_pdf_reshaper.dart  # Arabic presentation forms for PDF (letter joining)
 │   └── responsive.dart       # Breakpoints, responsive padding
 ├── l10n/
 │   └── app_localizations.dart

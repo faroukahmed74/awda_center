@@ -2,8 +2,12 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import '../../core/arabic_pdf_reshaper.dart';
 import '../../core/date_format.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
@@ -11,6 +15,7 @@ import '../../providers/data_cache_provider.dart';
 import '../../models/income_expense_models.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
+import '../reports/report_pdf_share.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 /// Monthly finance summary: income per doctor, target, bonus %, consumables/media/rent/receptionist expenses, NET, MANG, BASKET, profit. All editable; config saved per month.
@@ -430,6 +435,197 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     _profitForEach = _doctorRows.isEmpty ? 0 : (_net - _mang - _basket) / _doctorRows.length;
   }
 
+  String _periodLabel() {
+    final m = _month;
+    final y = _year;
+    switch (_period) {
+      case _SummaryPeriod.month:
+        return AppDateFormat.monthYear().format(DateTime(y, m, 1));
+      case _SummaryPeriod.quarter:
+        final start = ((m - 1) ~/ 3) * 3 + 1;
+        return 'Q${(start - 1) ~/ 3 + 1} $y';
+      case _SummaryPeriod.sixMonths:
+        return m <= 6 ? 'H1 $y' : 'H2 $y';
+      case _SummaryPeriod.year:
+        return '$y';
+    }
+  }
+
+  Future<void> _exportAsPdf(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final isArabic = l10n.isArabic;
+    final nf = NumberFormat.currency(symbol: '', decimalDigits: 0);
+    final periodLabel = _periodLabel();
+    pw.ThemeData? pdfTheme;
+    pw.Font? arabicFont;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
+      arabicFont = pw.Font.ttf(fontData);
+      pdfTheme = pw.ThemeData.withFont(base: arabicFont, fontFallback: [arabicFont]);
+    } catch (_) {}
+    final doc = pw.Document(theme: pdfTheme);
+    final headerBg = PdfColor.fromInt(0xFFE3F2FD); // light blue
+    final headerText = PdfColors.blue900;
+
+    pw.Widget pdfCell(String text, {bool bold = false, PdfColor? color, bool isRtl = false}) {
+      final displayText = (isRtl && ArabicPdfReshaper.hasArabic(text))
+          ? ArabicPdfReshaper.reshape(text)
+          : text;
+      return _pdfCell(displayText, bold: bold, color: color, isRtl: isRtl, font: isRtl ? arabicFont : null);
+    }
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(24),
+        build: (ctx) => [
+          pw.Text(
+            isArabic ? ArabicPdfReshaper.reshape('${l10n.financeSummary} — $periodLabel') : '${l10n.financeSummary} — $periodLabel',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, font: arabicFont),
+            textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text('Target: ${nf.format(_target)}  •  Rent+guard: ${nf.format(_rentGuard)}  •  Receptionist: ${nf.format(_receptionist)}', style: const pw.TextStyle(fontSize: 10)),
+          pw.SizedBox(height: 12),
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey400),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(1.5),
+              1: const pw.FlexColumnWidth(1),
+              2: const pw.FlexColumnWidth(1),
+              3: const pw.FlexColumnWidth(1),
+              4: const pw.FlexColumnWidth(1),
+              5: const pw.FlexColumnWidth(1),
+              6: const pw.FlexColumnWidth(1),
+            },
+            children: [
+              pw.TableRow(
+                decoration: pw.BoxDecoration(color: headerBg),
+                children: [
+                  pdfCell(l10n.doctor, bold: true, color: headerText, isRtl: isArabic),
+                  pdfCell(l10n.income, bold: true, color: headerText, isRtl: isArabic),
+                  pdfCell(l10n.percent30Target, bold: true, color: headerText, isRtl: isArabic),
+                  pdfCell(l10n.bonus, bold: true, color: headerText, isRtl: isArabic),
+                  pdfCell('%', bold: true, color: headerText),
+                  pdfCell('Consumables', bold: true, color: headerText),
+                  pdfCell('Media', bold: true, color: headerText),
+                ],
+              ),
+              ..._doctorRows.map((r) => pw.TableRow(
+                children: [
+                  pdfCell(r.doctorName, isRtl: isArabic),
+                  pdfCell(nf.format(r.income)),
+                  pdfCell(nf.format(r.c30)),
+                  pdfCell(nf.format(r.bonus)),
+                  pdfCell('${r.commissionPercent} (${nf.format(r.percentVal)})'),
+                  pdfCell(nf.format(r.consumables)),
+                  pdfCell(nf.format(r.media)),
+                ],
+              )),
+              pw.TableRow(
+                decoration: pw.BoxDecoration(color: PdfColor.fromInt(0xFFF5F5F5)),
+                children: [
+                  pdfCell('Total', bold: true),
+                  pdfCell(nf.format(_totalIncome), bold: true),
+                  pdfCell(nf.format(_totalC30)),
+                  pdfCell(nf.format(_totalBonus)),
+                  pdfCell(nf.format(_totalPercent)),
+                  pdfCell(nf.format(_totalConsumables)),
+                  pdfCell(nf.format(_totalMedia)),
+                ],
+              ),
+              pw.TableRow(children: [
+                pdfCell('NET', bold: true),
+                pdfCell(nf.format(_net), bold: true),
+                pdfCell(l10n.rentGuard, isRtl: isArabic),
+                pdfCell(nf.format(_rentGuard)),
+                pdfCell(_doctorRows.isNotEmpty ? _doctorRows[0].doctorName : '', isRtl: isArabic),
+                pdfCell(_doctorRows.isNotEmpty ? nf.format(_doctorRows[0].c30 + _doctorRows[0].percentVal) : ''),
+                pdfCell(''),
+              ]),
+              pw.TableRow(children: [
+                pdfCell('MANG (.15)'),
+                pdfCell(nf.format(_mang)),
+                pdfCell(l10n.receptionist, isRtl: isArabic),
+                pdfCell(nf.format(_receptionist)),
+                pdfCell(_doctorRows.length > 1 ? _doctorRows[1].doctorName : '', isRtl: isArabic),
+                pdfCell(_doctorRows.length > 1 ? nf.format(_doctorRows[1].c30 + _doctorRows[1].percentVal) : ''),
+                pdfCell(''),
+              ]),
+              pw.TableRow(children: [
+                pdfCell('BASKET (.3)'),
+                pdfCell(nf.format(_basket)),
+                pdfCell(l10n.profitForEach, isRtl: isArabic),
+                pdfCell(nf.format(_profitForEach), bold: true),
+                pdfCell(_doctorRows.length > 2 ? _doctorRows[2].doctorName : '', isRtl: isArabic),
+                pdfCell(_doctorRows.length > 2 ? nf.format(_doctorRows[2].c30 + _doctorRows[2].percentVal) : ''),
+                pdfCell(''),
+              ]),
+            ],
+          ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            isArabic ? ArabicPdfReshaper.reshape(l10n.commission) : l10n.commission,
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, font: arabicFont),
+            textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+          ),
+          pw.SizedBox(height: 6),
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey400),
+            columnWidths: {0: const pw.FlexColumnWidth(0.5), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(0.8)},
+            children: [
+              pw.TableRow(
+                decoration: pw.BoxDecoration(color: headerBg),
+                children: [
+                  pdfCell(l10n.slice, bold: true, color: headerText, isRtl: isArabic),
+                  pdfCell(l10n.incomeRange, bold: true, color: headerText, isRtl: isArabic),
+                  pdfCell(l10n.commission, bold: true, color: headerText, isRtl: isArabic),
+                  pdfCell('Rate', bold: true, color: headerText),
+                ],
+              ),
+              ..._slices.asMap().entries.map((e) {
+                final s = e.value;
+                final range = s.max == null ? 'above ${(s.min / 1000).toStringAsFixed(0)} k' : '${(s.min / 1000).toStringAsFixed(0)} k - ${(s.max! / 1000).toStringAsFixed(0)} k';
+                return pw.TableRow(children: [
+                  pdfCell('${e.key + 1}'),
+                  pdfCell(range),
+                  pdfCell('${s.percent.toStringAsFixed(0)}%'),
+                  pdfCell(s.rate.toString()),
+                ]);
+              }),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final bytes = await doc.save();
+    final filename = 'finance_summary_${_year}_${_month.toString().padLeft(2, '0')}.pdf';
+    final shareOrigin = Rect.fromLTWH(0, 0, size.width, size.height * 0.4);
+    await savePdfAndShare(filename, bytes, shareOrigin);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l10n.financeSummary} PDF ready')));
+    }
+  }
+
+  pw.Widget _pdfCell(String text, {bool bold = false, PdfColor? color, bool isRtl = false, pw.Font? font}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(4),
+      child: pw.Text(
+        text,
+        textDirection: isRtl ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+        textAlign: isRtl ? pw.TextAlign.right : pw.TextAlign.left,
+        style: pw.TextStyle(
+          fontSize: 9,
+          fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+          color: color ?? PdfColors.black,
+          font: font,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -557,6 +753,12 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                               ),
                             ),
                             const SizedBox(width: 16),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.picture_as_pdf),
+                              label: const Text('PDF'),
+                              onPressed: _doctorRows.isEmpty ? null : () => _exportAsPdf(context),
+                            ),
+                            const SizedBox(width: 8),
                             if (_saving) const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
                             if (!_saving)
                               FilledButton.icon(

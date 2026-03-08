@@ -2,6 +2,7 @@ import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
+import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import '../../core/general_error_helper.dart';
@@ -16,6 +17,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 
 import 'report_file_io_stub.dart' if (dart.library.io) 'report_file_io.dart' as report_io;
+import 'report_pdf_share.dart';
 
 /// Reports: patients, income & expenses, appointments, users summary. All reports use period (day/month/year) where applicable; exports available from menu.
 class ReportsScreen extends StatefulWidget {
@@ -264,40 +266,47 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final doc = pw.Document(theme: pdfTheme);
     final int tabIndex = _tabController.index;
 
+    final headerBg = PdfColor.fromInt(0xFFE3F2FD);
+    final headerText = PdfColors.blue900;
+    final sectionGreen = PdfColor.fromInt(0xFFE8F5E9);
+
     if (tabIndex == 0) {
       final names = _patientNames.toSet().toList()..sort();
       doc.addPage(pw.MultiPage(
         build: (context) => [
           pw.Text('${l10n.patientsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
-          pw.Text('${l10n.total}: ${names.length} ${l10n.patient}', style: pw.TextStyle(fontSize: 12)),
+          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text('${l10n.total}: ${names.length} ${l10n.patient}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold))),
           pw.SizedBox(height: 8),
-          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2)}, children: [
-            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.patient, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)))]),
-            ...names.map((n) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(n, textDirection: pw.TextDirection.rtl, textAlign: pw.TextAlign.right))])),
+          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2)}, children: [
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.patient, bg: headerBg, textColor: headerText)]),
+            ...names.asMap().entries.map((e) => pw.TableRow(children: [_pdfCell(e.value, alternate: e.key.isOdd)])),
           ]),
         ],
       ));
     } else if (tabIndex == 1) {
       final net = _incomeTotal - _expenseTotal;
+      final nf = NumberFormat.currency(symbol: '', decimalDigits: 0);
       doc.addPage(pw.MultiPage(
         build: (context) => [
           pw.Text('${l10n.incomeExpensesReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
-          pw.Text('${l10n.totalIncome}: ${NumberFormat.currency(symbol: '').format(_incomeTotal)}'),
-          pw.Text('${l10n.totalExpenses}: ${NumberFormat.currency(symbol: '').format(_expenseTotal)}'),
-          pw.Text('${l10n.net}: ${NumberFormat.currency(symbol: '').format(net)}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.Container(padding: const pw.EdgeInsets.all(8), color: sectionGreen, child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            pw.Text('${l10n.totalIncome}: ${nf.format(_incomeTotal)}', style: const pw.TextStyle(fontSize: 11)),
+            pw.Text('${l10n.totalExpenses}: ${nf.format(_expenseTotal)}', style: const pw.TextStyle(fontSize: 11)),
+            pw.Text('${l10n.net}: ${nf.format(net)}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          ])),
           pw.SizedBox(height: 12),
-          pw.Text(l10n.income, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.source)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.amount))]),
-            ..._income.map((r) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(r.source)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(AppDateFormat.shortDate.format(r.incomeDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(NumberFormat.currency(symbol: '').format(r.amount)))])),
+          pw.Text(l10n.income, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.source, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText)]),
+            ..._income.asMap().entries.map((e) => pw.TableRow(children: [_pdfCell(e.value.source, alternate: e.key.isOdd), _pdfCell(AppDateFormat.shortDate.format(e.value.incomeDate), alternate: e.key.isOdd), _pdfCell(nf.format(e.value.amount), alternate: e.key.isOdd)])),
           ]),
           pw.SizedBox(height: 12),
-          pw.Text(l10n.expenses, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.category)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.amount))]),
-            ..._expenses.map((r) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(r.category)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(AppDateFormat.shortDate.format(r.expenseDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(NumberFormat.currency(symbol: '').format(r.amount)))])),
+          pw.Text(l10n.expenses, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.category, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText)]),
+            ..._expenses.asMap().entries.map((e) => pw.TableRow(children: [_pdfCell(e.value.category, alternate: e.key.isOdd), _pdfCell(AppDateFormat.shortDate.format(e.value.expenseDate), alternate: e.key.isOdd), _pdfCell(nf.format(e.value.amount), alternate: e.key.isOdd)])),
           ]),
         ],
       ));
@@ -306,11 +315,11 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         build: (context) => [
           pw.Text('${l10n.appointmentsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
-          pw.Text('${l10n.total}: ${_appointments.length} ${l10n.appointments}'),
+          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text('${l10n.total}: ${_appointments.length} ${l10n.appointments}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold))),
           pw.SizedBox(height: 8),
-          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(1), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.date)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.time)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.status)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.service))]),
-            ..._appointments.take(100).map((a) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(AppDateFormat.shortDate.format(a.appointmentDate))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('${a.startTime}-${a.endTime}')), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(_statusLabel(a.status.value, l10n))), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(a.servicesDisplay))])),
+          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(1), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.time, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.status, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.service, bg: headerBg, textColor: headerText)]),
+            ..._appointments.take(100).toList().asMap().entries.map((e) => pw.TableRow(children: [_pdfCell(AppDateFormat.shortDate.format(e.value.appointmentDate), alternate: e.key.isOdd), _pdfCell('${e.value.startTime}-${e.value.endTime}', alternate: e.key.isOdd), _pdfCell(_statusLabel(e.value.status.value, l10n), alternate: e.key.isOdd), _pdfCell(e.value.servicesDisplay, alternate: e.key.isOdd)])),
           ]),
         ],
       ));
@@ -319,23 +328,40 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         build: (context) => [
           pw.Text(l10n.usersReport, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
-          pw.Text('${l10n.total}: ${_users.length} ${l10n.users}'),
+          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text('${l10n.total}: ${_users.length} ${l10n.users}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold))),
           pw.SizedBox(height: 8),
-          pw.Table(border: pw.TableBorder.all(), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(2), 3: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.fullNameAr)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.fullNameEn)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.email)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(l10n.role))]),
-            ..._users.map((u) => pw.TableRow(children: [pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.fullNameAr ?? '', textDirection: pw.TextDirection.rtl, textAlign: pw.TextAlign.right)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.fullNameEn ?? '')), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.email)), pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(u.roles.join(', ')))])),
+          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(2), 3: const pw.FlexColumnWidth(1)}, children: [
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.fullNameAr, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.fullNameEn, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.email, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.role, bg: headerBg, textColor: headerText)]),
+            ..._users.asMap().entries.map((e) {
+              final alt = e.key.isOdd;
+              final u = e.value;
+              return pw.TableRow(children: [_pdfCell(u.fullNameAr ?? '', alternate: alt), _pdfCell(u.fullNameEn ?? '', alternate: alt), _pdfCell(u.email, alternate: alt), _pdfCell(u.roles.join(', '), alternate: alt)]);
+            }),
           ]),
         ],
       ));
     }
 
     final bytes = await doc.save();
-    final path = await report_io.writeReportBytes('report_${tabIndex}_$from.pdf', bytes);
-    if (path == null || !mounted) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF export is available on mobile and desktop. Use CSV on web.')));
-      return;
-    }
-    await Share.shareXFiles([XFile(path)], sharePositionOrigin: shareOrigin);
+    final filename = 'report_${tabIndex}_${from.millisecondsSinceEpoch}.pdf';
+    await savePdfAndShare(filename, bytes, shareOrigin);
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF ready — download or share')));
+  }
+
+  static pw.Widget _pdfHeaderCell(String text, {PdfColor bg = PdfColors.blue50, PdfColor textColor = PdfColors.blue900}) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(6),
+      color: bg,
+      child: pw.Text(text, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: textColor)),
+    );
+  }
+
+  static pw.Widget _pdfCell(String text, {bool alternate = false}) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(4),
+      color: alternate ? PdfColor.fromInt(0xFFF5F5F5) : null,
+      child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)),
+    );
   }
 
   Future<void> _exportCurrentAsExcel(AppLocalizations l10n, Rect? shareOrigin) async {
@@ -404,6 +430,34 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
             const NotificationsButton(),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Breakpoint.isMobile(context)
+                  ? IconButton(
+                      icon: const Icon(Icons.picture_as_pdf),
+                      tooltip: 'Download PDF',
+                      onPressed: () async {
+                        try {
+                          await _exportCurrentAsPdf(l10n, _sharePositionOriginFrom(context));
+                        } catch (e, st) {
+                          debugPrint('PDF export error: $e\n$st');
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e)))));
+                        }
+                      },
+                    )
+                  : FilledButton.icon(
+                      icon: const Icon(Icons.picture_as_pdf, size: 20),
+                      label: const Text('PDF'),
+                      onPressed: () async {
+                    try {
+                      await _exportCurrentAsPdf(l10n, _sharePositionOriginFrom(context));
+                    } catch (e, st) {
+                      debugPrint('PDF export error: $e\n$st');
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e)))));
+                    }
+                  },
+                ),
+            ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.upload),
               tooltip: l10n.export,
@@ -466,7 +520,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           children: [
             Padding(
               padding: ResponsivePadding.all(context),
-              child: Row(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   DropdownButton<String>(
                     value: _period,
@@ -479,7 +536,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       if (v != null) setState(() { _period = v; _load(); });
                     },
                   ),
-                  const SizedBox(width: 16),
                   TextButton.icon(
                     icon: const Icon(Icons.calendar_today),
                     label: Text(_periodLabel()),
