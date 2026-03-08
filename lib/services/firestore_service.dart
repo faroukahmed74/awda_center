@@ -634,6 +634,25 @@ class FirestoreService {
     return snapshot.docs.map((d) => AuditLogModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
   }
 
+  // Finance summary (monthly) config: target, rent, receptionist, per-doctor %, commission slices
+  static String _financeSummaryDocId(int year, int month) => '${year}_$month';
+
+  Future<Map<String, dynamic>> getFinanceSummaryConfig(int year, int month) async {
+    final doc = await _firestore
+        .collection('finance_summary_config')
+        .doc(_financeSummaryDocId(year, month))
+        .get();
+    if (!doc.exists) return {};
+    return doc.data() ?? {};
+  }
+
+  Future<void> setFinanceSummaryConfig(int year, int month, Map<String, dynamic> data) async {
+    await _firestore
+        .collection('finance_summary_config')
+        .doc(_financeSummaryDocId(year, month))
+        .set({...data, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+  }
+
   // Admin dashboard stats
   Future<Map<String, int>> getAdminStats() async {
     final now = DateTime.now();

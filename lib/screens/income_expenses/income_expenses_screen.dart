@@ -145,8 +145,13 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   }
 
   @override
+  @override
   void initState() {
     super.initState();
+    // Default to current month so "new" months start at zero; past data remains viewable via Month/Year filter
+    final now = DateTime.now();
+    _filterYear = now.year;
+    _filterMonth = now.month;
     _listen();
   }
 
@@ -235,6 +240,13 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(
                           children: [
+                            FilledButton.tonalIcon(
+                              onPressed: () => context.push('/income-expenses-summary'),
+                              icon: const Icon(Icons.summarize),
+                              label: Text(l10n.financeSummary),
+                              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                            ),
+                            const SizedBox(width: 12),
                             FilterChip(
                               label: Text(l10n.filterAll),
                               selected: _filterDay == null && _filterYear == null && _filterMonth == null && _filterDoctorId == null && _filterPatientId == null,

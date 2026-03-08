@@ -51,19 +51,26 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return;
     }
+    final existingUid = _currentUser?.id;
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       _currentUser = await _authService.getCurrentUserProfile();
     } catch (e, st) {
-      // Race: right after registration, auth state listener may run before Firestore doc is visible. Retry once.
+      // Race: right after registration, auth state listener may run before Firestore doc is visible.
+      // If we already have this user's profile (e.g. from register()), do not overwrite with null.
+      if (existingUid == firebaseUser.uid) {
+        _loading = false;
+        notifyListeners();
+        return;
+      }
       if (_authService.currentUser != null) {
-        await Future<void>.delayed(const Duration(milliseconds: 400));
+        await Future<void>.delayed(const Duration(milliseconds: 600));
         if (_authService.currentUser == null) {
           _currentUser = null;
           _error = authErrorToMessageKey(e, st.toString());
-        } else {
+        } else if (_currentUser?.id != _authService.currentUser!.uid) {
           try {
             _currentUser = await _authService.getCurrentUserProfile();
           } catch (e2, _) {

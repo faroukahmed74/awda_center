@@ -121,6 +121,11 @@ service cloud.firestore {
       allow read, write: if isAuth() && (isAdmin() || isSecretary() || hasPermission('income_expenses'));
     }
 
+    // finance_summary_config: monthly target, rent, receptionist, per-doctor %, slices (same as income_expenses)
+    match /finance_summary_config/{docId} {
+      allow read, write: if isAuth() && (isAdmin() || isSecretary() || hasPermission('income_expenses'));
+    }
+
     // invites: admin creates; any authenticated can read (to apply on register)
     // update: admin, or registering user can set used=true when invite email matches their auth email
     match /invites/{inviteId} {

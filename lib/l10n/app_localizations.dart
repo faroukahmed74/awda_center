@@ -58,6 +58,20 @@ class AppLocalizations {
   String get netProfit => _map['netProfit']!;
   String get totalIncome => _map['totalIncome']!;
   String get totalExpenses => _map['totalExpenses']!;
+  String get financeSummary => _map['financeSummary']!;
+  String get target => _map['target']!;
+  String get rentGuard => _map['rentGuard']!;
+  String get receptionist => _map['receptionist']!;
+  String get bonus => _map['bonus']!;
+  String get percent30Target => _map['percent30Target']!;
+  String get profitForEach => _map['profitForEach']!;
+  String get commission => _map['commission']!;
+  String get slice => _map['slice']!;
+  String get incomeRange => _map['incomeRange']!;
+  String get periodQuarter => _map['periodQuarter']!;
+  String get periodSixMonths => _map['periodSixMonths']!;
+  String get financeSummaryLoadError => _map['financeSummaryLoadError']!;
+  String get loadSampleData => _map['loadSampleData']!;
   String get addIncome => _map['addIncome']!;
   String get addExpense => _map['addExpense']!;
   String get role => _map['role']!;
@@ -338,6 +352,20 @@ class AppLocalizations {
     'netProfit': 'Net Profit',
     'totalIncome': 'Total income',
     'totalExpenses': 'Total expenses',
+    'financeSummary': 'Finance summary',
+    'target': 'Target',
+    'rentGuard': 'Rent + guard',
+    'receptionist': 'Receptionist',
+    'bonus': 'Bonus',
+    'percent30Target': '30% target',
+    'profitForEach': 'Profit for each',
+    'commission': 'Commission',
+    'slice': 'Slice',
+    'incomeRange': 'Income range',
+    'periodQuarter': '3 months',
+    'periodSixMonths': '6 months',
+    'financeSummaryLoadError': 'Could not load finance summary. Please try again.',
+    'loadSampleData': 'Load sample',
     'addIncome': 'Add income',
     'addExpense': 'Add expense',
     'role': 'Role',
@@ -625,6 +653,20 @@ class AppLocalizations {
     'netProfit': 'صافي الربح',
     'totalIncome': 'إجمالي الإيرادات',
     'totalExpenses': 'إجمالي المصروفات',
+    'financeSummary': 'ملخص مالي',
+    'target': 'الهدف',
+    'rentGuard': 'إيجار + حارس',
+    'receptionist': 'موظف الاستقبال',
+    'bonus': 'مكافأة',
+    'percent30Target': '30% هدف',
+    'profitForEach': 'ربح لكل واحد',
+    'commission': 'عمولة',
+    'slice': 'شريحة',
+    'incomeRange': 'نطاق الدخل',
+    'periodQuarter': '٣ أشهر',
+    'periodSixMonths': '٦ أشهر',
+    'financeSummaryLoadError': 'تعذر تحميل الملخص المالي. يرجى المحاولة مرة أخرى.',
+    'loadSampleData': 'تحميل عينة',
     'addIncome': 'إضافة إيراد',
     'addExpense': 'إضافة مصروف',
     'role': 'الدور',

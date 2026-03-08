@@ -15,6 +15,7 @@ import '../screens/users/user_profile_screen.dart';
 import '../screens/patients/patients_screen.dart';
 import '../screens/patients/patient_detail_screen.dart';
 import '../screens/income_expenses/income_expenses_screen.dart';
+import '../screens/income_expenses/finance_summary_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/doctors/doctors_list_screen.dart';
 import '../screens/doctors/my_doctor_profile_screen.dart';
@@ -106,6 +107,10 @@ GoRouter createAppRouter(BuildContext context) {
         builder: (context, state) => const IncomeExpensesScreen(),
       ),
       GoRoute(
+        path: '/income-expenses-summary',
+        builder: (context, state) => const FinanceSummaryScreen(),
+      ),
+      GoRoute(
         path: '/doctors',
         builder: (context, state) => const DoctorsListScreen(),
       ),
@@ -171,6 +176,7 @@ bool canAccessRoute(UserModel? user, String path) {
     case '/patients':
       return user.canAccessFeature('patients');
     case '/income-expenses':
+    case '/income-expenses-summary':
       return user.canAccessFeature('income_expenses');
     case '/reports':
       return user.canAccessFeature('reports');

@@ -22,6 +22,7 @@ String? pathToFeatureKey(String path) {
     case '/patients':
       return 'patients';
     case '/income-expenses':
+    case '/income-expenses-summary':
       return 'income_expenses';
     case '/reports':
       return 'reports';
