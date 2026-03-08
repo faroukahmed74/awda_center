@@ -66,12 +66,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.text,
                       decoration: InputDecoration(
-                        labelText: l10n.emailOrPatientCode,
-                        hintText: l10n.emailOrPatientCodeHint,
+                        labelText: l10n.email,
+                        hintText: l10n.email,
                         prefixIcon: const Icon(Icons.person_outline),
                       ),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return l10n.emailOrPatientCode;
+                        if (v == null || v.trim().isEmpty) return l10n.email;
                         return null;
                       },
                     ),

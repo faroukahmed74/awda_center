@@ -5,6 +5,7 @@ const List<String> kAllFeatureKeys = [
   'appointments',
   'patients',
   'income_expenses',
+  'finance_summary',
   'reports',
   'requirements',
   'admin_todos',
@@ -22,8 +23,9 @@ String? pathToFeatureKey(String path) {
     case '/patients':
       return 'patients';
     case '/income-expenses':
-    case '/income-expenses-summary':
       return 'income_expenses';
+    case '/income-expenses-summary':
+      return 'finance_summary';
     case '/reports':
       return 'reports';
     case '/requirements':

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -56,8 +57,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
             final name = u.displayName.toLowerCase();
             final email = u.email.toLowerCase();
             final phone = (u.phone ?? '').toLowerCase();
-            final code = (u.patientCode ?? '').toLowerCase();
-            return name.contains(q) || email.contains(q) || phone.contains(q) || code.contains(q);
+            return name.contains(q) || email.contains(q) || phone.contains(q);
           }).toList();
 
     final showLoading = cache.usersLoading && cache.patients.isEmpty;
@@ -79,7 +79,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
           ),
           actions: const [NotificationsButton()],
         ),
-        floatingActionButton: context.watch<AuthProvider>().currentUser?.canAccessPatients == true
+        floatingActionButton: !kIsWeb && context.watch<AuthProvider>().currentUser?.canAccessPatients == true
             ? FloatingActionButton.extended(
                 onPressed: () async {
                   final patientId = await showDialog<String>(
@@ -143,9 +143,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                             itemCount: filtered.length,
                             itemBuilder: (context, i) {
                               final u = filtered[i];
-                              final subtitle = u.patientCode != null && u.patientCode!.isNotEmpty
-                                  ? '${u.email} • ${l10n.patientCode}: ${u.patientCode}'
-                                  : u.email;
+                              final subtitle = u.email;
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(

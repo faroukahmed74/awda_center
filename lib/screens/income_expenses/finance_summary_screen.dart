@@ -36,9 +36,16 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
   double _target = 20000;
   double _rentGuard = 10500;
   double _receptionist = 4700;
+  /// Order of doctor IDs for display (first = top). Saved to config; new doctors appended at end.
+  List<String> _doctorOrder = [];
+  /// MANG share of NET (e.g. 0.15 = 15%). Editable.
+  double _mangRate = 0.15;
+  /// BASKET share of NET (e.g. 0.30 = 30%). Editable.
+  double _basketRate = 0.30;
+  /// 30% target factor: c30 = income * _percent30. Editable.
+  double _percent30 = 0.30;
   Map<String, double> _doctorPercent = {}; // legacy; % column now uses slice rate
   /// Commission slices: income range (min, max) → display percent and rate (right column). % = BONUS * rate.
-  /// Commission slices: rate used for % = BONUS * rate. Spreadsheet: 21–29k uses 0.5 so Tarek % = 2500, total % = 4750, NET = 18850.
   List<({double min, double? max, double percent, double rate})> _slices = [
     (min: 10000, max: 19000, percent: 25, rate: 0.25),
     (min: 21000, max: 29000, percent: 35, rate: 0.5),
@@ -139,6 +146,11 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       _target = configTarget * monthsInRange;
       _rentGuard = configRent * monthsInRange;
       _receptionist = configReceptionist * monthsInRange;
+      final order = config['doctorOrder'];
+      if (order is List) _doctorOrder = order.map((e) => e.toString()).toList();
+      _mangRate = (config['mangRate'] as num?)?.toDouble() ?? 0.15;
+      _basketRate = (config['basketRate'] as num?)?.toDouble() ?? 0.30;
+      _percent30 = (config['percent30'] as num?)?.toDouble() ?? 0.30;
       final dp = config['doctorPercent'];
       if (dp is Map) {
         _doctorPercent = Map.fromEntries(
@@ -195,20 +207,20 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
               (config['mediaByDoctor'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble())))
           : <String, double>{};
 
-      // Spreadsheet equations: C = B*0.3 (30% target), D = B-target (BONUS), E = D*commission% (%)
+      // Spreadsheet equations: C = income*_percent30, D = BONUS, E = D*rate. Doctor names in English.
       final rows = <_DoctorRow>[];
       for (final d in doctors) {
         final income = incomeByDoctor[d.id] ?? 0;
-        if (income <= 0) continue; // Exclude doctors with no income in this period
-        final c30 = income * 0.3; // %30 target (20) = income * 0.3
-        final bonus = (income - _target) > 0 ? (income - _target) : 0.0; // BONUS = max(0, income - target)
-        final rate = _commissionRateForIncome(income); // % = BONUS * rate from slice table
+        if (income <= 0) continue;
+        final c30 = income * _percent30;
+        final bonus = (income - _target) > 0 ? (income - _target) : 0.0;
+        final rate = _commissionRateForIncome(income);
         final percentVal = bonus * rate;
         final consumables = _overridesConsumables[d.id] ?? consumablesByDoctor[d.id] ?? 0;
         final media = _overridesMedia[d.id] ?? mediaByDoctor[d.id] ?? 0;
         rows.add(_DoctorRow(
           doctorId: d.id,
-          doctorName: cache.doctorDisplayName(d.id) ?? d.displayName ?? d.id,
+          doctorName: cache.doctorDisplayNameEn(d.id) ?? d.displayName ?? d.id,
           income: income,
           c30: c30,
           bonus: bonus,
@@ -218,6 +230,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
           media: media,
         ));
       }
+      _applyDoctorOrder(rows);
 
       _totalIncome = rows.fold<double>(0, (s, r) => s + r.income);
       _totalC30 = rows.fold<double>(0, (s, r) => s + r.c30);
@@ -225,11 +238,10 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       _totalPercent = rows.fold<double>(0, (s, r) => s + r.percentVal);
       _totalConsumables = rows.fold<double>(0, (s, r) => s + r.consumables);
       _totalMedia = rows.fold<double>(0, (s, r) => s + r.media);
-      // NET = Total income - Total 30% - Rent - Receptionist - Total consumables - Total media - Total %
       _net = _totalIncome - _totalC30 - _rentGuard - _receptionist - _totalConsumables - _totalMedia - _totalPercent;
-      _mang = _net * 0.15; // MANG (.15) = NET * 0.15
-      _basket = _net * 0.30; // BASKET (.3) = NET * 0.30
-      _profitForEach = rows.isEmpty ? 0 : (_net - _mang - _basket) / rows.length; // PROFIT FOR EACH = (NET - MANG - BASKET) / n
+      _mang = _net * _mangRate;
+      _basket = _net * _basketRate;
+      _profitForEach = rows.isEmpty ? 0 : (_net - _mang - _basket) / rows.length;
 
       if (mounted) {
         _lastIncomeList = incomeList;
@@ -334,7 +346,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     for (final d in doctors) {
       final income = incomeByDoctor[d.id] ?? 0;
       if (income <= 0) continue;
-      final c30 = income * 0.3;
+      final c30 = income * _percent30;
       final bonus = (income - _target) > 0 ? (income - _target) : 0.0;
       final rate = _commissionRateForIncome(income);
       final percentVal = bonus * rate;
@@ -342,7 +354,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       final media = _overridesMedia[d.id] ?? mediaByDoctor[d.id] ?? 0;
       rows.add(_DoctorRow(
         doctorId: d.id,
-        doctorName: cache.doctorDisplayName(d.id) ?? d.displayName ?? d.id,
+        doctorName: cache.doctorDisplayNameEn(d.id) ?? d.displayName ?? d.id,
         income: income,
         c30: c30,
         bonus: bonus,
@@ -352,6 +364,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         media: media,
       ));
     }
+    _applyDoctorOrder(rows);
     _totalIncome = rows.fold<double>(0, (s, r) => s + r.income);
     _totalC30 = rows.fold<double>(0, (s, r) => s + r.c30);
     _totalBonus = rows.fold<double>(0, (s, r) => s + r.bonus);
@@ -359,8 +372,8 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     _totalConsumables = rows.fold<double>(0, (s, r) => s + r.consumables);
     _totalMedia = rows.fold<double>(0, (s, r) => s + r.media);
     _net = _totalIncome - _totalC30 - _rentGuard - _receptionist - _totalConsumables - _totalMedia - _totalPercent;
-    _mang = _net * 0.15;
-    _basket = _net * 0.30;
+    _mang = _net * _mangRate;
+    _basket = _net * _basketRate;
     _profitForEach = rows.isEmpty ? 0 : (_net - _mang - _basket) / rows.length;
     if (mounted) setState(() => _doctorRows = rows);
   }
@@ -400,6 +413,19 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     return _slices.isNotEmpty ? _slices.last.rate : 0.25;
   }
 
+  /// Sort rows by _doctorOrder; update _doctorOrder to current order for saving.
+  void _applyDoctorOrder(List<_DoctorRow> rows) {
+    rows.sort((a, b) {
+      final ia = _doctorOrder.indexOf(a.doctorId);
+      final ib = _doctorOrder.indexOf(b.doctorId);
+      if (ia >= 0 && ib >= 0) return ia.compareTo(ib);
+      if (ia >= 0) return -1;
+      if (ib >= 0) return 1;
+      return 0;
+    });
+    _doctorOrder = rows.map((r) => r.doctorId).toList();
+  }
+
   Future<void> _saveConfig() async {
     setState(() => _saving = true);
     final configMonth = _getConfigMonth();
@@ -410,6 +436,10 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       'target': _target / monthsInRange,
       'rentGuard': _rentGuard / monthsInRange,
       'receptionist': _receptionist / monthsInRange,
+      'doctorOrder': _doctorOrder,
+      'mangRate': _mangRate,
+      'basketRate': _basketRate,
+      'percent30': _percent30,
       'doctorPercent': doctorPercent,
       'commissionSlices': commissionSlices,
     };
@@ -428,10 +458,9 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     _totalPercent = _doctorRows.fold<double>(0, (s, r) => s + r.percentVal);
     _totalConsumables = _doctorRows.fold<double>(0, (s, r) => s + r.consumables);
     _totalMedia = _doctorRows.fold<double>(0, (s, r) => s + r.media);
-    // NET = Total income - Total 30% - Rent - Receptionist - Total consumables - Total media - Total %
     _net = _totalIncome - _totalC30 - _rentGuard - _receptionist - _totalConsumables - _totalMedia - _totalPercent;
-    _mang = _net * 0.15;
-    _basket = _net * 0.30;
+    _mang = _net * _mangRate;
+    _basket = _net * _basketRate;
     _profitForEach = _doctorRows.isEmpty ? 0 : (_net - _mang - _basket) / _doctorRows.length;
   }
 
@@ -460,10 +489,17 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     pw.ThemeData? pdfTheme;
     pw.Font? arabicFont;
     try {
-      final fontData = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
-      arabicFont = pw.Font.ttf(fontData);
+      try {
+        final fontData = await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
+        arabicFont = pw.Font.ttf(fontData);
+      } catch (_) {
+        final fontData = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
+        arabicFont = pw.Font.ttf(fontData);
+      }
       pdfTheme = pw.ThemeData.withFont(base: arabicFont, fontFallback: [arabicFont]);
-    } catch (_) {}
+    } catch (_) {
+      // No custom theme if both fonts fail; PDF may still build with default font
+    }
     final doc = pw.Document(theme: pdfTheme);
     final headerBg = PdfColor.fromInt(0xFFE3F2FD); // light blue
     final headerText = PdfColors.blue900;
@@ -514,7 +550,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
               ),
               ..._doctorRows.map((r) => pw.TableRow(
                 children: [
-                  pdfCell(r.doctorName, isRtl: isArabic),
+                  pdfCell(r.doctorName), // names in English
                   pdfCell(nf.format(r.income)),
                   pdfCell(nf.format(r.c30)),
                   pdfCell(nf.format(r.bonus)),
@@ -540,25 +576,25 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 pdfCell(nf.format(_net), bold: true),
                 pdfCell(l10n.rentGuard, isRtl: isArabic),
                 pdfCell(nf.format(_rentGuard)),
-                pdfCell(_doctorRows.isNotEmpty ? _doctorRows[0].doctorName : '', isRtl: isArabic),
+                pdfCell(_doctorRows.isNotEmpty ? _doctorRows[0].doctorName : ''),
                 pdfCell(_doctorRows.isNotEmpty ? nf.format(_doctorRows[0].c30 + _doctorRows[0].percentVal) : ''),
                 pdfCell(''),
               ]),
               pw.TableRow(children: [
-                pdfCell('MANG (.15)'),
+                pdfCell('MANG ($_mangRate)'),
                 pdfCell(nf.format(_mang)),
                 pdfCell(l10n.receptionist, isRtl: isArabic),
                 pdfCell(nf.format(_receptionist)),
-                pdfCell(_doctorRows.length > 1 ? _doctorRows[1].doctorName : '', isRtl: isArabic),
+                pdfCell(_doctorRows.length > 1 ? _doctorRows[1].doctorName : ''),
                 pdfCell(_doctorRows.length > 1 ? nf.format(_doctorRows[1].c30 + _doctorRows[1].percentVal) : ''),
                 pdfCell(''),
               ]),
               pw.TableRow(children: [
-                pdfCell('BASKET (.3)'),
+                pdfCell('BASKET ($_basketRate)'),
                 pdfCell(nf.format(_basket)),
                 pdfCell(l10n.profitForEach, isRtl: isArabic),
                 pdfCell(nf.format(_profitForEach), bold: true),
-                pdfCell(_doctorRows.length > 2 ? _doctorRows[2].doctorName : '', isRtl: isArabic),
+                pdfCell(_doctorRows.length > 2 ? _doctorRows[2].doctorName : ''),
                 pdfCell(_doctorRows.length > 2 ? nf.format(_doctorRows[2].c30 + _doctorRows[2].percentVal) : ''),
                 pdfCell(''),
               ]),
@@ -600,12 +636,21 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       ),
     );
 
-    final bytes = await doc.save();
-    final filename = 'finance_summary_${_year}_${_month.toString().padLeft(2, '0')}.pdf';
-    final shareOrigin = Rect.fromLTWH(0, 0, size.width, size.height * 0.4);
-    await savePdfAndShare(filename, bytes, shareOrigin);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l10n.financeSummary} PDF ready')));
+    try {
+      final bytes = await doc.save();
+      final filename = 'finance_summary_${_year}_${_month.toString().padLeft(2, '0')}.pdf';
+      final shareOrigin = Rect.fromLTWH(0, 0, size.width, size.height * 0.4);
+      await savePdfAndShare(filename, bytes, shareOrigin);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l10n.financeSummary} PDF ready')));
+      }
+    } catch (e, st) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${l10n.financeSummary} PDF failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+      debugPrintStack(stackTrace: st);
     }
   }
 
@@ -724,6 +769,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                             SizedBox(
                               width: 120,
                               child: TextFormField(
+                                key: ValueKey('target_$_target'),
                                 initialValue: _target.toStringAsFixed(0),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
@@ -740,8 +786,40 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                                         final rate = _commissionRateForIncome(r.income);
                                         final bonusVal = (r.income - t) > 0 ? (r.income - t) : 0.0;
                                         _doctorRows[i] = r.copyWith(
-                                          c30: r.income * 0.3,
+                                          c30: r.income * _percent30,
                                           bonus: bonusVal,
+                                          percentVal: bonusVal * rate,
+                                          commissionPercent: rate,
+                                        );
+                                      }
+                                      _recalcFromRows();
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            SizedBox(
+                              width: 80,
+                              child: TextFormField(
+                                key: ValueKey('percent30_$_percent30'),
+                                initialValue: _percent30.toString(),
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: '30% factor',
+                                  isDense: true,
+                                ),
+                                onChanged: (v) {
+                                  final x = double.tryParse(v);
+                                  if (x != null && x >= 0 && x <= 1) {
+                                    setState(() {
+                                      _percent30 = x;
+                                      for (var i = 0; i < _doctorRows.length; i++) {
+                                        final r = _doctorRows[i];
+                                        final rate = _commissionRateForIncome(r.income);
+                                        final bonusVal = (r.income - _target) > 0 ? (r.income - _target) : 0.0;
+                                        _doctorRows[i] = r.copyWith(
+                                          c30: r.income * _percent30,
                                           percentVal: bonusVal * rate,
                                           commissionPercent: rate,
                                         );
@@ -818,6 +896,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 fontWeight: FontWeight.w600,
               ),
               columns: [
+                const DataColumn(label: Text('', style: TextStyle(fontSize: 10))),
                 DataColumn(label: Text(l10n.doctor)),
                 DataColumn(label: Text(l10n.income)),
                 DataColumn(label: Text(l10n.percent30Target)),
@@ -827,32 +906,53 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 DataColumn(label: Text('Media')),
               ],
               rows: [
-          ..._doctorRows.map((r) => DataRow(
-                cells: [
-                  DataCell(Text(r.doctorName)),
-                  DataCell(_editableCell(nf.format(r.income), (v) {
-                    final x = double.tryParse(v);
-                    if (x == null) return;
-                    _updateDoctorRow(r.doctorId, income: x);
-                  })),
-                  DataCell(Text(nf.format(r.c30))),
-                  DataCell(Text(nf.format(r.bonus))),
-                  DataCell(Text('${r.commissionPercent} (${nf.format(r.percentVal)})')), // rate from slice table, % = BONUS * rate
-                  DataCell(_editableCell(nf.format(r.consumables), (v) {
-                    final x = double.tryParse(v.replaceAll(',', ''));
-                    if (x == null) return;
-                    _updateDoctorRow(r.doctorId, consumables: x);
-                  })),
-                  DataCell(_editableCell(nf.format(r.media), (v) {
-                    final x = double.tryParse(v.replaceAll(',', ''));
-                    if (x == null) return;
-                    _updateDoctorRow(r.doctorId, media: x);
-                  })),
-                ],
-              )),
-          // Total row (exactly like spreadsheet row 30): Total | income | 30% | Total | % | consumables | media
+          ..._doctorRows.toList().asMap().entries.map((e) {
+                final idx = e.key;
+                final r = e.value;
+                return DataRow(
+                  cells: [
+                    DataCell(Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_upward, size: 20),
+                          onPressed: idx > 0 ? () => _moveDoctorRow(idx, true) : null,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.arrow_downward, size: 20),
+                          onPressed: idx < _doctorRows.length - 1 ? () => _moveDoctorRow(idx, false) : null,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        ),
+                      ],
+                    )),
+                    DataCell(Text(r.doctorName)),
+                    DataCell(_editableCell(nf.format(r.income), (v) {
+                      final x = double.tryParse(v);
+                      if (x == null) return;
+                      _updateDoctorRow(r.doctorId, income: x);
+                    })),
+                    DataCell(Text(nf.format(r.c30))),
+                    DataCell(Text(nf.format(r.bonus))),
+                    DataCell(Text('${r.commissionPercent} (${nf.format(r.percentVal)})')),
+                    DataCell(_editableCell(nf.format(r.consumables), (v) {
+                      final x = double.tryParse(v.replaceAll(',', ''));
+                      if (x == null) return;
+                      _updateDoctorRow(r.doctorId, consumables: x);
+                    })),
+                    DataCell(_editableCell(nf.format(r.media), (v) {
+                      final x = double.tryParse(v.replaceAll(',', ''));
+                      if (x == null) return;
+                      _updateDoctorRow(r.doctorId, media: x);
+                    })),
+                  ],
+                );
+              }),
           DataRow(
             cells: [
+              const DataCell(Text('')),
               const DataCell(Text('Total')),
               DataCell(Text(nf.format(_totalIncome))),
               DataCell(Text(nf.format(_totalC30))),
@@ -862,9 +962,9 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
               DataCell(Text(nf.format(_totalMedia))),
             ],
           ),
-          // Summary rows exactly like spreadsheet (rows 31–33): Label1 | Value1 | Label2 | Value2 | Doctor | C+E
           DataRow(
             cells: [
+              const DataCell(Text('')),
               const DataCell(Text('NET')),
               DataCell(Text(nf.format(_net), style: const TextStyle(fontWeight: FontWeight.bold))),
               DataCell(Text(l10n.rentGuard)),
@@ -879,7 +979,28 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
           ),
           DataRow(
             cells: [
-              const DataCell(Text('MANG (.15)')),
+              const DataCell(Text('')),
+              DataCell(Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('MANG '),
+                  SizedBox(
+                    width: 56,
+                    child: TextFormField(
+                      key: ValueKey('mang_$_mangRate'),
+                      initialValue: _mangRate.toString(),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
+                      onChanged: (v) {
+                        final x = double.tryParse(v);
+                        if (x != null && x >= 0 && x <= 1) {
+                          setState(() { _mangRate = x; _recalcFromRows(); });
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              )),
               DataCell(Text(nf.format(_mang))),
               DataCell(Text(l10n.receptionist)),
               DataCell(_editableCell(nf.format(_receptionist), (v) {
@@ -893,7 +1014,28 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
           ),
           DataRow(
             cells: [
-              const DataCell(Text('BASKET (.3)')),
+              const DataCell(Text('')),
+              DataCell(Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('BASKET '),
+                  SizedBox(
+                    width: 56,
+                    child: TextFormField(
+                      key: ValueKey('basket_$_basketRate'),
+                      initialValue: _basketRate.toString(),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
+                      onChanged: (v) {
+                        final x = double.tryParse(v);
+                        if (x != null && x >= 0 && x <= 1) {
+                          setState(() { _basketRate = x; _recalcFromRows(); });
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              )),
               DataCell(Text(nf.format(_basket))),
               DataCell(Text(l10n.profitForEach)),
               DataCell(Text(nf.format(_profitForEach), style: const TextStyle(fontWeight: FontWeight.bold))),
@@ -928,7 +1070,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     final r = _doctorRows[i];
     final newIncome = income ?? r.income;
     final rate = _commissionRateForIncome(newIncome);
-    final newC30 = newIncome * 0.3;
+    final newC30 = newIncome * _percent30;
     final newBonus = (newIncome - _target) > 0 ? (newIncome - _target) : 0.0;
     final newPercentVal = newBonus * rate;
     _doctorRows[i] = r.copyWith(
@@ -954,6 +1096,18 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     _recalcFromRows();
   }
 
+  void _moveDoctorRow(int index, bool up) {
+    if (up && index <= 0) return;
+    if (!up && index >= _doctorRows.length - 1) return;
+    final swapIndex = up ? index - 1 : index + 1;
+    final a = _doctorRows[index];
+    final b = _doctorRows[swapIndex];
+    _doctorRows[index] = b;
+    _doctorRows[swapIndex] = a;
+    _doctorOrder = _doctorRows.map((r) => r.doctorId).toList();
+    setState(() {});
+  }
+
   Widget _buildCommissionTable(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
@@ -975,10 +1129,36 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
             cells: [
               DataCell(Text('${idx + 1}')),
               DataCell(Text(range)),
-              DataCell(Text('${s.percent.toStringAsFixed(0)}%')),
+              DataCell(SizedBox(
+                width: 80,
+                child: TextFormField(
+                  key: ValueKey('slice_pct_$idx'),
+                  initialValue: s.percent.toStringAsFixed(0),
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                    suffixText: '%',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  ),
+                  onChanged: (v) {
+                    final x = double.tryParse(v);
+                    if (x == null || x < 0 || x > 100) return;
+                    setState(() {
+                      final prev = _slices[idx];
+                      _slices = [
+                        for (var i = 0; i < _slices.length; i++)
+                          i == idx ? (min: prev.min, max: prev.max, percent: x, rate: prev.rate) : _slices[i],
+                      ];
+                      _recalcPercentFromSlices();
+                    });
+                  },
+                ),
+              )),
               DataCell(SizedBox(
                 width: 56,
                 child: TextFormField(
+                  key: ValueKey('slice_rate_$idx'),
                   initialValue: s.rate.toString(),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),

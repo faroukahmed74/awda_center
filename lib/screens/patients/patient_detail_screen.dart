@@ -143,23 +143,6 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       children: [
         Text(l10n.personalData, style: theme.titleMedium),
         const SizedBox(height: 8),
-        if (_user!.patientCode != null && _user!.patientCode!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text('${l10n.patientCode}: ${_user!.patientCode}', style: theme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
-          )
-        else if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: TextButton.icon(
-              icon: const Icon(Icons.tag, size: 18),
-              label: Text(l10n.assignPatientCode),
-              onPressed: () async {
-                await _firestore.ensurePatientCode(_user!.id);
-                if (mounted) _load();
-              },
-            ),
-          ),
         Text(_user!.displayName, style: theme.titleSmall),
         if (_user!.email.isNotEmpty) Text(_user!.email, style: theme.bodySmall),
         if (_user!.phone != null && _user!.phone!.isNotEmpty) Text(_user!.phone!, style: theme.bodySmall),

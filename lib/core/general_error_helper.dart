@@ -19,10 +19,18 @@ String generalErrorToMessageKey(Object error, [String? stackTrace]) {
     switch (code) {
       case 'permission-denied':
       case 'cloud_firestore/permission-denied':
+      case 'unauthenticated':
         return GeneralErrorKey.permissionDenied;
       case 'unavailable':
       case 'resource-exhausted':
         return GeneralErrorKey.network;
+      case 'already-exists':
+        return 'authErrorEmailAlreadyInUse';
+      case 'invalid-argument': {
+        final m = (error as FirebaseException).message?.toLowerCase() ?? '';
+        if (m.contains('password')) return 'authErrorWeakPassword';
+        return 'authErrorInvalidEmail';
+      }
       default:
         break;
     }

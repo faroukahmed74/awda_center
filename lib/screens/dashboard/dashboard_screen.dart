@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -56,6 +57,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           actions: [
             const NotificationsButton(),
+            if (!kIsWeb && !user.hasRole(UserRole.patient))
+              IconButton(
+                icon: const Icon(Icons.person_add),
+                tooltip: l10n.addNewPatient,
+                onPressed: () async {
+                  final patientId = await showDialog<String>(
+                    context: context,
+                    builder: (_) => const AddPatientDialog(),
+                  );
+                  if (patientId != null && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l10n.patientAdded)),
+                    );
+                    context.push('/patients/$patientId');
+                  }
+                },
+              ),
             IconButton(
               icon: const Icon(Icons.language),
               tooltip: l10n.isArabic ? 'English' : 'العربية',
@@ -192,6 +210,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onTap: () { Navigator.pop(context); context.push('/income-expenses'); },
                       ),
                     ],
+                    if (canAccessRoute(user, '/income-expenses-summary')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.summarize),
+                        title: Text(l10n.financeSummary),
+                        onTap: () { Navigator.pop(context); context.push('/income-expenses-summary'); },
+                      ),
+                    ],
                     if (canAccessRoute(user, '/reports')) ...[
                       ListTile(
                         leading: const Icon(Icons.assessment),
@@ -248,14 +273,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             style: Theme.of(context).textTheme.bodyLarge,
                             textAlign: TextAlign.center,
                           ),
-                          if (canAccessRoute(user, '/patients') || canAccessRoute(user, '/appointments')) ...[
+                          if (!user.hasRole(UserRole.patient) || canAccessRoute(user, '/patients') || canAccessRoute(user, '/appointments')) ...[
                             const SizedBox(height: 20),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               alignment: WrapAlignment.center,
                               children: [
-                                if (canAccessRoute(user, '/patients')) ...[
+                                if (!kIsWeb && !user.hasRole(UserRole.patient))
                                   FilledButton.tonalIcon(
                                     icon: const Icon(Icons.person_add, size: 20),
                                     label: Text(l10n.addNewPatient),
@@ -264,7 +289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         context: context,
                                         builder: (_) => const AddPatientDialog(),
                                       );
-                                      if (patientId != null && context.mounted) {
+                                      if (patientId != null && mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(content: Text(l10n.patientAdded)),
                                         );
@@ -272,6 +297,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       }
                                     },
                                   ),
+                                if (canAccessRoute(user, '/patients')) ...[
                                   FilledButton.tonalIcon(
                                     icon: const Icon(Icons.search, size: 20),
                                     label: Text(l10n.findPatient),
@@ -386,7 +412,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
   List<AppointmentModel> _appointments = [];
   Map<String, String> _names = {};
   /// Patient id -> (name, email, phone, code) for search by name/email/phone/code.
-  final Map<String, ({String name, String email, String phone, String code})> _patientData = {};
+  final Map<String, ({String name, String email, String phone})> _patientData = {};
   bool _loading = true;
   _DashboardPeriod _period = _DashboardPeriod.today;
   String? _filterDoctorId;
@@ -461,7 +487,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
       final u = await _firestore.getUser(id);
       if (u != null) {
         names[id] = u.displayName;
-        _patientData[id] = (name: u.displayName, email: u.email, phone: u.phone ?? '', code: u.patientCode ?? '');
+        _patientData[id] = (name: u.displayName, email: u.email, phone: u.phone ?? '');
       } else {
         final d = await _firestore.getDoctorById(id);
         if (d != null) {
@@ -507,8 +533,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
         if (p == null) return true;
         return p.name.toLowerCase().contains(q) ||
             p.email.toLowerCase().contains(q) ||
-            p.phone.toLowerCase().contains(q) ||
-            p.code.toLowerCase().contains(q);
+            p.phone.toLowerCase().contains(q);
       }).toList();
     }
     list.sort((a, b) {

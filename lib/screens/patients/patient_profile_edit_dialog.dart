@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 import '../../core/patient_date_utils.dart';
 import '../../core/responsive.dart';
@@ -10,8 +9,10 @@ import '../../services/firestore_service.dart';
 class PatientProfileEditDialog extends StatefulWidget {
   final String patientId;
   final PatientProfileModel? existing;
+  /// When false (e.g. patient editing own profile), only personal fields are shown and editable; medical fields stay unchanged.
+  final bool canEditMedical;
 
-  const PatientProfileEditDialog({super.key, required this.patientId, this.existing});
+  const PatientProfileEditDialog({super.key, required this.patientId, this.existing, this.canEditMedical = true});
 
   @override
   State<PatientProfileEditDialog> createState() => _PatientProfileEditDialogState();
@@ -91,6 +92,7 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
     final ageStr = _ageController.text.trim();
     final ageVal = ageStr.isEmpty ? null : int.tryParse(ageStr);
     final age = ageVal != null && ageVal >= 0 && ageVal <= 150 ? ageVal : null;
+    final e = widget.existing;
     final profile = PatientProfileModel(
       id: widget.patientId,
       userId: widget.patientId,
@@ -99,19 +101,20 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
       gender: _gender,
       address: _address.text.trim().isEmpty ? null : _address.text.trim(),
       occupation: _occupation.text.trim().isEmpty ? null : _occupation.text.trim(),
-      referredBy: _referredBy.text.trim().isEmpty ? null : _referredBy.text.trim(),
+      referredBy: widget.canEditMedical ? (_referredBy.text.trim().isEmpty ? null : _referredBy.text.trim()) : e?.referredBy,
       maritalStatus: _maritalStatus.text.trim().isEmpty ? null : _maritalStatus.text.trim(),
-      areasToTreat: _areasToTreat.text.trim().isEmpty ? null : _areasToTreat.text.trim(),
-      feesType: _feesType.text.trim().isEmpty ? null : _feesType.text.trim(),
-      diagnosis: _diagnosis.text.trim().isEmpty ? null : _diagnosis.text.trim(),
-      medicalHistory: _medicalHistory.text.trim().isEmpty ? null : _medicalHistory.text.trim(),
-      treatmentProgress: _treatmentProgress.text.trim().isEmpty ? null : _treatmentProgress.text.trim(),
-      progressNotes: _progressNotes.text.trim().isEmpty ? null : _progressNotes.text.trim(),
-      chiefComplaint: _chiefComplaint.text.trim().isEmpty ? null : _chiefComplaint.text.trim(),
-      painLevel: _painLevel.text.trim().isEmpty ? null : _painLevel.text.trim(),
-      treatmentGoals: _treatmentGoals.text.trim().isEmpty ? null : _treatmentGoals.text.trim(),
-      contraindications: _contraindications.text.trim().isEmpty ? null : _contraindications.text.trim(),
-      previousTreatment: _previousTreatment.text.trim().isEmpty ? null : _previousTreatment.text.trim(),
+      areasToTreat: widget.canEditMedical ? (_areasToTreat.text.trim().isEmpty ? null : _areasToTreat.text.trim()) : e?.areasToTreat,
+      feesType: widget.canEditMedical ? (_feesType.text.trim().isEmpty ? null : _feesType.text.trim()) : e?.feesType,
+      diagnosis: widget.canEditMedical ? (_diagnosis.text.trim().isEmpty ? null : _diagnosis.text.trim()) : e?.diagnosis,
+      followedByDoctorId: widget.canEditMedical ? e?.followedByDoctorId : e?.followedByDoctorId,
+      medicalHistory: widget.canEditMedical ? (_medicalHistory.text.trim().isEmpty ? null : _medicalHistory.text.trim()) : e?.medicalHistory,
+      treatmentProgress: widget.canEditMedical ? (_treatmentProgress.text.trim().isEmpty ? null : _treatmentProgress.text.trim()) : e?.treatmentProgress,
+      progressNotes: widget.canEditMedical ? (_progressNotes.text.trim().isEmpty ? null : _progressNotes.text.trim()) : e?.progressNotes,
+      chiefComplaint: widget.canEditMedical ? (_chiefComplaint.text.trim().isEmpty ? null : _chiefComplaint.text.trim()) : e?.chiefComplaint,
+      painLevel: widget.canEditMedical ? (_painLevel.text.trim().isEmpty ? null : _painLevel.text.trim()) : e?.painLevel,
+      treatmentGoals: widget.canEditMedical ? (_treatmentGoals.text.trim().isEmpty ? null : _treatmentGoals.text.trim()) : e?.treatmentGoals,
+      contraindications: widget.canEditMedical ? (_contraindications.text.trim().isEmpty ? null : _contraindications.text.trim()) : e?.contraindications,
+      previousTreatment: widget.canEditMedical ? (_previousTreatment.text.trim().isEmpty ? null : _previousTreatment.text.trim()) : e?.previousTreatment,
     );
     await _firestore.savePatientProfile(profile);
     if (mounted) Navigator.of(context).pop(true);
@@ -238,24 +241,26 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           constraints: const BoxConstraints(minWidth: 320, maxWidth: 700),
           child: Form(
             key: _formKey,
-            child: twoCols
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildPersonalColumn(l10n)),
-                      const SizedBox(width: 20),
-                      Expanded(child: _buildMedicalColumn(l10n)),
-                    ],
-                  )
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildPersonalColumn(l10n),
-                      const SizedBox(height: 16),
-                      _buildMedicalColumn(l10n),
-                    ],
-                  ),
+            child: widget.canEditMedical
+                ? (twoCols
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildPersonalColumn(l10n)),
+                          const SizedBox(width: 20),
+                          Expanded(child: _buildMedicalColumn(l10n)),
+                        ],
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildPersonalColumn(l10n),
+                          const SizedBox(height: 16),
+                          _buildMedicalColumn(l10n),
+                        ],
+                      ))
+                : _buildPersonalColumn(l10n),
           ),
         ),
       ),

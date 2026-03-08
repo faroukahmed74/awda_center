@@ -11,7 +11,6 @@ import '../../models/session_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 import '../patients/patient_document_dialog.dart';
 import '../patients/document_viewer.dart';
@@ -208,7 +207,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                                   if (uid == null) return;
                                   final ok = await showDialog<bool>(
                                     context: context,
-                                    builder: (_) => PatientProfileEditDialog(patientId: uid, existing: null),
+                                    builder: (_) => PatientProfileEditDialog(patientId: uid, existing: null, canEditMedical: false),
                                   );
                                   if (ok == true && mounted) _load();
                                 },
@@ -229,13 +228,24 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                               if (user?.phone != null && user!.phone!.isNotEmpty) Text(user.phone!, style: Theme.of(context).textTheme.bodyMedium),
                               if (_profile!.dateOfBirth != null) Text('${l10n.date}: ${_profile!.dateOfBirth}', style: Theme.of(context).textTheme.bodySmall),
                               if (_profile!.dateOfBirth == null && _profile!.age != null) Text('${l10n.age}: ${_profile!.age} ${l10n.yearsOld}', style: Theme.of(context).textTheme.bodySmall),
-                              if (_profile!.diagnosis != null) Text('Diagnosis: ${_profile!.diagnosis}', style: Theme.of(context).textTheme.bodySmall),
-                              if (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty)
-                                Padding(padding: const EdgeInsets.only(top: 8), child: Text('${l10n.medicalHistory}: ${_profile!.medicalHistory}', style: Theme.of(context).textTheme.bodySmall)),
-                              if (_profile!.treatmentProgress != null && _profile!.treatmentProgress!.isNotEmpty)
-                                Padding(padding: const EdgeInsets.only(top: 4), child: Text('${l10n.treatmentProgress}: ${_profile!.treatmentProgress}', style: Theme.of(context).textTheme.bodySmall)),
-                              if (_profile!.progressNotes != null && _profile!.progressNotes!.isNotEmpty)
-                                Padding(padding: const EdgeInsets.only(top: 4), child: Text('${l10n.progressNotes}: ${_profile!.progressNotes}', style: Theme.of(context).textTheme.bodySmall)),
+                              if (_profile!.gender != null && _profile!.gender!.isNotEmpty) Text('${l10n.gender}: ${_profile!.gender}', style: Theme.of(context).textTheme.bodySmall),
+                              if (_profile!.address != null && _profile!.address!.isNotEmpty) Text('${l10n.address}: ${_profile!.address}', style: Theme.of(context).textTheme.bodySmall),
+                              if (_profile!.occupation != null && _profile!.occupation!.isNotEmpty) Text('${l10n.occupation}: ${_profile!.occupation}', style: Theme.of(context).textTheme.bodySmall),
+                              if (_profile!.maritalStatus != null && _profile!.maritalStatus!.isNotEmpty) Text('${l10n.maritalStatus}: ${_profile!.maritalStatus}', style: Theme.of(context).textTheme.bodySmall),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.edit, size: 18),
+                                label: Text(l10n.editProfile),
+                                onPressed: () async {
+                                  final uid = context.read<AuthProvider>().currentUser?.id;
+                                  if (uid == null) return;
+                                  final ok = await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => PatientProfileEditDialog(patientId: uid, existing: _profile, canEditMedical: false),
+                                  );
+                                  if (ok == true && mounted) _load();
+                                },
+                              ),
                             ],
                           ),
                         ),

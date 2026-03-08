@@ -8,50 +8,35 @@ const auth = admin.auth();
 const messaging = admin.messaging();
 
 const AWDA_EMAIL_SUFFIX = '@awda.com';
-
-function palindromeFromCounter(n) {
-  const s = String(n);
-  if (s.length <= 1) return s;
-  const rev = s.slice(0, -1).split('').reverse().join('');
-  return s + rev;
-}
-
-/** Get next patient code (symmetric number) and increment counter. Use in migration when user has no code. */
-async function getNextPatientCode() {
-  const counterRef = db.collection('counters').doc('patient_code');
-  return db.runTransaction(async (tx) => {
-    const snap = await tx.get(counterRef);
-    const next = ((snap.exists && snap.data().value) || 0) + 1;
-    tx.set(counterRef, { value: next }, { merge: true });
-    return palindromeFromCounter(next);
-  });
-}
+const MIGRATION_PASSWORD = 'AwdaMigrate2024!';
 
 /**
- * Callable: Create a Firebase Auth account for a staff-created patient.
- * email = {code}@awda.com, password = code. Returns { uid }.
- * Caller must then create Firestore users/{uid} and patient_profiles/{uid}.
+ * Callable: Create a Firebase Auth account for a patient (email + password). Used when staff adds a patient.
+ * Returns { uid }. Caller must then create Firestore users/{uid} and patient_profiles/{uid}.
  */
-exports.createPatientAuthAccount = functions.https.onCall(async (data, context) => {
+exports.createPatientWithEmail = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
   }
-  const code = data && data.code;
-  if (!code || typeof code !== 'string' || code.trim() === '') {
-    throw new functions.https.HttpsError('invalid-argument', 'code is required');
+  const email = data && data.email;
+  const password = data && data.password;
+  if (!email || typeof email !== 'string' || email.trim() === '') {
+    throw new functions.https.HttpsError('invalid-argument', 'email is required');
   }
-  const email = `${String(code).trim()}${AWDA_EMAIL_SUFFIX}`;
-  const password = String(code).trim();
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    throw new functions.https.HttpsError('invalid-argument', 'password must be at least 6 characters');
+  }
+  const emailTrimmed = String(email).trim();
   try {
     const userRecord = await auth.createUser({
-      email,
-      password,
+      email: emailTrimmed,
+      password: String(password),
       emailVerified: false,
     });
     return { uid: userRecord.uid };
   } catch (err) {
     if (err.code === 'auth/email-already-exists') {
-      throw new functions.https.HttpsError('already-exists', 'Patient login already exists for this code');
+      throw new functions.https.HttpsError('already-exists', 'An account with this email already exists');
     }
     throw new functions.https.HttpsError('internal', err.message);
   }
@@ -59,8 +44,8 @@ exports.createPatientAuthAccount = functions.https.onCall(async (data, context) 
 
 /**
  * Callable: Migrate one staff-created patient (Firestore-only) to have Auth login.
- * oldUserId = Firestore users doc id. User must have email like patient_*@awda.local (staff-created).
- * Assigns patientCode if missing, creates Auth (code@awda.com / code), creates users/newUid, migrates profile and all refs, deletes old docs.
+ * oldUserId = Firestore users doc id. User must have email like *@awda.local (staff-created).
+ * Creates Auth with migrated_<oldUserId>@awda.com and a fixed migration password; does not use patientCode.
  */
 exports.migrateStaffCreatedPatient = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -89,23 +74,13 @@ exports.migrateStaffCreatedPatient = functions.https.onCall(async (data, context
     throw new functions.https.HttpsError('invalid-argument', 'User is not a patient');
   }
 
-  let code = (userData.patientCode || '').trim();
-  if (!code) {
-    code = await getNextPatientCode();
-    await userRef.update({
-      patientCode: code,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  }
-
-  const loginEmail = `${code}${AWDA_EMAIL_SUFFIX}`;
-  const loginPassword = code;
+  const loginEmail = `migrated_${oldUserId}${AWDA_EMAIL_SUFFIX}`;
 
   let newUid;
   try {
     const userRecord = await auth.createUser({
       email: loginEmail,
-      password: loginPassword,
+      password: MIGRATION_PASSWORD,
       emailVerified: false,
     });
     newUid = userRecord.uid;
@@ -121,9 +96,9 @@ exports.migrateStaffCreatedPatient = functions.https.onCall(async (data, context
   const newUserData = {
     ...userData,
     email: loginEmail,
-    patientCode: code,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
+  delete newUserData.patientCode;
   delete newUserData.createdAt;
   await db.collection('users').doc(newUid).set({
     ...newUserData,
@@ -167,7 +142,7 @@ exports.migrateStaffCreatedPatient = functions.https.onCall(async (data, context
   if (profileSnap.exists) deleteBatch.delete(profileRef);
   await deleteBatch.commit();
 
-  return { newUid, code };
+  return { newUid };
 });
 
 const notificationTitles = {

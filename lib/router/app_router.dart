@@ -176,8 +176,9 @@ bool canAccessRoute(UserModel? user, String path) {
     case '/patients':
       return user.canAccessFeature('patients');
     case '/income-expenses':
-    case '/income-expenses-summary':
       return user.canAccessFeature('income_expenses');
+    case '/income-expenses-summary':
+      return user.canAccessFeature('finance_summary');
     case '/reports':
       return user.canAccessFeature('reports');
     case '/requirements':

@@ -248,6 +248,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _AdminTile(icon: Icons.medical_services, title: l10n.patients, onTap: () => context.push('/patients')),
         if (user.canAccessIncomeExpenses)
           _AdminTile(icon: Icons.attach_money, title: l10n.incomeAndExpenses, onTap: () => context.push('/income-expenses')),
+        if (user.canAccessFinanceSummary)
+          _AdminTile(icon: Icons.summarize, title: l10n.financeSummary, onTap: () => context.push('/income-expenses-summary')),
         if (user.canAccessReports)
           _AdminTile(icon: Icons.assessment, title: l10n.reports, onTap: () => context.push('/reports')),
         if (user.canAccessAdminDashboard) ...[

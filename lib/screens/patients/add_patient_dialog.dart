@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' hide TextDirection;
+import 'package:flutter/services.dart';
 import '../../core/date_format.dart';
 import 'package:provider/provider.dart';
 import '../../core/general_error_helper.dart';
@@ -20,22 +20,25 @@ class AddPatientDialog extends StatefulWidget {
 
 class _AddPatientDialogState extends State<AddPatientDialog> {
   final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _fullNameArController = TextEditingController();
   final _fullNameEnController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
   final _ageController = TextEditingController();
   DateTime? _dateOfBirth;
   String? _gender; // 'male' | 'female' | null
+  bool _obscurePassword = true;
   bool _loading = false;
   String? _error;
 
   @override
   void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
     _fullNameArController.dispose();
     _fullNameEnController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     _ageController.dispose();
     super.dispose();
   }
@@ -56,11 +59,12 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
       final ageStr = _ageController.text.trim();
       final ageVal = ageStr.isEmpty ? null : int.tryParse(ageStr);
       final age = ageVal != null && ageVal >= 0 && ageVal <= 150 ? ageVal : null;
-      final uid = await FirestoreService().createPatientUser(
+      final result = await FirestoreService().createPatientUser(
         fullNameAr: nameAr.isEmpty ? null : nameAr,
         fullNameEn: nameEn.isEmpty ? null : nameEn,
         phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
         email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
+        password: _passwordController.text.isEmpty ? null : _passwordController.text,
         dateOfBirth: _dateOfBirth != null ? toIsoDateString(_dateOfBirth!) : null,
         age: age,
         gender: _gender,
@@ -70,18 +74,80 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
         AuditService.log(
           action: 'patient_created',
           entityType: 'user',
-          entityId: uid,
+          entityId: result.uid,
           userId: currentUserId,
           details: {},
         );
       }
-      if (mounted) Navigator.of(context).pop(uid);
+      if (!mounted) return;
+      final email = _emailController.text.trim();
+      await _showCredentialsDialog(context, email: email, password: result.password);
+      if (mounted) Navigator.of(context).pop(result.uid);
     } catch (e) {
       if (mounted) setState(() {
         _error = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
         _loading = false;
       });
     }
+  }
+
+  /// Shows a dialog with login credentials so staff can share them with the patient.
+  static Future<void> _showCredentialsDialog(
+    BuildContext context, {
+    required String email,
+    required String password,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    final credentialsText = '${l10n.email}: $email\n${l10n.password}: $password';
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.patientAdded),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Share these login details with the patient so they can sign in. They can change their password in Profile after first login.',
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(ctx).dividerColor),
+                ),
+                child: SelectableText(
+                  credentialsText,
+                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: credentialsText));
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('Copied to clipboard')),
+              );
+            },
+            icon: const Icon(Icons.copy, size: 20),
+            label: const Text('Copy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -96,35 +162,75 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Same fields and order as register form
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: l10n.email,
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return l10n.email;
+                  if (!v.contains('@')) return l10n.authErrorMessage('authErrorInvalidEmail');
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: l10n.password,
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return l10n.password;
+                  if (v.length < 6) return 'Min 6 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _fullNameArController,
                 decoration: InputDecoration(
-                  labelText: '${l10n.fullNameAr} (${l10n.required})',
+                  labelText: l10n.fullNameAr,
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _fullNameEnController,
                 decoration: InputDecoration(
-                  labelText: '${l10n.fullNameEn} (optional)',
+                  labelText: l10n.fullNameEn,
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _phoneController,
-                decoration: InputDecoration(labelText: l10n.phone),
                 keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: l10n.phone,
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  border: const OutlineInputBorder(),
+                ),
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: '${l10n.email} (optional)'),
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  if (!v.contains('@')) return l10n.authErrorMessage('authErrorInvalidEmail');
-                  return null;
-                },
+              const SizedBox(height: 16),
+              // Optional patient profile fields
+              Text(
+                l10n.personalData,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
               const SizedBox(height: 12),
               InkWell(

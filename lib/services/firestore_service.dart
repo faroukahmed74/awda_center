@@ -44,19 +44,6 @@ class FirestoreService {
     return UserModel.fromFirestore(doc);
   }
 
-  /// Returns the user (patient) with this patient code, if any. Used for login with patient code.
-  Future<UserModel?> getUserByPatientCode(String code) async {
-    final trimmed = code.trim();
-    if (trimmed.isEmpty) return null;
-    final snapshot = await _firestore
-        .collection('users')
-        .where('patientCode', isEqualTo: trimmed)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isEmpty) return null;
-    return UserModel.fromFirestore(snapshot.docs.first);
-  }
-
   Future<void> updateUserFcmToken(String uid, String? token) async {
     await _firestore.collection('users').doc(uid).set({
       'fcmToken': token,
@@ -304,26 +291,6 @@ class FirestoreService {
 
   // Patient profile
 
-  /// Returns next patient code: a simple symmetric (palindromic) number, e.g. 1, 2, 101, 121, 12321.
-  static String _palindromeFromCounter(int n) {
-    final s = n.toString();
-    if (s.length <= 1) return s;
-    final rev = s.substring(0, s.length - 1).split('').reversed.join();
-    return s + rev;
-  }
-
-  /// Gets the next unique patient code (symmetric number) and increments the counter. Call inside transaction if needed.
-  Future<String> getNextPatientCode() async {
-    final counterRef = _firestore.collection('counters').doc('patient_code');
-    final result = await _firestore.runTransaction<String>((tx) async {
-      final snap = await tx.get(counterRef);
-      final next = ((snap.data()?['value'] as num?)?.toInt() ?? 0) + 1;
-      tx.set(counterRef, {'value': next}, SetOptions(merge: true));
-      return _palindromeFromCounter(next);
-    });
-    return result;
-  }
-
   /// Returns user ids of staff-created patients (email contains @awda.local). For migration to Auth login.
   Future<List<String>> getStaffCreatedPatientIds() async {
     final snapshot = await _firestore.collection('users').orderBy('createdAt', descending: true).get();
@@ -339,8 +306,7 @@ class FirestoreService {
         .toList();
   }
 
-  /// Migrates one staff-created patient to Auth login (code@awda.com / code). Call after ensurePatientCode if needed.
-  /// Returns new uid and code. Throws on failure.
+  /// Migrates one staff-created patient to Auth login. Returns new uid. Throws on failure.
   Future<Map<String, dynamic>> migrateStaffCreatedPatient(String oldUserId) async {
     final callable = FirebaseFunctions.instance.httpsCallable('migrateStaffCreatedPatient');
     final result = await callable.call({'oldUserId': oldUserId});
@@ -349,53 +315,38 @@ class FirestoreService {
     return Map<String, dynamic>.from(data as Map);
   }
 
-  /// Assigns next patient code to user [uid] if they are a patient and have no code. Idempotent.
-  Future<void> ensurePatientCode(String uid) async {
-    final userRef = _firestore.collection('users').doc(uid);
-    final doc = await userRef.get();
-    if (!doc.exists) return;
-    final d = doc.data() ?? {};
-    final roles = d['roles'];
-    final isPatient = roles is List && roles.contains('patient');
-    if (!isPatient) return;
-    final existing = d['patientCode'] as String?;
-    if (existing != null && existing.isNotEmpty) return;
-    final code = await getNextPatientCode();
-    await userRef.update({
-      'patientCode': code,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  /// Creates a patient user with Firebase Auth login (code@awda.com / password = code). Used by staff.
-  /// Returns the new user document id (= Auth uid). Patient can later log in with email "{code}@awda.com" and password "{code}", or with identifier "{code}" and password "{code}".
-  Future<String> createPatientUser({
+  /// Creates a patient user with Firebase Auth (email + password). Used by staff when adding a patient.
+  /// [email] is required. [password] if provided and at least 6 chars is used; otherwise a temporary password is generated.
+  /// Returns the new user [uid] and the [password] that was set (so staff can share it with the patient).
+  Future<({String uid, String password})> createPatientUser({
     required String? fullNameAr,
     required String? fullNameEn,
     required String? phone,
     required String? email,
+    String? password,
     String? dateOfBirth,
     int? age,
     String? gender,
   }) async {
-    final patientCode = await getNextPatientCode();
-    final callable = FirebaseFunctions.instance.httpsCallable('createPatientAuthAccount');
-    final result = await callable.call({'code': patientCode});
+    final emailTrimmed = (email ?? '').trim();
+    if (emailTrimmed.isEmpty) throw Exception('Email is required to create a patient');
+    final pwd = (password != null && password.length >= 6) ? password : _randomTempPassword();
+    final callable = FirebaseFunctions.instance.httpsCallable('createPatientWithEmail');
+    final result = await callable.call({'email': emailTrimmed, 'password': pwd});
     final data = result.data as Map?;
     if (data == null || data['uid'] == null) {
-      throw Exception('createPatientAuthAccount did not return uid');
+      throw Exception('createPatientWithEmail did not return uid');
     }
     final uid = data['uid'] as String;
 
     await _firestore.collection('users').doc(uid).set({
-      'email': '${patientCode}@awda.com',
+      'email': emailTrimmed,
       'fullNameAr': fullNameAr?.trim(),
       'fullNameEn': fullNameEn?.trim(),
       'phone': phone?.trim(),
       'roles': ['patient'],
       'permissions': [],
       'isActive': true,
-      'patientCode': patientCode,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -406,7 +357,12 @@ class FirestoreService {
       'gender': gender?.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    return uid;
+    return (uid: uid, password: pwd);
+  }
+
+  static String _randomTempPassword() {
+    final rand = DateTime.now().millisecondsSinceEpoch % 100000;
+    return 'Awda${rand.toString().padLeft(5, '0')}!';
   }
 
   Future<PatientProfileModel?> getPatientProfile(String userId) async {

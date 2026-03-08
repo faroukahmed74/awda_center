@@ -240,13 +240,14 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(
                           children: [
-                            FilledButton.tonalIcon(
-                              onPressed: () => context.push('/income-expenses-summary'),
-                              icon: const Icon(Icons.summarize),
-                              label: Text(l10n.financeSummary),
-                              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-                            ),
-                            const SizedBox(width: 12),
+                            if (context.watch<AuthProvider>().currentUser?.canAccessFinanceSummary == true)
+                              FilledButton.tonalIcon(
+                                onPressed: () => context.push('/income-expenses-summary'),
+                                icon: const Icon(Icons.summarize),
+                                label: Text(l10n.financeSummary),
+                                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                              ),
+                            if (context.watch<AuthProvider>().currentUser?.canAccessFinanceSummary == true) const SizedBox(width: 12),
                             FilterChip(
                               label: Text(l10n.filterAll),
                               selected: _filterDay == null && _filterYear == null && _filterMonth == null && _filterDoctorId == null && _filterPatientId == null,
@@ -361,9 +362,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                 items: [
                                   DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
                                   ...cache.patients.map((p) {
-                                    final label = p.patientCode != null && p.patientCode!.isNotEmpty
-                                        ? '${p.displayName} (${p.patientCode})'
-                                        : p.displayName;
+                                    final label = p.displayName;
                                     return DropdownMenuItem<String?>(
                                       value: p.id,
                                       child: Text(label, overflow: TextOverflow.ellipsis),

@@ -63,6 +63,23 @@ class DataCacheProvider with ChangeNotifier {
     return null;
   }
 
+  /// English name for a doctor (for finance summary / reports). Prefers fullNameEn, then fullNameAr, then displayName.
+  String? doctorDisplayNameEn(String? doctorId) {
+    if (doctorId == null) return null;
+    for (final d in _doctors) {
+      if (d.id != doctorId) continue;
+      for (final u in _users) {
+        if (u.id == d.userId) {
+          if (u.fullNameEn != null && u.fullNameEn!.isNotEmpty) return u.fullNameEn;
+          if (u.fullNameAr != null && u.fullNameAr!.isNotEmpty) return u.fullNameAr;
+          break;
+        }
+      }
+      return d.displayName ?? doctorId;
+    }
+    return null;
+  }
+
   List<DoctorAvailabilityModel>? doctorAvailability(String doctorId) => _doctorAvailability[doctorId];
 
   DataCacheProvider() {

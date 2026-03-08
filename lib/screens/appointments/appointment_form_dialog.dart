@@ -95,7 +95,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     return names;
   }
 
-  /// Patients filtered by name, email, phone, or patient code (partial, case-insensitive).
+  /// Patients filtered by name, email, or phone (partial, case-insensitive).
   List<UserModel> get _filteredPatients {
     final q = _patientSearchController.text.trim().toLowerCase();
     if (q.isEmpty) return widget.patients;
@@ -103,8 +103,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
       final name = p.displayName.toLowerCase();
       final email = p.email.toLowerCase();
       final phone = (p.phone ?? '').toLowerCase();
-      final code = (p.patientCode ?? '').toLowerCase();
-      return name.contains(q) || email.contains(q) || phone.contains(q) || code.contains(q);
+      return name.contains(q) || email.contains(q) || phone.contains(q);
     }).toList();
   }
 
@@ -324,10 +323,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                   items: [
                     const DropdownMenuItem(value: null, child: Text('—')),
                     ...list.map((p) {
-                      var parts = <String>[];
-                      if (p.patientCode != null && p.patientCode!.isNotEmpty) parts.add(p.patientCode!);
-                      if (p.phone != null && p.phone!.isNotEmpty) parts.add(p.phone!);
-                      final subtitle = parts.isEmpty ? '' : ' • ${parts.join(' • ')}';
+                      final subtitle = (p.phone != null && p.phone!.isNotEmpty) ? ' • ${p.phone}' : '';
                       return DropdownMenuItem(value: p.id, child: Text('${p.displayName}$subtitle'));
                     }),
                   ],

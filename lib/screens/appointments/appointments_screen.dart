@@ -135,9 +135,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             .where((a) => a.status != AppointmentStatus.cancelled)
             .toList();
         if (mounted) setState(() {
-          _list = list;
-          _loading = false;
-        });
+            _list = list;
+            _loading = false;
+          });
       },
       onError: (e, st) {
         if (mounted) setState(() => _loading = false);
@@ -628,16 +628,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     out = out.where((a) => !a.appointmentDate.isBefore(weekStart) && !a.appointmentDate.isAfter(weekEnd)).toList();
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
-      final patientIdsByCode = cache.patients
-          .where((p) => (p.patientCode ?? '').toLowerCase().contains(q))
-          .map((p) => p.id)
-          .toSet();
       out = out.where((a) {
         final patientName = (cache.userName(a.patientId) ?? a.patientId).toLowerCase();
         final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId).toLowerCase();
         final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
-        final patientCodeMatch = patientIdsByCode.contains(a.patientId);
-        return patientCodeMatch || patientName.contains(q) || doctorName.contains(q) || serviceMatch;
+        return patientName.contains(q) || doctorName.contains(q) || serviceMatch;
       }).toList();
     }
     return out;
@@ -670,16 +665,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
-      final patientIdsByCode = cache.patients
-          .where((p) => (p.patientCode ?? '').toLowerCase().contains(q))
-          .map((p) => p.id)
-          .toSet();
       out = out.where((a) {
         final patientName = (cache.userName(a.patientId) ?? a.patientId).toLowerCase();
         final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId).toLowerCase();
         final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
-        final patientCodeMatch = patientIdsByCode.contains(a.patientId);
-        return patientCodeMatch || patientName.contains(q) || doctorName.contains(q) || serviceMatch;
+        return patientName.contains(q) || doctorName.contains(q) || serviceMatch;
       }).toList();
     }
     out.sort((a, b) {
@@ -892,23 +882,23 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator())
                   : _scheduleView
                       ? _buildScheduleView(context, cache, l10n, auth, canUpdate)
                           : _displayList(cache).isEmpty
-                              ? Center(child: Text(l10n.noData))
-                              : RefreshIndicator(
-                        onRefresh: () async {
-                              _subscription?.cancel();
-                              _startAppointmentsStream();
-                              await Future.delayed(const Duration(milliseconds: 400));
-                            },
+                ? Center(child: Text(l10n.noData))
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      _subscription?.cancel();
+                      _startAppointmentsStream();
+                      await Future.delayed(const Duration(milliseconds: 400));
+                    },
                             child: Builder(
                               builder: (context) {
                                 final displayList = _displayList(cache);
                                 final firstSessionIds = _firstSessionIdsNewPatient(_list.where((x) => x.status != AppointmentStatus.cancelled).toList());
                                 return ListView(
-                                  padding: responsiveListPadding(context),
+                      padding: responsiveListPadding(context),
                                   children: [
                                     _scheduleColorLegend(context, l10n),
                                     ...List.generate(displayList.length, (i) {
@@ -919,10 +909,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                       final isFirstSession = firstSessionIds.contains(a.id);
                                       final isStarredSession = a.isStarred;
                                       final showStar = isFirstSession || isStarredSession;
-                                      return Card(
-                                    margin: const EdgeInsets.only(bottom: 8),
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
                                     color: bgColor,
-                                    child: ListTile(
+                          child: ListTile(
                                       title: Row(
                                         children: [
                                           if (showStar)
@@ -1033,14 +1023,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                     ],
                                   )
                                 : null,
-                                    ),
+                          ),
                                   );
                                 }),
                                   ],
-                                );
-                              },
-                            ),
-                          ),
+                        );
+                      },
+                    ),
+                  ),
             ),
           ],
         ),

@@ -51,19 +51,11 @@ class AuthService {
     return getCurrentUserProfile();
   }
 
-  /// Sign in with email or patient code. If [identifier] contains '@', treats as email; otherwise looks up user by patientCode and signs in with their email.
-  Future<UserModel?> signInWithEmailOrPatientCode(String identifier, String password) async {
-    final trimmed = identifier.trim();
+  /// Sign in with email and password (email-only login; patient code is no longer used).
+  Future<UserModel?> signInWithEmailOrPatientCode(String email, String password) async {
+    final trimmed = email.trim();
     if (trimmed.isEmpty) return null;
-    String email = trimmed;
-    if (!trimmed.contains('@')) {
-      final fs = FirestoreService();
-      final user = await fs.getUserByPatientCode(trimmed);
-      if (user == null) return null;
-      email = user.email;
-      if (email.isEmpty) return null;
-    }
-    return signInWithEmailAndPassword(email, password);
+    return signInWithEmailAndPassword(trimmed, password);
   }
 
   Future<UserModel?> signInWithGoogle() async {
@@ -149,7 +141,6 @@ class AuthService {
         if (updates.isNotEmpty) await firestoreService.updateDoctor(doc.id, updates);
       }
     }
-    if (roles.contains('patient')) await firestoreService.ensurePatientCode(user.uid);
     return getCurrentUserProfile();
   }
 

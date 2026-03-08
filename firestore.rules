@@ -152,7 +152,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // counters: e.g. patient_code for generating unique patient codes; staff only (transaction read+write)
+    // counters: reserved for app use; staff only (transaction read+write)
     match /counters/{docId} {
       allow read, write: if isAuth() && (isAdmin() || isSecretary() || isDoctor() || hasPermission('patients'));
     }

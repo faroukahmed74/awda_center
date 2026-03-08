@@ -35,8 +35,6 @@ class UserModel {
   final String? locale;
   /// Optional: mark patient as starred (VIP); same star icon as "new patient". Admin can set via edit user.
   final bool isStarred;
-  /// Patient ID code: simple symmetric number for staff to search and for patient to share (e.g. when booking).
-  final String? patientCode;
 
   const UserModel({
     required this.id,
@@ -51,7 +49,6 @@ class UserModel {
     this.updatedAt,
     this.locale,
     this.isStarred = false,
-    this.patientCode,
   });
 
   /// Primary role for display (first in list).
@@ -81,6 +78,7 @@ class UserModel {
   bool get canAccessAppointments => canAccessFeature('appointments');
   bool get canAccessPatients => canAccessFeature('patients');
   bool get canAccessIncomeExpenses => canAccessFeature('income_expenses');
+  bool get canAccessFinanceSummary => canAccessFeature('finance_summary');
   bool get canAccessReports => canAccessFeature('reports');
   bool get canAccessRequirements => canAccessFeature('requirements');
   bool get canAccessAdminTodos => canAccessFeature('admin_todos');
@@ -118,7 +116,6 @@ class UserModel {
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
       locale: d['locale'] as String?,
       isStarred: d['isStarred'] as bool? ?? false,
-      patientCode: d['patientCode'] as String?,
     );
   }
 
@@ -134,7 +131,6 @@ class UserModel {
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       'isStarred': isStarred,
-      'patientCode': patientCode,
     };
   }
 
@@ -146,7 +142,6 @@ class UserModel {
     List<String>? permissions,
     bool? isActive,
     bool? isStarred,
-    String? patientCode,
   }) {
     return UserModel(
       id: id,
@@ -161,7 +156,6 @@ class UserModel {
       updatedAt: DateTime.now(),
       locale: locale,
       isStarred: isStarred ?? this.isStarred,
-      patientCode: patientCode ?? this.patientCode,
     );
   }
 }

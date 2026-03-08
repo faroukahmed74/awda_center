@@ -138,6 +138,7 @@ class AppLocalizations {
   String get listView => _map['listView']!;
   String get slotFull => _map['slotFull']!;
   String get roomTimeConflict => _map['roomTimeConflict']!;
+  String get doctorTimeConflict => _map['doctorTimeConflict']!;
   String get updateStatus => _map['updateStatus']!;
   String get name => _map['name']!;
   String get service => _map['service']!;
@@ -432,6 +433,7 @@ class AppLocalizations {
     'listView': 'List',
     'slotFull': 'This time slot is full (max 3 sessions + 1 extra).',
     'roomTimeConflict': 'This room is already booked for an appointment in this time range.',
+    'doctorTimeConflict': 'This doctor already has an appointment at the selected date and time. Please choose another time.',
     'updateStatus': 'Update status',
     'name': 'Name',
     'service': 'Service',
@@ -733,6 +735,7 @@ class AppLocalizations {
     'listView': 'قائمة',
     'slotFull': 'هذا الموعد ممتلئ (٣ جلسات + ١ إضافية).',
     'roomTimeConflict': 'هذه الغرفة محجوزة بالفعل لموعد في هذا التوقيت.',
+    'doctorTimeConflict': 'هذا الطبيب لديه موعد بالفعل في التاريخ والوقت المحدد. يرجى اختيار وقت آخر.',
     'updateStatus': 'تحديث الحالة',
     'name': 'الاسم',
     'service': 'الخدمة',

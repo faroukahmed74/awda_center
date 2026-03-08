@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 import 'package:provider/provider.dart';
 import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
 import '../../models/doctor_model.dart';
+import '../../models/package_model.dart';
+import '../../models/service_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 
 /// Lets a patient book an appointment (reserve a session/examination) for themselves.
+/// Shows services and packages; prevents booking when the doctor already has an appointment at the chosen date/time.
 class PatientBookAppointmentDialog extends StatefulWidget {
   final String patientId;
 
@@ -23,12 +25,15 @@ class PatientBookAppointmentDialog extends StatefulWidget {
 class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDialog> {
   final FirestoreService _firestore = FirestoreService();
   List<DoctorModel> _doctors = [];
+  List<ServiceModel> _services = [];
+  List<PackageModel> _packages = [];
   bool _loadingDoctors = true;
   String? _doctorId;
   DateTime _date = DateTime.now();
   String _startTime = '09:00';
   String _endTime = '09:30';
-  String _service = '';
+  List<String> _selectedServiceIds = [];
+  String? _packageId;
   String _notes = '';
   bool _saving = false;
   String? _errorMessage;
@@ -36,10 +41,24 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
   /// 24-hour time slots (00:00–23:30, every 30 min)
   static List<String> get _timeSlots => List.generate(48, (i) => '${(i ~/ 2).toString().padLeft(2, '0')}:${(i % 2 * 30).toString().padLeft(2, '0')}');
 
+  static int _minutesOfDay(String time) {
+    final parts = time.split(':');
+    final h = int.tryParse(parts[0].trim()) ?? 0;
+    final m = parts.length > 1 ? (int.tryParse(parts[1].trim()) ?? 0) : 0;
+    return h * 60 + m;
+  }
+
+  static bool _timeRangesOverlap(String start1, String end1, String start2, String end2) {
+    final s1 = _minutesOfDay(start1), e1 = _minutesOfDay(end1);
+    final s2 = _minutesOfDay(start2), e2 = _minutesOfDay(end2);
+    return s1 < e2 && s2 < e1;
+  }
+
   @override
   void initState() {
     super.initState();
     _loadDoctors();
+    _loadServicesAndPackages();
   }
 
   Future<void> _loadDoctors() async {
@@ -61,12 +80,45 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
     }
   }
 
+  Future<void> _loadServicesAndPackages() async {
+    try {
+      final services = await _firestore.getServices();
+      final packages = await _firestore.getAllPackages();
+      if (!mounted) return;
+      setState(() {
+        _services = services.where((s) => s.isActive).toList();
+        _packages = packages.where((p) => p.isActive).toList();
+      });
+    } catch (_) {}
+  }
+
   Future<void> _save() async {
     if (_doctorId == null || _doctorId!.isEmpty) return;
     setState(() {
       _saving = true;
       _errorMessage = null;
     });
+
+    final dayStart = DateTime(_date.year, _date.month, _date.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    try {
+      final existing = await _firestore.getAppointments(doctorId: _doctorId, from: dayStart, to: dayEnd);
+      final conflicting = existing
+          .where((a) => a.status != AppointmentStatus.cancelled)
+          .where((a) => _timeRangesOverlap(a.startTime, a.endTime, _startTime, _endTime))
+          .toList();
+      if (conflicting.isNotEmpty && mounted) {
+        setState(() {
+          _saving = false;
+          _errorMessage = AppLocalizations.of(context).doctorTimeConflict;
+        });
+        return;
+      }
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+      return;
+    }
+
     try {
       final appointmentId = await _firestore.createAppointment(AppointmentModel(
         id: '',
@@ -77,9 +129,10 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
         startTime: _startTime,
         endTime: _endTime,
         status: AppointmentStatus.pending,
-        services: _service.isEmpty ? const [] : [_service],
+        services: _selectedServiceIds,
         costAmount: null,
         notes: _notes.isEmpty ? null : _notes,
+        packageId: _packageId?.isEmpty == true ? null : _packageId,
         createdByUserId: widget.patientId,
       ));
       if (!mounted) return;
@@ -181,12 +234,55 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        initialValue: _service,
-                        decoration: InputDecoration(labelText: l10n.service),
-                        maxLines: 1,
-                        onChanged: (v) => _service = v,
+                      const SizedBox(height: 12),
+                      Text(l10n.services, style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 4),
+                      if (_services.isEmpty)
+                        Text(l10n.noData, style: Theme.of(context).textTheme.bodySmall)
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: _services.map((s) {
+                            final selected = _selectedServiceIds.contains(s.id);
+                            return FilterChip(
+                              label: Text(s.displayName),
+                              selected: selected,
+                              onSelected: (v) {
+                                setState(() {
+                                  if (v) {
+                                    _selectedServiceIds = List.from(_selectedServiceIds)..add(s.id);
+                                  } else {
+                                    _selectedServiceIds = _selectedServiceIds.where((id) => id != s.id).toList();
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      const SizedBox(height: 12),
+                      Text(l10n.packages, style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 4),
+                      DropdownButtonFormField<String?>(
+                        value: _packageId,
+                        decoration: InputDecoration(
+                          labelText: l10n.packages,
+                          hintText: '—',
+                          isDense: true,
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(value: null, child: Text('—')),
+                          ..._packages.map((p) => DropdownMenuItem<String?>(value: p.id, child: Text(p.displayName))),
+                        ],
+                        onChanged: (v) {
+                          setState(() {
+                            _packageId = v;
+                            if (v != null) {
+                              final pkg = _packages.firstWhere((p) => p.id == v, orElse: () => _packages.first);
+                              _selectedServiceIds = List.from(pkg.serviceIds);
+                            }
+                          });
+                        },
                       ),
                       const SizedBox(height: 8),
                       TextFormField(

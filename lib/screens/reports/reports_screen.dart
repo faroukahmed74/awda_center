@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import '../../core/arabic_pdf_reshaper.dart';
 import '../../core/general_error_helper.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
@@ -254,33 +255,54 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   Future<void> _exportCurrentAsPdf(AppLocalizations l10n, Rect? shareOrigin) async {
     final (from, to) = _range();
     final periodLabel = '${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}';
-    // Use a static TTF (Amiri) for Arabic; dart_pdf does not support variable fonts.
+    // Noto Sans Arabic for correct Arabic rendering in PDF (presentation forms + reshaper).
     pw.ThemeData? pdfTheme;
+    pw.Font? arabicFont;
     try {
-      final fontData = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
-      final baseFont = pw.Font.ttf(fontData);
-      pdfTheme = pw.ThemeData.withFont(base: baseFont, fontFallback: [baseFont]);
+      final fontData = await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
+      arabicFont = pw.Font.ttf(fontData);
+      pdfTheme = pw.ThemeData.withFont(base: arabicFont, fontFallback: [arabicFont]);
     } catch (_) {
       // Fallback: no custom theme (Arabic may render as replacement glyphs)
     }
     final doc = pw.Document(theme: pdfTheme);
     final int tabIndex = _tabController.index;
+    final isArabic = l10n.isArabic;
 
     final headerBg = PdfColor.fromInt(0xFFE3F2FD);
     final headerText = PdfColors.blue900;
     final sectionGreen = PdfColor.fromInt(0xFFE8F5E9);
 
+    pw.Widget pdfHeaderCell(String text, {PdfColor? bg, PdfColor? textColor}) {
+      final displayText = (isArabic && ArabicPdfReshaper.hasArabic(text)) ? ArabicPdfReshaper.reshape(text) : text;
+      final useRtl = isArabic && ArabicPdfReshaper.hasArabic(text);
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(6),
+        color: bg ?? PdfColors.blue50,
+        child: pw.Text(displayText, textDirection: useRtl ? pw.TextDirection.rtl : pw.TextDirection.ltr, textAlign: useRtl ? pw.TextAlign.right : pw.TextAlign.left, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: textColor ?? PdfColors.blue900, font: useRtl ? arabicFont : null)),
+      );
+    }
+    pw.Widget pdfCell(String text, {bool alternate = false}) {
+      final displayText = (isArabic && ArabicPdfReshaper.hasArabic(text)) ? ArabicPdfReshaper.reshape(text) : text;
+      final useRtl = isArabic && ArabicPdfReshaper.hasArabic(text);
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(4),
+        color: alternate ? PdfColor.fromInt(0xFFF5F5F5) : null,
+        child: pw.Text(displayText, textDirection: useRtl ? pw.TextDirection.rtl : pw.TextDirection.ltr, textAlign: useRtl ? pw.TextAlign.right : pw.TextAlign.left, style: pw.TextStyle(fontSize: 9, font: useRtl ? arabicFont : null)),
+      );
+    }
+
     if (tabIndex == 0) {
       final names = _patientNames.toSet().toList()..sort();
       doc.addPage(pw.MultiPage(
         build: (context) => [
-          pw.Text('${l10n.patientsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.patientsReport} ($periodLabel)') : '${l10n.patientsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
           pw.SizedBox(height: 8),
-          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text('${l10n.total}: ${names.length} ${l10n.patient}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold))),
+          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.total}: ${names.length} ${l10n.patient}') : '${l10n.total}: ${names.length} ${l10n.patient}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr)),
           pw.SizedBox(height: 8),
           pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.patient, bg: headerBg, textColor: headerText)]),
-            ...names.asMap().entries.map((e) => pw.TableRow(children: [_pdfCell(e.value, alternate: e.key.isOdd)])),
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.patient, bg: headerBg, textColor: headerText)]),
+            ...names.asMap().entries.map((e) => pw.TableRow(children: [pdfCell(e.value, alternate: e.key.isOdd)])),
           ]),
         ],
       ));
@@ -289,53 +311,53 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       final nf = NumberFormat.currency(symbol: '', decimalDigits: 0);
       doc.addPage(pw.MultiPage(
         build: (context) => [
-          pw.Text('${l10n.incomeExpensesReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.incomeExpensesReport} ($periodLabel)') : '${l10n.incomeExpensesReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
           pw.SizedBox(height: 8),
           pw.Container(padding: const pw.EdgeInsets.all(8), color: sectionGreen, child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            pw.Text('${l10n.totalIncome}: ${nf.format(_incomeTotal)}', style: const pw.TextStyle(fontSize: 11)),
-            pw.Text('${l10n.totalExpenses}: ${nf.format(_expenseTotal)}', style: const pw.TextStyle(fontSize: 11)),
-            pw.Text('${l10n.net}: ${nf.format(net)}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+            pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.totalIncome}: ${nf.format(_incomeTotal)}') : '${l10n.totalIncome}: ${nf.format(_incomeTotal)}', style: pw.TextStyle(fontSize: 11, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
+            pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.totalExpenses}: ${nf.format(_expenseTotal)}') : '${l10n.totalExpenses}: ${nf.format(_expenseTotal)}', style: pw.TextStyle(fontSize: 11, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
+            pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.net}: ${nf.format(net)}') : '${l10n.net}: ${nf.format(net)}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
           ])),
           pw.SizedBox(height: 12),
-          pw.Text(l10n.income, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          pw.Text(isArabic ? ArabicPdfReshaper.reshape(l10n.income) : l10n.income, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
           pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.source, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText)]),
-            ..._income.asMap().entries.map((e) => pw.TableRow(children: [_pdfCell(e.value.source, alternate: e.key.isOdd), _pdfCell(AppDateFormat.shortDate.format(e.value.incomeDate), alternate: e.key.isOdd), _pdfCell(nf.format(e.value.amount), alternate: e.key.isOdd)])),
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.source, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText)]),
+            ..._income.asMap().entries.map((e) => pw.TableRow(children: [pdfCell(e.value.source, alternate: e.key.isOdd), pdfCell(AppDateFormat.shortDate.format(e.value.incomeDate), alternate: e.key.isOdd), pdfCell(nf.format(e.value.amount), alternate: e.key.isOdd)])),
           ]),
           pw.SizedBox(height: 12),
-          pw.Text(l10n.expenses, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          pw.Text(isArabic ? ArabicPdfReshaper.reshape(l10n.expenses) : l10n.expenses, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
           pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.category, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText)]),
-            ..._expenses.asMap().entries.map((e) => pw.TableRow(children: [_pdfCell(e.value.category, alternate: e.key.isOdd), _pdfCell(AppDateFormat.shortDate.format(e.value.expenseDate), alternate: e.key.isOdd), _pdfCell(nf.format(e.value.amount), alternate: e.key.isOdd)])),
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.category, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText)]),
+            ..._expenses.asMap().entries.map((e) => pw.TableRow(children: [pdfCell(e.value.category, alternate: e.key.isOdd), pdfCell(AppDateFormat.shortDate.format(e.value.expenseDate), alternate: e.key.isOdd), pdfCell(nf.format(e.value.amount), alternate: e.key.isOdd)])),
           ]),
         ],
       ));
     } else if (tabIndex == 2) {
       doc.addPage(pw.MultiPage(
         build: (context) => [
-          pw.Text('${l10n.appointmentsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.appointmentsReport} ($periodLabel)') : '${l10n.appointmentsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
           pw.SizedBox(height: 8),
-          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text('${l10n.total}: ${_appointments.length} ${l10n.appointments}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold))),
+          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.total}: ${_appointments.length} ${l10n.appointments}') : '${l10n.total}: ${_appointments.length} ${l10n.appointments}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr)),
           pw.SizedBox(height: 8),
           pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(1), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.time, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.status, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.service, bg: headerBg, textColor: headerText)]),
-            ..._appointments.take(100).toList().asMap().entries.map((e) => pw.TableRow(children: [_pdfCell(AppDateFormat.shortDate.format(e.value.appointmentDate), alternate: e.key.isOdd), _pdfCell('${e.value.startTime}-${e.value.endTime}', alternate: e.key.isOdd), _pdfCell(_statusLabel(e.value.status.value, l10n), alternate: e.key.isOdd), _pdfCell(e.value.servicesDisplay, alternate: e.key.isOdd)])),
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.time, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.status, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.service, bg: headerBg, textColor: headerText)]),
+            ..._appointments.take(100).toList().asMap().entries.map((e) => pw.TableRow(children: [pdfCell(AppDateFormat.shortDate.format(e.value.appointmentDate), alternate: e.key.isOdd), pdfCell('${e.value.startTime}-${e.value.endTime}', alternate: e.key.isOdd), pdfCell(_statusLabel(e.value.status.value, l10n), alternate: e.key.isOdd), pdfCell(e.value.servicesDisplay, alternate: e.key.isOdd)])),
           ]),
         ],
       ));
     } else {
       doc.addPage(pw.MultiPage(
         build: (context) => [
-          pw.Text(l10n.usersReport, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text(isArabic ? ArabicPdfReshaper.reshape(l10n.usersReport) : l10n.usersReport, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
           pw.SizedBox(height: 8),
-          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text('${l10n.total}: ${_users.length} ${l10n.users}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold))),
+          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.total}: ${_users.length} ${l10n.users}') : '${l10n.total}: ${_users.length} ${l10n.users}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr)),
           pw.SizedBox(height: 8),
           pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(2), 3: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [_pdfHeaderCell(l10n.fullNameAr, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.fullNameEn, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.email, bg: headerBg, textColor: headerText), _pdfHeaderCell(l10n.role, bg: headerBg, textColor: headerText)]),
+            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.fullNameAr, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.fullNameEn, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.email, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.role, bg: headerBg, textColor: headerText)]),
             ..._users.asMap().entries.map((e) {
               final alt = e.key.isOdd;
               final u = e.value;
-              return pw.TableRow(children: [_pdfCell(u.fullNameAr ?? '', alternate: alt), _pdfCell(u.fullNameEn ?? '', alternate: alt), _pdfCell(u.email, alternate: alt), _pdfCell(u.roles.join(', '), alternate: alt)]);
+              return pw.TableRow(children: [pdfCell(u.fullNameAr ?? '', alternate: alt), pdfCell(u.fullNameEn ?? '', alternate: alt), pdfCell(u.email, alternate: alt), pdfCell(u.roles.join(', '), alternate: alt)]);
             }),
           ]),
         ],
@@ -346,22 +368,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final filename = 'report_${tabIndex}_${from.millisecondsSinceEpoch}.pdf';
     await savePdfAndShare(filename, bytes, shareOrigin);
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF ready — download or share')));
-  }
-
-  static pw.Widget _pdfHeaderCell(String text, {PdfColor bg = PdfColors.blue50, PdfColor textColor = PdfColors.blue900}) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(6),
-      color: bg,
-      child: pw.Text(text, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: textColor)),
-    );
-  }
-
-  static pw.Widget _pdfCell(String text, {bool alternate = false}) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(4),
-      color: alternate ? PdfColor.fromInt(0xFFF5F5F5) : null,
-      child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)),
-    );
   }
 
   Future<void> _exportCurrentAsExcel(AppLocalizations l10n, Rect? shareOrigin) async {
