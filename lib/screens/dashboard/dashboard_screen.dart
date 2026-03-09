@@ -52,7 +52,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               AppLogo(size: responsiveLogoSizeSmall(context)),
               const SizedBox(width: 10),
-              Flexible(child: Text(l10n.appTitle)),
+              Flexible(
+                child: Text(
+                  l10n.appTitle,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
             ],
           ),
           actions: [
@@ -107,13 +113,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          AppLogo(size: Breakpoint.isDesktop(context) ? 56 : 48),
-                          const SizedBox(height: 8),
-                          Text(
-                            user.displayName,
-                            style: Theme.of(context).textTheme.titleLarge,
+                          AppLogo(size: responsiveDrawerHeaderLogoSize(context)),
+                          const SizedBox(height: 6),
+                          Flexible(
+                            child: Text(
+                              user.displayName,
+                              style: Theme.of(context).textTheme.titleMedium,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
-                          Text(l10n.roleDisplay(user.role.value), style: Theme.of(context).textTheme.bodySmall),
+                          Text(
+                            l10n.roleDisplay(user.role.value),
+                            style: Theme.of(context).textTheme.bodySmall,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ],
                       ),
                     ),

@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 /// Breakpoints for responsive layout (works on Android, iOS, Web, macOS).
 class Breakpoint {
+  /// Very small phones (e.g. 320–360px width).
+  static const double xs = 360;
   static const double mobile = 600;
   static const double tablet = 900;
   static const double desktop = 1200;
@@ -16,6 +19,8 @@ class Breakpoint {
   }
   static bool isDesktop(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= desktop;
+  static bool isExtraSmall(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < xs;
 
   /// Safe padding that respects notches, status bar, and keyboard.
   static EdgeInsets safePadding(BuildContext context) {
@@ -34,7 +39,8 @@ class ResponsivePadding {
     if (w >= Breakpoint.desktop) return const EdgeInsets.all(24);
     if (w >= Breakpoint.tablet) return const EdgeInsets.all(20);
     if (w >= Breakpoint.mobile) return const EdgeInsets.all(16);
-    return const EdgeInsets.all(12);
+    if (w >= Breakpoint.xs) return const EdgeInsets.all(12);
+    return const EdgeInsets.all(10);
   }
 
   static EdgeInsets horizontal(BuildContext context) {
@@ -65,18 +71,44 @@ double responsiveMaxFormWidth(BuildContext context) {
 }
 
 double responsiveLogoSize(BuildContext context) {
-  final w = MediaQuery.sizeOf(context).width;
-  if (w >= Breakpoint.desktop) return 120;
-  if (w >= Breakpoint.tablet) return 100;
-  if (w >= Breakpoint.mobile) return 88;
-  return 72;
+  final size = MediaQuery.sizeOf(context);
+  final w = size.width;
+  final h = size.height;
+  if (w >= Breakpoint.desktop) return 200;
+  if (w >= Breakpoint.tablet) return 180;
+  if (w >= Breakpoint.mobile) return 144;
+  // Small phones: cap by height so short screens (e.g. landscape) don't overflow.
+  if (w < Breakpoint.xs) return (h * 0.2).clamp(64.0, 96.0);
+  final byHeight = (h * 0.22).clamp(72.0, 128.0);
+  return byHeight;
 }
 
+/// Logo for app bar and drawer. Scales by viewport on all platforms.
 double responsiveLogoSizeSmall(BuildContext context) {
-  final w = MediaQuery.sizeOf(context).width;
-  if (w >= Breakpoint.desktop) return 40;
-  if (w >= Breakpoint.mobile) return 36;
-  return 32;
+  final size = MediaQuery.sizeOf(context);
+  final w = size.width;
+  final h = size.height;
+  // Extra-small phones: keep logo small so app bar and drawer fit.
+  if (w < Breakpoint.xs) {
+    return 52;
+  }
+  if (w >= Breakpoint.desktop) return kIsWeb ? 128 : 96;
+  if (w >= Breakpoint.tablet) return kIsWeb ? 116 : 88;
+  if (w >= Breakpoint.mobile) return kIsWeb ? 104 : 80;
+  // Mobile portrait: cap by height so drawer header fits on short screens.
+  final byWidth = 72.0;
+  final drawerSafeHeight = (h * 0.18).clamp(48.0, 88.0);
+  return byWidth > drawerSafeHeight ? drawerSafeHeight : byWidth;
+}
+
+/// Max height for drawer header content (logo + name + role). Use with drawer so it fits on all devices.
+double responsiveDrawerHeaderLogoSize(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  final h = size.height;
+  // Drawer header should leave room for name + role; cap logo by height on short screens.
+  final maxLogoByHeight = (h * 0.2).clamp(48.0, 96.0);
+  final byWidth = responsiveLogoSizeSmall(context);
+  return byWidth > maxLogoByHeight ? maxLogoByHeight : byWidth;
 }
 
 int responsiveCrossAxisCount(BuildContext context) {

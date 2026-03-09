@@ -29,6 +29,8 @@ class AppointmentFormDialog extends StatefulWidget {
   final String? initialStartTime;
   final String? initialEndTime;
   final bool? initialIsExtraSlot;
+  /// When true (e.g. for admin/supervisor), date picker allows past dates for migrating old data.
+  final bool allowPastDate;
 
   const AppointmentFormDialog({
     super.key,
@@ -44,6 +46,7 @@ class AppointmentFormDialog extends StatefulWidget {
     this.initialStartTime,
     this.initialEndTime,
     this.initialIsExtraSlot,
+    this.allowPastDate = false,
   });
 
   @override
@@ -359,7 +362,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                 final d = await showDatePicker(
                   context: context,
                   initialDate: _date,
-                  firstDate: DateTime.now(),
+                  firstDate: widget.allowPastDate ? DateTime(2020, 1, 1) : DateTime.now(),
                   lastDate: DateTime.now().add(const Duration(days: 365)),
                   selectableDayPredicate: (day) => day.weekday != DateTime.friday,
                 );

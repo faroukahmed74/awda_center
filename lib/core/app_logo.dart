@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'responsive.dart';
 
-/// App logo: CenterLogo.jpg converted to PNG; used everywhere (app bar, drawer, login, launcher).
-const String kAppLogoAsset = 'assets/CenterLogo.png';
-const String _kAppLogoFallbackAsset = 'assets/CenterLogo.jpg';
+/// In-app logo: light and dark assets. App icon (launcher) is unchanged and set in pubspec flutter_launcher_icons.
+const String kAppLogoLightAsset = 'assets/AWDA Logo ( Light Mode ).png';
+const String kAppLogoDarkAsset = 'assets/AWDA Logo White ( Dark Mode ).png';
 
-/// Displays the app logo at a given size. Set [useResponsiveSize] to true to size from screen.
+/// Displays the app logo at a given size. Uses light or dark asset from current theme. Set [useResponsiveSize] to true to size from screen.
 class AppLogo extends StatelessWidget {
   const AppLogo({
     super.key,
-    this.size = 48,
+    this.size = 96,
     this.fit = BoxFit.contain,
     this.useResponsiveSize = false,
   });
@@ -23,18 +23,14 @@ class AppLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = useResponsiveSize ? responsiveLogoSize(context) : size;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final asset = isDark ? kAppLogoDarkAsset : kAppLogoLightAsset;
     return Image.asset(
-      kAppLogoAsset,
+      asset,
       width: s,
       height: s,
       fit: fit,
-      errorBuilder: (_, __, ___) => Image.asset(
-        _kAppLogoFallbackAsset,
-        width: s,
-        height: s,
-        fit: fit,
-        errorBuilder: (_, __, ___) => Icon(Icons.medical_services, size: s, color: Theme.of(context).colorScheme.primary),
-      ),
+      errorBuilder: (_, __, ___) => Icon(Icons.medical_services, size: s, color: Theme.of(context).colorScheme.primary),
     );
   }
 }
@@ -46,31 +42,33 @@ class LoginLogoHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final w = MediaQuery.sizeOf(context).width;
-    final height = (w * 0.26).clamp(100.0, 160.0);
+    final size = MediaQuery.sizeOf(context);
+    final w = size.width;
+    final h = size.height;
+    // Scale by width and cap by height so short screens (landscape, small devices) don't overflow.
+    final byWidth = (w * 0.42).clamp(140.0, 280.0);
+    final byHeight = (h * 0.28).clamp(120.0, 280.0);
+    final height = byWidth > byHeight ? byHeight : byWidth;
+    final isDark = theme.brightness == Brightness.dark;
+    final asset = isDark ? kAppLogoDarkAsset : kAppLogoLightAsset;
     return Image.asset(
-      kAppLogoAsset,
+      asset,
       height: height,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => Image.asset(
-        _kAppLogoFallbackAsset,
-        height: height,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.medical_services, size: height * 0.85, color: theme.colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(
-              AppLocalizations.of(context).appTitle,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+      errorBuilder: (_, __, ___) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.medical_services, size: height * 0.85, color: theme.colorScheme.primary),
+          const SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(context).appTitle,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

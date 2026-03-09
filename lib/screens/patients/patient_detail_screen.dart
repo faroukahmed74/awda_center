@@ -301,15 +301,20 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                                 final currentUserId = context.read<AuthProvider>().currentUser?.id;
                                 final ok = await showDialog<bool>(
                                   context: context,
-                                  builder: (_) => AppointmentFormDialog(
-                                    currentUserId: currentUserId,
-                                    patients: cache.patients,
-                                    doctors: cache.doctors,
-                                    rooms: cache.rooms,
-                                    services: cache.services,
-                                    packages: _packages,
-                                    initialPatientId: widget.patientId,
-                                  ),
+                                  builder: (_) {
+                                    final user = context.read<AuthProvider>().currentUser;
+                                    final canBookPast = user?.hasRole(UserRole.admin) == true || user?.hasRole(UserRole.supervisor) == true;
+                                    return AppointmentFormDialog(
+                                      currentUserId: currentUserId,
+                                      patients: cache.patients,
+                                      doctors: cache.doctors,
+                                      rooms: cache.rooms,
+                                      services: cache.services,
+                                      packages: _packages,
+                                      initialPatientId: widget.patientId,
+                                      allowPastDate: canBookPast,
+                                    );
+                                  },
                                 );
                                 if (ok == true && mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(

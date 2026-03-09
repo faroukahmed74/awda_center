@@ -552,6 +552,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     rooms: cache.rooms,
                     services: cache.services,
                     packages: _packages,
+                    allowPastDate: auth?.hasRole(UserRole.admin) == true || auth?.hasRole(UserRole.supervisor) == true,
                   ),
                 );
                 if (ok == true && mounted) {
@@ -572,6 +573,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     initialStartTime: startTime,
                     initialEndTime: _nextSlot(startTime),
                     initialIsExtraSlot: isExtraSlotColumn,
+                    allowPastDate: auth?.hasRole(UserRole.admin) == true || auth?.hasRole(UserRole.supervisor) == true,
                   ),
                 );
                 if (ok == true && mounted) { _subscription?.cancel(); _startAppointmentsStream(); }
@@ -737,6 +739,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                       rooms: cache.rooms,
                       services: cache.services,
                       packages: _packages,
+                      allowPastDate: auth.hasRole(UserRole.admin) || auth.hasRole(UserRole.supervisor),
                     ),
                   );
                   if (ok == true && mounted) { _subscription?.cancel(); _startAppointmentsStream(); }
@@ -940,6 +943,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                             rooms: cache.rooms,
                                             services: cache.services,
                                             packages: _packages,
+                                            allowPastDate: auth.hasRole(UserRole.admin) || auth.hasRole(UserRole.supervisor),
                                           ),
                                         );
                                         if (ok == true && mounted) {
