@@ -119,7 +119,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   void _startAppointmentsStream() async {
     final auth = context.read<AuthProvider>().currentUser;
     String? doctorId;
-    if (auth != null && auth.hasRole(UserRole.doctor)) {
+    if (auth != null && auth.hasRole(UserRole.doctor) && !auth.hasRole(UserRole.admin)) {
       final doc = await _firestore.getDoctorByUserId(auth.id);
       if (doc != null) doctorId = doc.id;
     }

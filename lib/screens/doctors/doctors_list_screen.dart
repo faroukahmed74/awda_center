@@ -125,20 +125,6 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
                                             ],
                                           ),
                                         ),
-                                      if (qual != null && qual.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 6),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Icon(Icons.school_outlined, size: 18, color: Theme.of(context).colorScheme.primary),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text('${l10n.qualifications}: $qual', style: Theme.of(context).textTheme.bodyMedium),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
                                       if (cert != null && cert.isNotEmpty)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 6),
@@ -149,6 +135,20 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text('${l10n.certifications}: $cert', style: Theme.of(context).textTheme.bodyMedium),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      if (qual != null && qual.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 6),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Icon(Icons.school_outlined, size: 18, color: Theme.of(context).colorScheme.primary),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text('${l10n.qualifications}: $qual', style: Theme.of(context).textTheme.bodyMedium),
                                               ),
                                             ],
                                           ),

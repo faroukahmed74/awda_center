@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
 /// Tests that the Finance Summary formulas match the spreadsheet:
-/// Dr. Samir 35k → % 2250, Dr. Tarek 25k → % 2500 (rate 0.5), Dr. Ziad 18k → bonus 0, % 0.
-/// Total % = 4750; NET = 18,850; MANG = 2,828; BASKET = 5,655; Profit for each = 3,456; Net for Dr. Tarek = 10,000.
+/// Second slice (21k–29k) uses rate 0.05. Dr. Samir 35k → % 2250; Dr. Tarek 25k → % 250 (5000*0.05); Dr. Ziad 18k → bonus 0, % 0.
+/// Total % = 2500; NET = 21,100; MANG = 3,165; BASKET = 6,330; Profit for each = 3,835; Net for Dr. Tarek = 7,750.
 void main() {
   test('Finance summary formulas match spreadsheet', () {
     const double rentGuard = 10500;
@@ -10,7 +10,7 @@ void main() {
 
     final rows = [
       _Row(income: 35000, c30: 10500, bonus: 15000, percentVal: 2250, consumables: 7000, media: 0),
-      _Row(income: 25000, c30: 7500, bonus: 5000, percentVal: 2500, consumables: 0, media: 0),
+      _Row(income: 25000, c30: 7500, bonus: 5000, percentVal: 250, consumables: 0, media: 0),
       _Row(income: 18000, c30: 5400, bonus: 0, percentVal: 0, consumables: 9000, media: 0),
     ];
 
@@ -22,28 +22,28 @@ void main() {
 
     expect(totalIncome, 78000);
     expect(totalC30, 23400);
-    expect(totalPercent, 4750);
+    expect(totalPercent, 2500);
     expect(totalConsumables, 16000);
     expect(totalMedia, 0);
 
     // NET = Total income - Total 30% - Rent - Receptionist - Total consumables - Total media - Total %
     final net = totalIncome - totalC30 - rentGuard - receptionist - totalConsumables - totalMedia - totalPercent;
-    expect(net, 18850);
+    expect(net, 21100);
 
     // MANG = NET * 0.15
     final mang = net * 0.15;
-    expect(mang, closeTo(2827.5, 0.1));
+    expect(mang, closeTo(3165, 0.1));
 
     // BASKET = NET * 0.30
     final basket = net * 0.30;
-    expect(basket, 5655);
+    expect(basket, 6330);
 
     // Profit for each = (NET - MANG - BASKET) / number of doctors
     final profitForEach = (net - mang - basket) / rows.length;
-    expect(profitForEach, closeTo(3456, 1));
+    expect(profitForEach, closeTo(3835, 1));
 
-    // Net for Dr. Tarek = C28 + E28 = 30% target + % = 7500 + 2500
-    expect(rows[1].c30 + rows[1].percentVal, 10000);
+    // Net for Dr. Tarek = 30% target + % = 7500 + 250
+    expect(rows[1].c30 + rows[1].percentVal, 7750);
   });
 }
 

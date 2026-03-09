@@ -440,7 +440,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     if (user.hasRole(UserRole.patient)) {
       _subscription?.cancel();
       _subscription = _firestore.appointmentsStream(patientId: user.id).listen(_onSnapshot);
-    } else if (user.hasRole(UserRole.doctor)) {
+    } else if (user.hasRole(UserRole.doctor) && !user.hasRole(UserRole.admin)) {
       _firestore.getDoctorByUserId(user.id).then((doc) {
         if (!mounted) return;
         if (doc != null) {
@@ -558,16 +558,17 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     }
   }
 
+  /// Same status labels as Appointments screen so dashboard and appointments stay in sync.
   String _statusLabel(AppointmentStatus s) {
     final l10n = widget.l10n;
     switch (s) {
       case AppointmentStatus.pending: return l10n.pending;
       case AppointmentStatus.confirmed: return l10n.confirmed;
-      case AppointmentStatus.completed: return l10n.completed;
+      case AppointmentStatus.completed: return l10n.attended;
       case AppointmentStatus.cancelled: return l10n.cancelled;
-      case AppointmentStatus.noShow: return l10n.absentWithoutCause;
-      case AppointmentStatus.absentWithCause: return l10n.absentWithCause;
-      case AppointmentStatus.absentWithoutCause: return l10n.absentWithoutCause;
+      case AppointmentStatus.noShow: return l10n.absent;
+      case AppointmentStatus.absentWithCause: return l10n.apologized;
+      case AppointmentStatus.absentWithoutCause: return l10n.absent;
     }
   }
 

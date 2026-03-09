@@ -48,7 +48,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
   /// Commission slices: income range (min, max) → display percent and rate (right column). % = BONUS * rate.
   List<({double min, double? max, double percent, double rate})> _slices = [
     (min: 10000, max: 19000, percent: 25, rate: 0.25),
-    (min: 21000, max: 29000, percent: 35, rate: 0.5),
+    (min: 21000, max: 29000, percent: 35, rate: 0.05),
     (min: 30000, max: 39000, percent: 45, rate: 0.15),
     (min: 40000, max: 49000, percent: 55, rate: 0.25),
     (min: 50000, max: null, percent: 60, rate: 0.35),
@@ -1156,12 +1156,12 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 ),
               )),
               DataCell(SizedBox(
-                width: 56,
+                width: 80,
                 child: TextFormField(
                   key: ValueKey('slice_rate_$idx'),
                   initialValue: s.rate.toString(),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
+                  decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
                   onChanged: (v) {
                     final x = double.tryParse(v);
                     if (x == null || x < 0 || x > 1) return;
