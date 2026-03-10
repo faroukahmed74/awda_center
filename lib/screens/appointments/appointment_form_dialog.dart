@@ -118,8 +118,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     _doctorId = e?.doctorId;
     _roomId = e?.roomId;
     _date = e?.appointmentDate ?? widget.initialDate ?? DateTime.now();
-    _startTime = e?.startTime ?? widget.initialStartTime ?? '12:00';
-    _endTime = e?.endTime ?? widget.initialEndTime ?? '12:30';
+    _startTime = e?.startTime ?? widget.initialStartTime ?? '09:00';
+    _endTime = e?.endTime ?? widget.initialEndTime ?? '09:30';
     _isExtraSlot = e?.isExtraSlot ?? widget.initialIsExtraSlot ?? false;
     _isStarred = e?.isStarred ?? false;
     _selectedServiceIds = [];
@@ -182,12 +182,12 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     final dayEnd = dayStart.add(const Duration(days: 1));
     final range = await fs.getAppointments(from: dayStart, to: dayEnd);
 
-    // Room conflict: same date, same room, overlapping session time (all time between start and end)
+    // Room conflict: same date, same room, overlapping time. Absent/apologized do not block.
     if (_roomId != null && _roomId!.trim().isNotEmpty) {
       final sameRoom = range
           .where((a) =>
               a.roomId == _roomId &&
-              a.status != AppointmentStatus.cancelled &&
+              a.status.occupiesSlot &&
               a.id != (widget.existing?.id ?? ''))
           .toList();
       final hasOverlap = sameRoom.any((a) => _timeRangesOverlap(a.startTime, a.endTime, _startTime, _endTime));
@@ -200,9 +200,9 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
       }
     }
 
-    // Slot limit: max 3 main + 1 extra per (date, startTime)
+    // Slot limit: max 3 main + 1 extra per (date, startTime). Absent/apologized do not count.
     if (widget.existing == null) {
-      final sameSlot = range.where((a) => a.startTime == _startTime && a.status != AppointmentStatus.cancelled).toList();
+      final sameSlot = range.where((a) => a.startTime == _startTime && a.status.occupiesSlot).toList();
       final mainCount = sameSlot.where((a) => !a.isExtraSlot).length;
       final extraCount = sameSlot.where((a) => a.isExtraSlot).length;
       if (!_isExtraSlot && mainCount >= 3) {
@@ -289,8 +289,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     setState(() => _saving = false);
   }
 
-  /// Center hours 12 PM–12 AM (midnight). Every 30 min: 12:00–23:30.
-  static List<String> get _timeSlots => List.generate(24, (i) => '${(12 + (i ~/ 2)).toString().padLeft(2, '0')}:${(i % 2 * 30).toString().padLeft(2, '0')}');
+  /// 24-hour booking: every 30 min from 00:00 to 23:30.
+  static List<String> get _timeSlots => List.generate(48, (i) => '${(i ~/ 2).toString().padLeft(2, '0')}:${(i % 2 * 30).toString().padLeft(2, '0')}');
 
   @override
   Widget build(BuildContext context) {

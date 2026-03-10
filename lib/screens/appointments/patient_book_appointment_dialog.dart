@@ -104,7 +104,7 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
     try {
       final existing = await _firestore.getAppointments(doctorId: _doctorId, from: dayStart, to: dayEnd);
       final conflicting = existing
-          .where((a) => a.status != AppointmentStatus.cancelled)
+          .where((a) => a.status.occupiesSlot)
           .where((a) => _timeRangesOverlap(a.startTime, a.endTime, _startTime, _endTime))
           .toList();
       if (conflicting.isNotEmpty && mounted) {

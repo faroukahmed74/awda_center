@@ -9,6 +9,12 @@ extension AppointmentStatusExt on AppointmentStatus {
     if (this == AppointmentStatus.absentWithoutCause) return 'absent_without_cause';
     return name;
   }
+  /// True if this status should block the room/slot for a new booking. Cancelled, no-show, and absent (apologized) do not block.
+  bool get occupiesSlot =>
+      this != AppointmentStatus.cancelled &&
+      this != AppointmentStatus.noShow &&
+      this != AppointmentStatus.absentWithCause &&
+      this != AppointmentStatus.absentWithoutCause;
   static AppointmentStatus fromString(String? v) {
     switch (v?.toLowerCase()) {
       case 'pending': return AppointmentStatus.pending;

@@ -44,33 +44,34 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   List<PackageModel> _packages = [];
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
 
-  /// Time slots every 30 min from 12:00 to 23:30 (center open 12 PM to 12 AM)
-  static final List<String> _scheduleHours = List.generate(24, (i) {
-    final h = 12 + (i ~/ 2);
+  /// 24-hour schedule: time slots every 30 min from 00:00 to 23:30.
+  static final List<String> _scheduleHours = List.generate(48, (i) {
+    final h = i ~/ 2;
     final m = (i % 2) * 30;
     return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
   });
 
-  /// Next 30-min slot after [startTime] (e.g. 12:00 -> 12:30, 23:30 -> 23:30).
+  /// Next 30-min slot after [startTime] (e.g. 00:00 -> 00:30, 23:30 -> 23:30).
   static String _nextSlot(String startTime) {
     final parts = startTime.split(':');
-    final h = int.tryParse(parts[0].trim()) ?? 12;
+    final h = int.tryParse(parts[0].trim()) ?? 0;
     final m = int.tryParse(parts.length > 1 ? parts[1].trim() : '0') ?? 0;
     if (m == 30) {
-      final nextH = h == 23 ? 23 : h + 1;
-      return nextH == 23 && h == 23 ? '23:30' : '${nextH.toString().padLeft(2, '0')}:00';
+      if (h == 23) return '23:30';
+      return '${(h + 1).toString().padLeft(2, '0')}:00';
     }
     return '${h.toString().padLeft(2, '0')}:30';
   }
 
-  /// For schedule view: all appointments at [date] and [startTime] (non-cancelled).
+  /// For schedule view: appointments at [date] and [startTime] that occupy the slot (pending/confirmed/completed).
+  /// Apologized/absent do not appear in the grid so the new booking in the same room shows.
   List<AppointmentModel> _appointmentsForSlot(DateTime date, String startTime, List<AppointmentModel> list) {
     return list.where((a) =>
         a.appointmentDate.year == date.year &&
         a.appointmentDate.month == date.month &&
         a.appointmentDate.day == date.day &&
         a.startTime == startTime &&
-        a.status != AppointmentStatus.cancelled).toList();
+        a.status.occupiesSlot).toList();
   }
 
   /// Appointment to show in schedule cell: column [cellIndex] (0=room0, 1=room1, 2=room2, 3=extra).
@@ -677,27 +678,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     out.sort((a, b) {
       final dateCompare = a.appointmentDate.compareTo(b.appointmentDate);
       if (dateCompare != 0) return dateCompare;
-      return _compareTimeFromNoon(a.startTime, b.startTime);
+      return _compareTime(a.startTime, b.startTime);
     });
     return out;
   }
 
-  /// Minutes from noon (12:00 = 0). Times 00:00–11:59 map after 23:59 so order is 12:00 first, 00:00 last.
-  static int _minutesFromNoon(String time) {
-    final parts = time.split(':');
-    if (parts.length < 2) return 0;
-    final hour = int.tryParse(parts[0].trim()) ?? 0;
-    final min = int.tryParse(parts[1].trim()) ?? 0;
-    if (hour >= 12) return (hour - 12) * 60 + min;
-    return (hour + 12) * 60 + min;
-  }
-
-  /// Compare time strings so 12:00 is first and 00:00 is last (day schedule order).
-  static int _compareTimeFromNoon(String a, String b) {
-    return _minutesFromNoon(a).compareTo(_minutesFromNoon(b));
-  }
-
-  /// Compare time strings "HH:mm" (earlier = smaller). Ensures correct order e.g. 09:00 before 12:00.
+  /// Compare time strings "HH:mm" (earlier = smaller). 24-hour order: 00:00 first, 23:30 last.
   static int _compareTime(String a, String b) {
     final aParts = a.split(':');
     final bParts = b.split(':');
