@@ -37,6 +37,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Future<void> _showForm(BuildContext context, AppLocalizations l10n, [ServiceModel? existing]) async {
     final nameAr = TextEditingController(text: existing?.nameAr ?? '');
     final nameEn = TextEditingController(text: existing?.nameEn ?? '');
+    final descriptionCtrl = TextEditingController(text: existing?.description ?? '');
     final amountCtrl = TextEditingController(text: existing?.amount != null ? existing!.amount!.toStringAsFixed(2) : '');
     var isActive = existing?.isActive ?? true;
 
@@ -52,6 +53,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 TextField(controller: nameAr, decoration: const InputDecoration(labelText: 'Name (Arabic)')),
                 const SizedBox(height: 8),
                 TextField(controller: nameEn, decoration: const InputDecoration(labelText: 'Name (English)')),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: descriptionCtrl,
+                  decoration: InputDecoration(labelText: l10n.description),
+                  maxLines: 3,
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: amountCtrl,
@@ -81,10 +88,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
             FilledButton(
               onPressed: () async {
                 final amount = double.tryParse(amountCtrl.text.trim());
+                final description = descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim();
                 if (existing != null) {
                   await _firestore.updateService(existing.id, {
                     'nameAr': nameAr.text.trim().isEmpty ? null : nameAr.text.trim(),
                     'nameEn': nameEn.text.trim().isEmpty ? null : nameEn.text.trim(),
+                    'description': description,
                     'amount': amount,
                     'isActive': isActive,
                   });
@@ -93,6 +102,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     id: '',
                     nameAr: nameAr.text.trim().isEmpty ? null : nameAr.text.trim(),
                     nameEn: nameEn.text.trim().isEmpty ? null : nameEn.text.trim(),
+                    description: description,
                     amount: amount,
                     isActive: isActive,
                   ));
@@ -160,7 +170,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                               subtitle: Text([
                                 s.isActive ? l10n.active : l10n.inactive,
                                 if (s.amount != null) '${l10n.amount}: ${s.amount!.toStringAsFixed(2)}',
-                              ].join(' · ')),
+                                if (s.description != null && s.description!.isNotEmpty) s.description!,
+                              ].where((e) => e.isNotEmpty).join(' · ')),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

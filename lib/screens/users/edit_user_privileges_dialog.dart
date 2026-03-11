@@ -51,6 +51,8 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
       case 'admin_dashboard': return l10n.adminDashboard;
       case 'users': return l10n.users;
       case 'appointments': return l10n.appointments;
+      case 'appointments_see_all': return l10n.appointmentsSeeAll;
+      case 'appointments_view_all': return l10n.appointmentsViewAll;
       case 'patients': return l10n.patients;
       case 'income_expenses': return l10n.incomeAndExpenses;
       case 'finance_summary': return l10n.financeSummary;

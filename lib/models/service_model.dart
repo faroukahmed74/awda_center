@@ -4,6 +4,8 @@ class ServiceModel {
   final String id;
   final String? nameAr;
   final String? nameEn;
+  /// Optional description (shown in services list and Price Quote).
+  final String? description;
   /// Price/amount for this service (used for session amount calculation).
   final double? amount;
   final bool isActive;
@@ -12,6 +14,7 @@ class ServiceModel {
     required this.id,
     this.nameAr,
     this.nameEn,
+    this.description,
     this.amount,
     this.isActive = true,
   });
@@ -39,6 +42,7 @@ class ServiceModel {
       id: doc.id,
       nameAr: d['nameAr'] as String?,
       nameEn: d['nameEn'] as String?,
+      description: d['description'] as String?,
       amount: amountRaw != null ? (amountRaw is num ? amountRaw.toDouble() : double.tryParse(amountRaw.toString())) : null,
       isActive: d['isActive'] as bool? ?? true,
     );
@@ -48,6 +52,7 @@ class ServiceModel {
     return {
       'nameAr': nameAr,
       'nameEn': nameEn,
+      'description': description,
       'amount': amount,
       'isActive': isActive,
     };
@@ -57,6 +62,7 @@ class ServiceModel {
     String? id,
     String? nameAr,
     String? nameEn,
+    String? description,
     double? amount,
     bool? isActive,
   }) {
@@ -64,6 +70,7 @@ class ServiceModel {
       id: id ?? this.id,
       nameAr: nameAr ?? this.nameAr,
       nameEn: nameEn ?? this.nameEn,
+      description: description ?? this.description,
       amount: amount ?? this.amount,
       isActive: isActive ?? this.isActive,
     );

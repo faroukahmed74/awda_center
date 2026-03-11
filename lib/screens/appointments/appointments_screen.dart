@@ -129,8 +129,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final auth = context.read<AuthProvider>().currentUser;
     String? doctorId;
     if (auth != null && auth.hasRole(UserRole.doctor) && !auth.hasRole(UserRole.admin)) {
-      final doc = await _firestore.getDoctorByUserId(auth.id);
-      if (doc != null) doctorId = doc.id;
+      // If admin granted "See all" or "View all (read-only)", doctor sees full list/schedule; otherwise only their own.
+      final seeOrViewAll = auth.canAccessFeature('appointments_see_all') || auth.canAccessFeature('appointments_view_all');
+      if (!seeOrViewAll) {
+        final doc = await _firestore.getDoctorByUserId(auth.id);
+        if (doc != null) doctorId = doc.id;
+      }
     }
     if (!mounted) return;
     setState(() => _loading = true);
@@ -152,6 +156,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         if (mounted) setState(() => _loading = false);
       },
     );
+  }
+
+  /// True when the user sees all doctors' appointments and can filter by doctor (admin/staff or doctor with see_all/view_all).
+  bool _showDoctorFilter(BuildContext context) {
+    final auth = context.read<AuthProvider>().currentUser;
+    if (auth == null) return false;
+    if (auth.hasRole(UserRole.admin)) return true;
+    final seeOrViewAll = auth.canAccessFeature('appointments_see_all') || auth.canAccessFeature('appointments_view_all');
+    if (auth.hasRole(UserRole.doctor) && !seeOrViewAll) return false;
+    return true;
   }
 
   String _statusLabel(AppointmentStatus s, AppLocalizations l10n) {
@@ -708,7 +722,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final l10n = AppLocalizations.of(context);
     final auth = context.watch<AuthProvider>().currentUser;
     final cache = context.watch<DataCacheProvider>();
-    final canUpdate = auth != null && auth.canAccessAppointments;
+    // View-only permission (appointments_view_all) can see list/schedule but cannot create or edit.
+    final canUpdate = auth != null && auth.canAccessFeature('appointments');
     final isRtl = l10n.isArabic;
 
     return Directionality(
@@ -808,25 +823,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  SizedBox(
-                    width: 180,
-                    child: DropdownButtonFormField<String?>(
-                      value: _filterDoctorId,
-                      decoration: InputDecoration(
-                        labelText: l10n.filterByDoctor,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  if (_showDoctorFilter(context))
+                    SizedBox(
+                      width: 180,
+                      child: DropdownButtonFormField<String?>(
+                        value: _filterDoctorId,
+                        decoration: InputDecoration(
+                          labelText: l10n.filterByDoctor,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: [
+                          DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
+                          ...cache.doctors.map((d) => DropdownMenuItem<String?>(
+                            value: d.id,
+                            child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
+                          )),
+                        ],
+                        onChanged: (v) => setState(() => _filterDoctorId = v),
                       ),
-                      items: [
-                        DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
-                        ...cache.doctors.map((d) => DropdownMenuItem<String?>(
-                          value: d.id,
-                          child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
-                        )),
-                      ],
-                      onChanged: (v) => setState(() => _filterDoctorId = v),
                     ),
-                  ),
+                  if (_showDoctorFilter(context)) const SizedBox(width: 8),
                   Padding(
                     padding: const EdgeInsets.only(left: 4),
                     child: SegmentedButton<bool>(

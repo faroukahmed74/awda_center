@@ -25,6 +25,7 @@ import '../screens/admin_todos/admin_todos_screen.dart';
 import '../screens/rooms/rooms_screen.dart';
 import '../screens/services/services_screen.dart';
 import '../screens/packages/packages_screen.dart';
+import '../screens/price_quote/price_quote_screen.dart';
 import '../screens/audit/audit_log_screen.dart';
 import '../screens/doctors/doctors_admin_screen.dart';
 
@@ -143,6 +144,10 @@ GoRouter createAppRouter(BuildContext context) {
         builder: (context, state) => const PackagesScreen(),
       ),
       GoRoute(
+        path: '/price-quote',
+        builder: (context, state) => const PriceQuoteScreen(),
+      ),
+      GoRoute(
         path: '/audit-log',
         builder: (context, state) => const AuditLogScreen(),
       ),
@@ -160,6 +165,7 @@ bool canAccessRoute(UserModel? user, String path) {
   switch (path) {
     case '/dashboard':
     case '/doctors':
+    case '/price-quote':
       return true;
     case '/my-doctor-profile':
       return user.hasRole(UserRole.doctor);
@@ -172,7 +178,7 @@ bool canAccessRoute(UserModel? user, String path) {
     case '/users':
       return user.canAccessFeature('users');
     case '/appointments':
-      return user.canAccessFeature('appointments');
+      return user.canAccessFeature('appointments') || user.canAccessFeature('appointments_view_all');
     case '/patients':
       return user.canAccessFeature('patients');
     case '/income-expenses':

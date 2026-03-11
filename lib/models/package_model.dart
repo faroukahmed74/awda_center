@@ -5,6 +5,8 @@ class PackageModel {
   final String id;
   final String? nameAr;
   final String? nameEn;
+  /// Optional description (shown in packages list and Price Quote).
+  final String? description;
   /// Service document ids included in this package.
   final List<String> serviceIds;
   /// How many sessions the package covers.
@@ -17,6 +19,7 @@ class PackageModel {
     required this.id,
     this.nameAr,
     this.nameEn,
+    this.description,
     this.serviceIds = const [],
     this.numberOfSessions = 1,
     this.amount = 0,
@@ -34,6 +37,7 @@ class PackageModel {
       id: doc.id,
       nameAr: d['nameAr'] as String?,
       nameEn: d['nameEn'] as String?,
+      description: d['description'] as String?,
       serviceIds: list,
       numberOfSessions: (d['numberOfSessions'] as num?)?.toInt() ?? 1,
       amount: amountRaw != null ? (amountRaw is num ? amountRaw.toDouble() : (double.tryParse(amountRaw.toString()) ?? 0)) : 0,
@@ -45,6 +49,7 @@ class PackageModel {
     return {
       'nameAr': nameAr,
       'nameEn': nameEn,
+      'description': description,
       'serviceIds': serviceIds,
       'numberOfSessions': numberOfSessions,
       'amount': amount,

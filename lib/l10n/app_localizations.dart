@@ -47,6 +47,8 @@ class AppLocalizations {
   String get dashboard => _map['dashboard']!;
   String get users => _map['users']!;
   String get appointments => _map['appointments']!;
+  String get appointmentsSeeAll => _map['appointmentsSeeAll']!;
+  String get appointmentsViewAll => _map['appointmentsViewAll']!;
   String get myAppointments => _map['myAppointments']!;
   String get profile => _map['profile']!;
   String get patients => _map['patients']!;
@@ -249,6 +251,7 @@ class AppLocalizations {
   String get editService => _map['editService']!;
   String get serviceAmount => _map['serviceAmount']!;
   String get packages => _map['packages']!;
+  String get priceQuote => _map['priceQuote']!;
   String get addPackage => _map['addPackage']!;
   String get editPackage => _map['editPackage']!;
   String get numberOfSessions => _map['numberOfSessions']!;
@@ -342,8 +345,11 @@ class AppLocalizations {
     'dashboard': 'Dashboard',
     'users': 'Users',
     'appointments': 'Appointments',
+    'appointmentsSeeAll': 'See all appointments',
+    'appointmentsViewAll': 'View all appointments (read-only)',
     'myAppointments': 'My Appointments',
     'profile': 'Profile',
+    'priceQuote': 'Price Quote',
     'patients': 'Patients',
     'patientDetail': 'Patient detail',
     'incomeAndExpenses': 'Income & Expenses',
@@ -644,8 +650,11 @@ class AppLocalizations {
     'dashboard': 'لوحة التحكم',
     'users': 'المستخدمون',
     'appointments': 'المواعيد',
+    'appointmentsSeeAll': 'عرض كل المواعيد',
+    'appointmentsViewAll': 'عرض كل المواعيد (للقراءة فقط)',
     'myAppointments': 'مواعيدي',
     'profile': 'الملف الشخصي',
+    'priceQuote': 'عرض الأسعار',
     'patients': 'المرضى',
     'patientDetail': 'تفاصيل المريض',
     'incomeAndExpenses': 'الإيرادات والمصروفات',

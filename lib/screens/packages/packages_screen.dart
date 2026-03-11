@@ -58,6 +58,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
   Future<void> _showForm(BuildContext context, AppLocalizations l10n, [PackageModel? existing]) async {
     final nameAr = TextEditingController(text: existing?.nameAr ?? '');
     final nameEn = TextEditingController(text: existing?.nameEn ?? '');
+    final descriptionCtrl = TextEditingController(text: existing?.description ?? '');
     final sessionsCtrl = TextEditingController(text: existing != null ? '${existing.numberOfSessions}' : '');
     final amountCtrl = TextEditingController(text: existing != null ? existing.amount.toStringAsFixed(2) : '');
     var selectedServiceIds = List<String>.from(existing?.serviceIds ?? []);
@@ -78,6 +79,12 @@ class _PackagesScreenState extends State<PackagesScreen> {
                   TextField(controller: nameAr, decoration: const InputDecoration(labelText: 'Name (Arabic)')),
                   const SizedBox(height: 8),
                   TextField(controller: nameEn, decoration: const InputDecoration(labelText: 'Name (English)')),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: descriptionCtrl,
+                    decoration: InputDecoration(labelText: l10n.description),
+                    maxLines: 3,
+                  ),
                   const SizedBox(height: 8),
                   Text(l10n.packageServices, style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 4),
@@ -147,10 +154,12 @@ class _PackagesScreenState extends State<PackagesScreen> {
                 onPressed: () async {
                   final sessions = int.tryParse(sessionsCtrl.text.trim()) ?? 1;
                   final amount = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+                  final description = descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim();
                   if (existing != null) {
                     await _firestore.updatePackage(existing.id, {
                       'nameAr': nameAr.text.trim().isEmpty ? null : nameAr.text.trim(),
                       'nameEn': nameEn.text.trim().isEmpty ? null : nameEn.text.trim(),
+                      'description': description,
                       'serviceIds': selectedServiceIds,
                       'numberOfSessions': sessions,
                       'amount': amount,
@@ -161,6 +170,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
                       id: '',
                       nameAr: nameAr.text.trim().isEmpty ? null : nameAr.text.trim(),
                       nameEn: nameEn.text.trim().isEmpty ? null : nameEn.text.trim(),
+                      description: description,
                       serviceIds: selectedServiceIds,
                       numberOfSessions: sessions,
                       amount: amount,
@@ -258,7 +268,8 @@ class _PackagesScreenState extends State<PackagesScreen> {
                                 '${l10n.numberOfSessions}: ${p.numberOfSessions}',
                                 '${l10n.amount}: ${p.amount.toStringAsFixed(2)}',
                                 if (serviceNames.isNotEmpty) serviceNames,
-                              ].join(' · ')),
+                                if (p.description != null && p.description!.isNotEmpty) p.description!,
+                              ].where((e) => e.isNotEmpty).join(' · ')),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

@@ -190,6 +190,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onTap: () { Navigator.pop(context); context.push('/doctors'); },
                       ),
                     ],
+                    ListTile(
+                      leading: const Icon(Icons.request_quote_outlined),
+                      title: Text(l10n.priceQuote),
+                      onTap: () { Navigator.pop(context); context.push('/price-quote'); },
+                    ),
                     if (canAccessRoute(user, '/my-doctor-profile')) ...[
                       ListTile(
                         leading: const Icon(Icons.badge_outlined),
@@ -456,16 +461,21 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
       _subscription?.cancel();
       _subscription = _firestore.appointmentsStream(patientId: user.id).listen(_onSnapshot);
     } else if (user.hasRole(UserRole.doctor) && !user.hasRole(UserRole.admin)) {
-      _firestore.getDoctorByUserId(user.id).then((doc) {
-        if (!mounted) return;
-        if (doc != null) {
-          _subscription?.cancel();
-          _subscription = _firestore.appointmentsStream(doctorId: doc.id).listen(_onSnapshot);
-        } else {
-          setState(() => _loading = false);
-        }
-      });
-    } else if (user.canAccessFeature('appointments')) {
+      if (user.canAccessFeature('appointments_see_all') || user.canAccessFeature('appointments_view_all')) {
+        _subscription?.cancel();
+        _subscription = _firestore.appointmentsStream().listen(_onSnapshot);
+      } else {
+        _firestore.getDoctorByUserId(user.id).then((doc) {
+          if (!mounted) return;
+          if (doc != null) {
+            _subscription?.cancel();
+            _subscription = _firestore.appointmentsStream(doctorId: doc.id).listen(_onSnapshot);
+          } else {
+            setState(() => _loading = false);
+          }
+        });
+      }
+    } else if (user.canAccessFeature('appointments') || user.canAccessFeature('appointments_view_all')) {
       _subscription?.cancel();
       _subscription = _firestore.appointmentsStream().listen(_onSnapshot);
     }
