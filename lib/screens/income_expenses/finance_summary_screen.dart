@@ -34,8 +34,8 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
   int _month = DateTime.now().month;
   _SummaryPeriod _period = _SummaryPeriod.month;
   double _target = 20000;
-  double _rentGuard = 10500;
-  double _receptionist = 4700;
+  double _rentGuard = 0;
+  double _receptionist = 0;
   /// Order of doctor IDs for display (first = top). Saved to config; new doctors appended at end.
   List<String> _doctorOrder = [];
   /// MANG share of NET (e.g. 0.15 = 15%). Editable.
@@ -141,8 +141,11 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       );
 
       final configTarget = (config['target'] as num?)?.toDouble() ?? 20000;
-      final configRent = (config['rentGuard'] as num?)?.toDouble() ?? 10500;
-      final configReceptionist = (config['receptionist'] as num?)?.toDouble() ?? 4700;
+      var configRent = (config['rentGuard'] as num?)?.toDouble() ?? 0;
+      var configReceptionist = (config['receptionist'] as num?)?.toDouble() ?? 0;
+      // Treat legacy saved defaults as unset so they show 0 until user enters or expenses fill
+      if (configRent == 10500) configRent = 0;
+      if (configReceptionist == 4700 || configReceptionist == 4500) configReceptionist = 0;
       _target = configTarget * monthsInRange;
       _rentGuard = configRent * monthsInRange;
       _receptionist = configReceptionist * monthsInRange;
@@ -195,8 +198,8 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
           consumablesByDoctor[id] = (consumablesByDoctor[id] ?? 0) + r.amount;
         }
       }
-      if (rentTotal > 0 && _rentGuard == 10500) _rentGuard = rentTotal;
-      if (salaryTotal > 0 && _receptionist == 4700) _receptionist = salaryTotal;
+      if (rentTotal > 0 && _rentGuard == 0) _rentGuard = rentTotal;
+      if (salaryTotal > 0 && _receptionist == 0) _receptionist = salaryTotal;
 
       _overridesConsumables = config['consumablesByDoctor'] is Map
           ? Map<String, double>.from(
