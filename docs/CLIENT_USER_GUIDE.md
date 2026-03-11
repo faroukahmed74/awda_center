@@ -105,14 +105,17 @@ What you see in the app depends on your **role**. Admins can also give extra per
 - **Open a user profile** to view or edit:
   - Name, email, phone, role(s), active/inactive.
   - **Privileges (permissions):** which parts of the app they can use (e.g. appointments, patients, reports, income/expenses, requirements, admin to‑do list). Admins can change these per user.
-- **Deactivate** a user so they can no longer log in.
+- **Deactivate** a user so they can no longer use the app (account remains; can be reactivated).
+- **Delete user** (admin): removes the user’s account from **authentication and Firestore**. The user **cannot sign in again**. Use when someone leaves the clinic or should no longer have access. You cannot delete your own account.
 
 ### 5.4 Appointments
 
 - **List of appointments** with filters (e.g. by doctor, date).
-- **Create new appointment:** choose patient, doctor, date, time, room, service, and optional notes.
+- **Create new appointment:** choose patient, doctor, date, **time** (24-hour, from 00:00 to 23:30 in 30‑minute steps), room, service, and optional notes.
 - **Edit or reschedule** an existing appointment.
-- **Change status:** Pending → Confirmed → Completed, or Cancelled / No-show.
+- **Admin and supervisor** can book appointments in **past dates** (e.g. to migrate old sessions or record historical income); other roles can only choose today or future dates.
+- **Change status:** Pending → Confirmed → Completed, or Cancelled / No-show / **Apologized** (absent with cause) / **Absent** (no-show or absent without cause).
+- **Apologized and Absent** do not block the room or time slot: you can book a **new** appointment in the same room and time; the schedule shows the new booking.
 - When status is updated, **patient and doctor** can get a push notification and local reminder; **secretaries** can get a push (when configured).
 - Appointments are shown in real time; the list updates when something changes.
 
@@ -120,7 +123,7 @@ What you see in the app depends on your **role**. Admins can also give extra per
 
 - **Patients:** list of your own appointments (past and upcoming).
 - **Doctors:** list of your own appointments.
-- Same statuses: Pending, Confirmed, Completed, Cancelled, No-show.
+- Statuses: Pending, Confirmed, Completed, Cancelled, No-show, **Apologized** (absent with cause), **Absent** (absent without cause).
 - Dates and times; you can see when an appointment was confirmed or completed.
 
 ### 5.6 Profile (everyone)
@@ -161,11 +164,10 @@ What you see in the app depends on your **role**. Admins can also give extra per
 
 ### 5.10 Income & expenses (admin / users with permission)
 
-- **Income records:** list of income entries with date, amount, description/category.
-- **Expense records:** list of expense entries with date, amount, description/category.
-- **Totals** for the selected period.
-- Add, edit, or delete records (if you have permission).
-- Used for clinic accounting and reporting.
+- **Income records:** list of income entries with **date and time**, amount, source, notes, and (for sessions) patient/doctor. **Session** income shows the **actual session time** (e.g. 23:30) in the Date field, not midnight.
+- **Expense records:** list of expense entries with date, amount, **category** (Salary, Rent, Supplies, Media, Other), description, and optional “Paid by doctor” for per-doctor costs.
+- **Totals** for the selected period. Add, edit, or delete records (if you have permission).
+- Used for clinic accounting and reporting. Expense categories feed into **Finance summary** (e.g. Salary → Receptionist, Rent → Rent + Guard; Supplies/Other → Consumables per doctor, Media → Media per doctor). See the project’s *Expense to Finance Summary mapping* doc for the full table.
 
 ### 5.11 Reports
 
@@ -248,7 +250,7 @@ What you see in the app depends on your **role**. Admins can also give extra per
 ## 7. Language and Appearance
 
 - **Language:** Arabic and English. Switch from the **Profile** or the **language icon** in the app bar. The app uses **right-to-left (RTL)** layout in Arabic.
-- **Theme:** Light or dark. Switch from **Profile** or the **theme icon** in the app bar. The choice is saved for the next time you open the app.
+- **Theme:** Light or dark. Switch from **Profile** or the **theme icon** in the app bar. The choice is saved for the next time you open the app. The in-app **logo** (Awda Center) adapts to light or dark theme.
 - **Responsive layout:** The app adapts to phone, tablet, and desktop so it is usable on all screen sizes.
 
 ---
@@ -273,6 +275,7 @@ What you see in the app depends on your **role**. Admins can also give extra per
 | Patient profile (own)| —     | —         | —      | ✓       | —       |
 | Patients             | ✓     | ✓*        | ✓      | —       | —       |
 | Income & expenses    | ✓     | ✓*        | ✓*     | —       | —       |
+| Finance summary      | ✓     | ✓*        | —      | —       | —       |
 | Reports              | ✓     | ✓*        | ✓      | —       | —       |
 | Requirements         | ✓     | ✓*        | —      | —       | —       |
 | Admin to‑do list     | ✓     | ✓*        | —      | —       | —       |
@@ -294,4 +297,12 @@ What you see in the app depends on your **role**. Admins can also give extra per
 
 ---
 
-*Document version: 1.0 — Awda Center app.*
+## 11. Finance summary (admin / users with permission)
+
+- **Income per doctor**, target, 30% and bonus/commission (slice-based), consumables and media per doctor, **Rent + Guard** and **Receptionist** (shared costs), NET, MANG, BASKET, and profit.
+- **Rent + Guard** and **Receptionist** default to **0** until you enter values in the summary or add **Rent** or **Salary** expenses in Income & expenses; then they can be filled from expense totals or edited manually.
+- Period can be **month**, **quarter**, or **year**. Config (target, rent, receptionist, commission slices, etc.) is saved per month and used for PDF export.
+
+---
+
+*Document version: 1.1 — Awda Center app. Updated: 24-hour booking, past-date for admin/supervisor, apologized/absent slot behavior, session income time, delete user from Auth, finance defaults and expense mapping.*

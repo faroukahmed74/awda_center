@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Awda Center — User Guide</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      word-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Awda Center — User Guide</h1>
+</header>
+<h1 id="awda-center-user-guide-client-documentation">Awda Center — User Guide (Client Documentation)</h1>
+<p><strong>عودة للعلاج الطبيعي</strong></p>
+<p>This document describes all features of the Awda Center app for the clinic and its clients. The app runs on <strong>phones</strong>, <strong>tablets</strong>, <strong>desktops</strong>, and <strong>web browsers</strong>.</p>
+<hr />
+<h2 id="overview">1. Overview</h2>
+<p>Awda Center is a single app for managing a physical therapy clinic. It includes:</p>
+<ul>
+<li><strong>User accounts</strong> with different roles (admin, secretary, doctor, patient, trainee).</li>
+<li><strong>Appointments</strong> — booking, confirming, rescheduling, and viewing.</li>
+<li><strong>Patient records</strong> — profiles, sessions, documents.</li>
+<li><strong>Income and expenses</strong> — clinic finances.</li>
+<li><strong>Reports</strong> — summaries and exports.</li>
+<li><strong>Notifications</strong> — appointment reminders and status updates.</li>
+<li><strong>Arabic and English</strong> — full language support with right-to-left layout for Arabic.</li>
+<li><strong>Light and dark theme</strong> — user preference.</li>
+</ul>
+<p>Staff and patients use the same app; the menu and screens depend on their role.</p>
+<hr />
+<h2 id="where-you-can-use-the-app">2. Where You Can Use the App</h2>
+<ul>
+<li><strong>Android</strong> — Install from Google Play or an APK.</li>
+<li><strong>iPhone / iPad</strong> — Install from the App Store.</li>
+<li><strong>Web</strong> — Open in a browser (e.g. Chrome, Safari) at the clinic’s web address.</li>
+<li><strong>Windows</strong> — Desktop version if provided.</li>
+</ul>
+<p>Your data (appointments, patients, users) is shared across all these. Log in with the same email and password on any device.</p>
+<hr />
+<h2 id="getting-started">3. Getting Started</h2>
+<h3 id="log-in">3.1 Log in</h3>
+<ul>
+<li>Open the app (or web link).</li>
+<li>Enter your <strong>email</strong> and <strong>password</strong>.</li>
+<li>Tap <strong>Login</strong>.</li>
+</ul>
+<p>If you don’t have an account, use <strong>Register</strong> (if the clinic allows it) or ask an admin to create one for you.</p>
+<h3 id="register-if-enabled">3.2 Register (if enabled)</h3>
+<ul>
+<li>Tap <strong>Register</strong>.</li>
+<li>Enter <strong>email</strong>, <strong>password</strong>, and any required fields (e.g. name, phone).</li>
+<li>After registration, an admin must set your <strong>role</strong> and <strong>active</strong> status in the system before you can use the app fully.</li>
+</ul>
+<h3 id="forgot-password">3.3 Forgot password</h3>
+<ul>
+<li>On the login screen, tap <strong>Forgot password</strong>.</li>
+<li>Enter your email.</li>
+<li>Follow the link sent to your email to set a new password.</li>
+</ul>
+<hr />
+<h2 id="user-roles-and-access">4. User Roles and Access</h2>
+<p>What you see in the app depends on your <strong>role</strong>. Admins can also give extra permissions to any user.</p>
+<table>
+<colgroup>
+<col style="width: 42%" />
+<col style="width: 57%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Role</th>
+<th>Typical access</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Admin</strong></td>
+<td>Full access: users, appointments, patients, income/expenses, reports, requirements, admin to‑do list, rooms, doctor management, audit log.</td>
+</tr>
+<tr class="even">
+<td><strong>Secretary</strong></td>
+<td>Usually: users, appointments, reports. Can be given more (e.g. income/expenses) by admin.</td>
+</tr>
+<tr class="odd">
+<td><strong>Doctor</strong></td>
+<td>Appointments (own and list), patients, reports, own doctor profile and availability.</td>
+</tr>
+<tr class="even">
+<td><strong>Patient</strong></td>
+<td>My appointments, profile (and patient profile if they have one), book appointments with doctors.</td>
+</tr>
+<tr class="odd">
+<td><strong>Trainee</strong></td>
+<td>Limited; exact access is set by admin.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Dashboard</strong> and <strong>Profile</strong> are available to everyone (with role-specific content).</li>
+<li>The <strong>menu</strong> (drawer) shows only the sections you are allowed to use.</li>
+<li><strong>Version number</strong> is shown at the bottom of the menu for all users.</li>
+</ul>
+<hr />
+<h2 id="main-features-in-detail">5. Main Features in Detail</h2>
+<h3 id="dashboard-home">5.1 Dashboard (Home)</h3>
+<ul>
+<li><strong>Welcome</strong> message and your name and role.</li>
+<li><strong>Today’s and upcoming appointments</strong> (for the next 14 days), depending on your role:
+<ul>
+<li><strong>Patient:</strong> your own appointments.</li>
+<li><strong>Doctor:</strong> your own appointments.</li>
+<li><strong>Staff (e.g. secretary/admin):</strong> all appointments (if they have access).</li>
+</ul></li>
+<li>A short list of appointments with date, time, status, and service.</li>
+<li>Buttons to open <strong>Appointments</strong> or <strong>My Appointments</strong> for more details.</li>
+</ul>
+<h3 id="admin-dashboard-admin-only">5.2 Admin Dashboard (admin only)</h3>
+<ul>
+<li>Shortcuts to:
+<ul>
+<li>Admin dashboard overview</li>
+<li>Rooms</li>
+<li>Manage doctors</li>
+<li>Audit log</li>
+</ul></li>
+<li>Quick access to main admin tasks.</li>
+</ul>
+<h3 id="users-admin-secretary-if-permitted">5.3 Users (admin / secretary, if permitted)</h3>
+<ul>
+<li><strong>List of all users</strong> in the system.</li>
+<li><strong>Invite new user</strong> (admin): send an invite so they can register.</li>
+<li><strong>Filter by role</strong> (admin, secretary, doctor, patient, trainee).</li>
+<li><strong>Open a user profile</strong> to view or edit:
+<ul>
+<li>Name, email, phone, role(s), active/inactive.</li>
+<li><strong>Privileges (permissions):</strong> which parts of the app they can use (e.g. appointments, patients, reports, income/expenses, requirements, admin to‑do list). Admins can change these per user.</li>
+</ul></li>
+<li><strong>Deactivate</strong> a user so they can no longer log in.</li>
+<li><strong>Delete user</strong> (admin): Removes the user from <strong>Firebase Authentication</strong> and from Firestore. The user will not be able to sign in again. Use with care; this action cannot be undone.</li>
+</ul>
+<h3 id="appointments">5.4 Appointments</h3>
+<ul>
+<li><strong>List of appointments</strong> with filters (e.g. by doctor, date, status).</li>
+<li><strong>Create new appointment:</strong> choose patient, doctor, date, <strong>time</strong> (24-hour slots from 00:00 to 23:30, every 30 minutes), room, service, and optional notes.</li>
+<li><strong>Admin and supervisor</strong> can also book appointments in <strong>past dates</strong> (e.g. to migrate old data or record past sessions).</li>
+<li><strong>Edit or reschedule</strong> an existing appointment.</li>
+<li><strong>Change status:</strong> Pending → Confirmed → Completed, or <strong>Cancelled</strong>, <strong>No-show</strong>, <strong>Apologized</strong> (absent with cause), <strong>Absent</strong> (absent without cause).</li>
+<li><strong>Apologized / Absent:</strong> When an appointment is marked Apologized or Absent, the same room and time slot can be booked again for another patient; the new booking appears in the schedule. Counts and filters for apologized/absent still work for reports.</li>
+<li>When status is updated, <strong>patient and doctor</strong> can get a push notification and local reminder; <strong>secretaries</strong> can get a push (when configured).</li>
+<li>Appointments are shown in real time; the list updates when something changes.</li>
+</ul>
+<h3 id="my-appointments-patients-and-doctors">5.5 My Appointments (patients and doctors)</h3>
+<ul>
+<li><strong>Patients:</strong> list of your own appointments (past and upcoming).</li>
+<li><strong>Doctors:</strong> list of your own appointments.</li>
+<li>Same statuses: Pending, Confirmed, Completed, Cancelled, No-show, Apologized, Absent.</li>
+<li>Dates and times; you can see when an appointment was confirmed or completed.</li>
+</ul>
+<h3 id="profile-everyone">5.6 Profile (everyone)</h3>
+<ul>
+<li><strong>Personal data:</strong> name, email, phone, role(s), active status.</li>
+<li><strong>Edit my info:</strong> change name, phone, etc. (if allowed).</li>
+<li><strong>Change password</strong> (if the account supports it).</li>
+<li><strong>Language:</strong> switch between <strong>Arabic</strong> and <strong>English</strong>. The app restarts with the chosen language and uses right-to-left layout for Arabic.</li>
+<li><strong>Theme:</strong> switch between <strong>light</strong> and <strong>dark</strong> mode. The choice is saved.</li>
+<li><strong>Patients:</strong> if your role includes “patient”, you also see:
+<ul>
+<li><strong>Medical / patient profile:</strong> date of birth, diagnosis, medical history, treatment progress, progress notes.</li>
+<li><strong>Create or edit</strong> your patient profile if the clinic allows it.</li>
+<li><strong>Sessions:</strong> list of your sessions and <strong>confirmed/completed appointments</strong> (same as what doctors see for you).</li>
+<li><strong>Documents / notes:</strong> your attached documents and notes; add, edit, or delete (if permitted).</li>
+</ul></li>
+<li><strong>Doctors:</strong> link to <strong>My doctor profile</strong> (availability and profile details).</li>
+</ul>
+<h3 id="user-profile-viewing-another-user">5.7 User profile (viewing another user)</h3>
+<ul>
+<li>When you open a user from the <strong>Users</strong> list, you see their <strong>user profile</strong>.</li>
+<li>Depending on your permissions, you can see their role, contact info, and <strong>privileges</strong>.</li>
+<li>Admins can <strong>edit</strong> their role, permissions, and active status.</li>
+</ul>
+<h3 id="patients-staff-with-access">5.8 Patients (staff with access)</h3>
+<ul>
+<li><strong>List of all patients</strong> (linked to user accounts).</li>
+<li><strong>Search</strong> to find a patient quickly.</li>
+<li><strong>Open a patient</strong> to see <strong>Patient detail</strong>.</li>
+</ul>
+<h3 id="patient-detail-staff-with-access">5.9 Patient detail (staff with access)</h3>
+<ul>
+<li><strong>User info:</strong> name, email, phone.</li>
+<li><strong>Patient profile:</strong> date of birth, diagnosis, medical history, treatment progress, notes.</li>
+<li><strong>Sessions:</strong> combined list of:
+<ul>
+<li>Sessions recorded in the system</li>
+<li><strong>Confirmed and completed appointments</strong> (so all sessions appear in one place)</li>
+</ul></li>
+<li>Sorted by date (newest first).</li>
+<li><strong>Documents:</strong> patient documents and notes; view, add, or delete (depending on permissions).</li>
+</ul>
+<h3 id="income-expenses-admin-users-with-permission">5.10 Income &amp; expenses (admin / users with permission)</h3>
+<ul>
+<li><strong>Income records:</strong> list of income entries with <strong>date and time</strong>, amount, source (e.g. Session), notes. For <strong>session income</strong> (from completed appointments), the date shows the <strong>actual session time</strong> (e.g. 23:30), not midnight.</li>
+<li><strong>Expense records:</strong> list of expense entries with date, amount, category (Salary, Rent, Supplies, Media, Other), and optional description. Category determines how they appear in the <strong>Finance summary</strong> (see below).</li>
+<li><strong>Totals</strong> for the selected period.</li>
+<li>Add, edit, or delete records (if you have permission).</li>
+<li><strong>Finance summary</strong> (separate screen): monthly/quarterly/yearly view with income per doctor, target, bonus %, <strong>Rent + Guard</strong> and <strong>Receptionist</strong> (default 0 until you enter values in expenses or in the summary), consumables and media per doctor, NET, MANG, BASKET, and profit. Expense categories map as follows: <strong>Salary</strong> → Receptionist; <strong>Rent</strong> → Rent + Guard; <strong>Supplies</strong> / <strong>Other</strong> → Consumables (per doctor); <strong>Media</strong> → Media (per doctor). A mapping document is available in the project docs for reference.</li>
+<li>Used for clinic accounting and reporting.</li>
+</ul>
+<h3 id="reports">5.11 Reports</h3>
+<ul>
+<li><strong>Tabs:</strong> Income &amp; expenses, Appointments, Patients, Users (depending on your access).</li>
+<li><strong>Period:</strong> choose <strong>day</strong>, <strong>month</strong>, or <strong>year</strong> and select the date.</li>
+<li><strong>Income &amp; expenses:</strong> totals and list of income and expenses in the period.</li>
+<li><strong>Appointments:</strong> count by status (e.g. pending, confirmed, completed, cancelled) and list of appointments.</li>
+<li><strong>Patients:</strong> count and list of patients (e.g. who had appointments in the period).</li>
+<li><strong>Users:</strong> count by role (admin, secretary, doctor, patient, trainee).</li>
+<li><strong>Export:</strong> from the menu you can export:
+<ul>
+<li>Income &amp; expense report (CSV)</li>
+<li>Appointments (CSV)</li>
+<li>Patients (CSV)</li>
+<li>Users (CSV)</li>
+<li>Audit log (CSV)</li>
+</ul></li>
+<li>Exports are shared via the device’s share option (e.g. save to files, email). A message confirms when the export is ready.</li>
+</ul>
+<h3 id="requirements-admin-users-with-permission">5.12 Requirements (admin / users with permission)</h3>
+<ul>
+<li><strong>Center requirements</strong> — e.g. compliance items, to‑do items for the clinic.</li>
+<li>List and manage requirement entries (add, edit, complete, delete as allowed).</li>
+</ul>
+<h3 id="admin-todo-list-admin-users-with-permission">5.13 Admin to‑do list (admin / users with permission)</h3>
+<ul>
+<li><strong>Task list</strong> for admins (or permitted users).</li>
+<li>Add, edit, mark as done, or delete tasks.</li>
+<li>Keeps daily admin work in one place.</li>
+</ul>
+<h3 id="rooms-admin">5.14 Rooms (admin)</h3>
+<ul>
+<li><strong>List of rooms</strong> used for appointments.</li>
+<li>Add, edit, or delete rooms (e.g. “Room 1”, “Physiotherapy A”).</li>
+<li>Used when creating or editing appointments.</li>
+</ul>
+<h3 id="doctors-staff-and-patients">5.15 Doctors (staff and patients)</h3>
+<ul>
+<li><strong>List of doctors</strong> — names and info (and profile if available).</li>
+<li><strong>Patients</strong> can use this to choose a doctor when booking an appointment.</li>
+<li><strong>Admin:</strong> link to <strong>Manage doctors</strong> to link users to doctor profiles and manage availability.</li>
+</ul>
+<h3 id="my-doctor-profile-doctors-only">5.16 My doctor profile (doctors only)</h3>
+<ul>
+<li><strong>Doctor’s own profile:</strong> professional info, photo, specializations, etc.</li>
+<li><strong>Availability:</strong> set when the doctor is available for appointments (e.g. days and time slots).</li>
+<li>Used by the clinic when creating appointments and by patients when booking.</li>
+</ul>
+<h3 id="manage-doctors-admin-only">5.17 Manage doctors (admin only)</h3>
+<ul>
+<li><strong>List of doctors</strong> linked to user accounts.</li>
+<li><strong>Add a doctor:</strong> link an existing user (with doctor role) to a doctor profile.</li>
+<li><strong>Edit</strong> doctor profile and availability.</li>
+<li><strong>Remove</strong> the link between a user and a doctor profile if needed.</li>
+</ul>
+<h3 id="audit-log-admin-only">5.18 Audit log (admin only)</h3>
+<ul>
+<li><strong>History of important actions</strong> in the system (e.g. who did what and when).</li>
+<li>Used for accountability and reviewing changes.</li>
+<li>Can be <strong>exported</strong> from Reports (Audit log export).</li>
+</ul>
+<hr />
+<h2 id="notifications">6. Notifications</h2>
+<h3 id="push-notifications-firebase-cloud-messaging">6.1 Push notifications (Firebase Cloud Messaging)</h3>
+<ul>
+<li>When an appointment’s status is changed (e.g. to <strong>Confirmed</strong>, <strong>Completed</strong>, <strong>Cancelled</strong>, <strong>No-show</strong>):
+<ul>
+<li><strong>Patient</strong> and <strong>Doctor</strong> receive a push notification on their device.</li>
+<li><strong>Secretaries</strong> (and admins) with appointment access can receive the same push.</li>
+</ul></li>
+<li>Notification shows a short title and message (e.g. “Appointment confirmed” with date/time).</li>
+<li>Tapping the notification opens the app.</li>
+</ul>
+<h3 id="local-reminders-patient-and-doctor">6.2 Local reminders (patient and doctor)</h3>
+<ul>
+<li><strong>Appointment reminders</strong> are scheduled on the device for upcoming appointments (e.g. day before or morning of).</li>
+<li>They are updated automatically when an appointment is created, rescheduled, or cancelled.</li>
+<li>Only the <strong>patient</strong> and <strong>doctor</strong> of that appointment get these reminders; secretaries do not.</li>
+</ul>
+<hr />
+<h2 id="language-and-appearance">7. Language and Appearance</h2>
+<ul>
+<li><strong>Language:</strong> Arabic and English. Switch from the <strong>Profile</strong> or the <strong>language icon</strong> in the app bar. The app uses <strong>right-to-left (RTL)</strong> layout in Arabic.</li>
+<li><strong>Theme:</strong> Light or dark. Switch from <strong>Profile</strong> or the <strong>theme icon</strong> in the app bar. The choice is saved for the next time you open the app.</li>
+<li><strong>Responsive layout:</strong> The app adapts to phone, tablet, and desktop so it is usable on all screen sizes. In-app logos (e.g. in the app bar and menu) use the clinic’s AWDA branding and switch between light and dark versions with the theme.</li>
+</ul>
+<hr />
+<h2 id="logout-and-version">8. Logout and Version</h2>
+<ul>
+<li><strong>Logout:</strong> Use the <strong>logout</strong> icon in the app bar to sign out. You will return to the login screen.</li>
+<li><strong>Version:</strong> The current app <strong>version</strong> is shown at the <strong>bottom of the menu</strong> (e.g. v1.0.1+2). All roles can see it.</li>
+</ul>
+<hr />
+<h2 id="summary-table-of-features-by-role">9. Summary Table of Features by Role</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Feature</th>
+<th>Admin</th>
+<th>Secretary</th>
+<th>Doctor</th>
+<th>Patient</th>
+<th>Trainee</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Dashboard</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr class="even">
+<td>Admin dashboard</td>
+<td>✓</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Users</td>
+<td>✓</td>
+<td>✓*</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Appointments</td>
+<td>✓</td>
+<td>✓*</td>
+<td>✓</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>My appointments</td>
+<td>—</td>
+<td>—</td>
+<td>✓</td>
+<td>✓</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Profile / My info</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr class="odd">
+<td>Patient profile (own)</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>✓</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Patients</td>
+<td>✓</td>
+<td>✓*</td>
+<td>✓</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Income &amp; expenses</td>
+<td>✓</td>
+<td>✓*</td>
+<td>✓*</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Reports</td>
+<td>✓</td>
+<td>✓*</td>
+<td>✓</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Requirements</td>
+<td>✓</td>
+<td>✓*</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Admin to‑do list</td>
+<td>✓</td>
+<td>✓*</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Rooms</td>
+<td>✓</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Doctors list</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓*</td>
+</tr>
+<tr class="odd">
+<td>My doctor profile</td>
+<td>—</td>
+<td>—</td>
+<td>✓</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Manage doctors</td>
+<td>✓</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Audit log</td>
+<td>✓</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>* When the admin has granted the corresponding permission to that role.</p>
+<hr />
+<h2 id="support-and-data">10. Support and Data</h2>
+<ul>
+<li><strong>Data:</strong> Stored securely in the cloud (Firebase). The same data is used on mobile apps and web.</li>
+<li><strong>First-time setup:</strong> The first admin user is usually set in the backend (e.g. by the developer). After that, admins can invite and manage all other users and permissions from the app.</li>
+<li>For <strong>technical or access issues</strong>, contact your clinic administrator or the person who provided the app.</li>
+</ul>
+<hr />
+<p><em>Document version: 1.1 — Awda Center app. Updated: 24-hour booking, past-date booking for admin/supervisor, apologized/absent behavior, session time in income, user deletion from Auth, finance summary defaults and mapping.</em></p>
+</body>
+</html>
