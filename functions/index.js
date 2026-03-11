@@ -11,6 +11,41 @@ const AWDA_EMAIL_SUFFIX = '@awda.com';
 const MIGRATION_PASSWORD = 'AwdaMigrate2024!';
 
 /**
+ * Callable: Delete a user from Firebase Auth. Only callable by admin or supervisor.
+ * Used when admin deletes a user so their Auth account is removed and they cannot sign in again.
+ */
+exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+  }
+  const uidToDelete = data && data.uid;
+  if (!uidToDelete || typeof uidToDelete !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required');
+  }
+  const callerUid = context.auth.uid;
+  const callerSnap = await db.collection('users').doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new functions.https.HttpsError('permission-denied', 'Caller user not found');
+  }
+  const roles = callerSnap.data().roles || [];
+  if (!roles.includes('admin') && !roles.includes('supervisor')) {
+    throw new functions.https.HttpsError('permission-denied', 'Only admin or supervisor can delete users from Auth');
+  }
+  if (callerUid === uidToDelete) {
+    throw new functions.https.HttpsError('invalid-argument', 'Cannot delete your own Auth account this way');
+  }
+  try {
+    await auth.deleteUser(uidToDelete);
+    return { success: true };
+  } catch (err) {
+    if (err.code === 'auth/user-not-found') {
+      return { success: true };
+    }
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+});
+
+/**
  * Callable: Create a Firebase Auth account for a patient (email + password). Used when staff adds a patient.
  * Returns { uid }. Caller must then create Firestore users/{uid} and patient_profiles/{uid}.
  */

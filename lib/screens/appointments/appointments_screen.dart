@@ -63,6 +63,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     return '${h.toString().padLeft(2, '0')}:30';
   }
 
+  /// Builds DateTime from appointment date + "HH:mm" startTime for income record so Date shows correct time.
+  static DateTime _dateTimeFromAppointmentDateAndTime(DateTime date, String startTime) {
+    final parts = startTime.split(':');
+    final h = int.tryParse(parts[0].trim()) ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1].trim() : '0') ?? 0;
+    return DateTime(date.year, date.month, date.day, h.clamp(0, 23), m.clamp(0, 59));
+  }
+
   /// For schedule view: appointments at [date] and [startTime] that occupy the slot (pending/confirmed/completed).
   /// Apologized/absent do not appear in the grid so the new booking in the same room shows.
   List<AppointmentModel> _appointmentsForSlot(DateTime date, String startTime, List<AppointmentModel> list) {
@@ -945,6 +953,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         final payment = await _showSessionPaymentDialog(context, a, l10n);
                                         if (payment == null && mounted) return;
                                         if (payment != null && payment > 0 && mounted) {
+                                          final sessionDateTime = _dateTimeFromAppointmentDateAndTime(a.appointmentDate, a.startTime);
                                           final income = IncomeRecordModel(
                                             id: '',
                                             amount: payment,
@@ -954,7 +963,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                             patientId: a.patientId,
                                             notes: '${a.servicesDisplay.isNotEmpty ? a.servicesDisplay : 'Session'} • ${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime}',
                                             recordedByUserId: auth.id,
-                                            incomeDate: DateTime(a.appointmentDate.year, a.appointmentDate.month, a.appointmentDate.day),
+                                            incomeDate: sessionDateTime,
                                             appointmentId: a.id,
                                           );
                                           await _firestore.addIncomeRecord(income);

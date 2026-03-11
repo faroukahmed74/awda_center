@@ -231,7 +231,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                             title: Text(l10n.deleteUser),
                                             content: Text(
                                               '${l10n.deleteConfirm} ${u.displayName} (${u.email})? '
-                                              'Their Firestore profile will be removed. They will not appear in the app until they sign in again.',
+                                              'Their account will be removed from authentication and Firestore; they will not be able to sign in again.',
                                             ),
                                             actions: [
                                               TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
