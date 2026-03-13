@@ -241,6 +241,10 @@ class AppLocalizations {
   String get total => _map['total']!;
   String get createAppointment => _map['createAppointment']!;
   String get bookAppointment => _map['bookAppointment']!;
+  String get generateReport => _map['generateReport']!;
+  String get generatingReport => _map['generatingReport']!;
+  String get reportReady => _map['reportReady']!;
+  String get reportError => _map['reportError']!;
   String get editAppointment => _map['editAppointment']!;
   String get room => _map['room']!;
   String get rooms => _map['rooms']!;
@@ -543,6 +547,10 @@ class AppLocalizations {
     'total': 'Total',
     'createAppointment': 'Create appointment',
     'bookAppointment': 'Book appointment',
+    'generateReport': 'Generate report',
+    'generatingReport': 'Generating report…',
+    'reportReady': 'Report ready',
+    'reportError': 'Could not generate report',
     'editAppointment': 'Edit appointment',
     'room': 'Room',
     'rooms': 'Rooms',
@@ -848,6 +856,10 @@ class AppLocalizations {
     'total': 'الإجمالي',
     'createAppointment': 'إنشاء موعد',
     'bookAppointment': 'حجز موعد',
+    'generateReport': 'إنشاء تقرير',
+    'generatingReport': 'جاري إنشاء التقرير…',
+    'reportReady': 'التقرير جاهز',
+    'reportError': 'تعذر إنشاء التقرير',
     'editAppointment': 'تعديل الموعد',
     'room': 'غرفة',
     'rooms': 'الغرف',

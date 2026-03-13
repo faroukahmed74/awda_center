@@ -132,8 +132,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       // If admin granted "See all" or "View all (read-only)", doctor sees full list/schedule; otherwise only their own.
       final seeOrViewAll = auth.canAccessFeature('appointments_see_all') || auth.canAccessFeature('appointments_view_all');
       if (!seeOrViewAll) {
-        final doc = await _firestore.getDoctorByUserId(auth.id);
-        if (doc != null) doctorId = doc.id;
+      final doc = await _firestore.getDoctorByUserId(auth.id);
+      if (doc != null) doctorId = doc.id;
       }
     }
     if (!mounted) return;
@@ -237,9 +237,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
   }
 
-  /// Shows session payment dialog. Returns null if cancelled, 0 if not paid/prepaid, or amount (full/partial) to record as income.
-  /// Discount is applied in this dialog; book appointment form does not set discount.
-  Future<double?> _showSessionPaymentDialog(BuildContext context, AppointmentModel a, AppLocalizations l10n) async {
+  /// Shows session payment dialog. Returns (amount, sessionPaymentStatus) or null if cancelled.
+  /// sessionPaymentStatus: 'paid', 'partial_paid', 'prepaid', 'not_paid'. Discount is applied in this dialog.
+  Future<({double amount, String status})?> _showSessionPaymentDialog(BuildContext context, AppointmentModel a, AppLocalizations l10n) async {
     final costAmount = a.costAmount ?? 0.0;
     final discountPercent = a.discountPercent;
     final baseAmount = costAmount > 0 && discountPercent != null && discountPercent > 0 && discountPercent < 100
@@ -259,7 +259,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
 
     String paymentType = 'not_paid';
-    Future<double?> dialogFuture = showDialog<double?>(
+    Future<({double amount, String status})?> dialogFuture = showDialog<({double amount, String status})?>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
@@ -344,22 +344,21 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     final sessionAmount = getAmountAfterDiscount();
                     final pctRaw = double.tryParse(discountController.text.trim());
                     final newDiscountPercent = (pctRaw != null && pctRaw > 0 && pctRaw < 100) ? pctRaw : null;
-                    final costChanged = (a.costAmount != sessionAmount) || (a.discountPercent != newDiscountPercent);
-                    if (costChanged) {
-                      await _firestore.updateAppointment(a.id, {
-                        'costAmount': sessionAmount,
-                        'discountPercent': newDiscountPercent,
-                      });
-                    }
+                    final statusValue = paymentType == 'partial' ? 'partial_paid' : paymentType;
+                    await _firestore.updateAppointment(a.id, {
+                      'costAmount': sessionAmount,
+                      'discountPercent': newDiscountPercent,
+                      'sessionPaymentStatus': statusValue,
+                    });
                     if (paymentType == 'paid') {
-                      Navigator.pop(ctx, sessionAmount);
+                      Navigator.pop(ctx, (amount: sessionAmount, status: 'paid'));
                     } else if (paymentType == 'partial') {
                       final v = double.tryParse(partialController.text.trim());
-                      Navigator.pop(ctx, v != null && v > 0 ? v : 0.0);
+                      Navigator.pop(ctx, (amount: v != null && v > 0 ? v : 0.0, status: 'partial_paid'));
                     } else if (paymentType == 'prepaid') {
-                      Navigator.pop(ctx, 0.0);
+                      Navigator.pop(ctx, (amount: 0.0, status: 'prepaid'));
                     } else {
-                      Navigator.pop(ctx, 0.0);
+                      Navigator.pop(ctx, (amount: 0.0, status: 'not_paid'));
                     }
                   },
                   child: Text(l10n.confirm),
@@ -967,13 +966,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         _logAppointmentAction(context, 'appointment_confirmed', a, AppointmentStatus.confirmed);
                                         _notifyAppointmentStatusChange(a);
                                       } else if (v == 'completed') {
-                                        final payment = await _showSessionPaymentDialog(context, a, l10n);
-                                        if (payment == null && mounted) return;
-                                        if (payment != null && payment > 0 && mounted) {
+                                        final result = await _showSessionPaymentDialog(context, a, l10n);
+                                        if (result == null && mounted) return;
+                                        if (result != null && mounted) {
                                           final sessionDateTime = _dateTimeFromAppointmentDateAndTime(a.appointmentDate, a.startTime);
                                           final income = IncomeRecordModel(
                                             id: '',
-                                            amount: payment,
+                                            amount: result.amount,
                                             currency: 'EGP',
                                             source: 'Session',
                                             doctorId: a.doctorId,
@@ -982,6 +981,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                             recordedByUserId: auth.id,
                                             incomeDate: sessionDateTime,
                                             appointmentId: a.id,
+                                            sessionPaymentStatus: result.status,
                                           );
                                           await _firestore.addIncomeRecord(income);
                                         }

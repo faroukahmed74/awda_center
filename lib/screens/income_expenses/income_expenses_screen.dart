@@ -190,6 +190,37 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     });
   }
 
+  String _sessionPaymentStatusLabel(String status, AppLocalizations l10n) {
+    switch (status) {
+      case 'paid': return l10n.paid;
+      case 'partial_paid': return l10n.partialPaid;
+      case 'prepaid': return l10n.prepaid;
+      case 'not_paid': return l10n.notPaid;
+      default: return status;
+    }
+  }
+
+  Widget _sessionPaymentStatusChip(BuildContext context, String status, AppLocalizations l10n) {
+    final label = _sessionPaymentStatusLabel(status, l10n);
+    final theme = Theme.of(context);
+    Color chipColor;
+    switch (status) {
+      case 'paid': chipColor = theme.colorScheme.primaryContainer; break;
+      case 'partial_paid': chipColor = theme.colorScheme.tertiaryContainer; break;
+      case 'prepaid': chipColor = theme.colorScheme.secondaryContainer; break;
+      case 'not_paid': chipColor = theme.colorScheme.errorContainer; break;
+      default: chipColor = theme.colorScheme.surfaceContainerHighest;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: chipColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(label, style: theme.textTheme.labelMedium),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -548,6 +579,16 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                       Padding(
                                         padding: const EdgeInsets.only(top: 2),
                                         child: Text('${l10n.doctor}: ${cache.doctorDisplayName(r.doctorId) ?? cache.userName(r.doctorId) ?? r.doctorId}', style: Theme.of(context).textTheme.bodySmall),
+                                      ),
+                                    if ((r.appointmentId != null || r.source == 'Session') && r.sessionPaymentStatus != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: Row(
+                                          children: [
+                                            Text('${l10n.status}: ', style: Theme.of(context).textTheme.bodySmall),
+                                            _sessionPaymentStatusChip(context, r.sessionPaymentStatus!, l10n),
+                                          ],
+                                        ),
                                       ),
                                   ],
                                 ),

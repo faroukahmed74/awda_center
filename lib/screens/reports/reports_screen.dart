@@ -1,4 +1,5 @@
 import 'package:excel/excel.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
@@ -102,7 +103,12 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         firstDate: DateTime(2020),
         lastDate: DateTime(now.year + 1, 12, 31),
       );
-      if (d != null && mounted) setState(() { _selectedDate = d; _load(); });
+      if (d != null && mounted) {
+        setState(() {
+          _selectedDate = d;
+          _load();
+        });
+      }
       return;
     }
     if (_period == 'month') {
@@ -114,29 +120,48 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           now: now,
         ),
       );
-      if (picked != null && mounted) setState(() { _selectedDate = picked; _load(); });
+      if (picked != null && mounted) {
+        setState(() {
+          _selectedDate = picked;
+          _load();
+        });
+      }
       return;
     }
     final pickedYear = await showDialog<int>(
       context: context,
       builder: (ctx) => _YearPickerDialog(initial: _selectedDate.year, l10n: l10n, now: now),
     );
-    if (pickedYear != null && mounted) setState(() { _selectedDate = DateTime(pickedYear, 1, 1); _load(); });
+    if (pickedYear != null && mounted) {
+      setState(() {
+        _selectedDate = DateTime(pickedYear, 1, 1);
+        _load();
+      });
+    }
   }
 
   Future<void> _load() async {
     setState(() => _loading = true);
     final (from, to) = _range();
     try {
-      final appointments = await _firestore.getAppointments(from: from, to: to);
-      final patientIds = appointments.map((a) => a.patientId).toSet().toList();
+      // Load all data in parallel to avoid sequential round-trips (was N+1 getUser calls).
+      final results = await Future.wait<dynamic>([
+        _firestore.getAppointments(from: from, to: to),
+        _firestore.getIncomeRecords(from: from, to: to),
+        _firestore.getExpenseRecords(from: from, to: to),
+        _firestore.getUsers(),
+      ]);
+      final appointments = results[0] as List<AppointmentModel>;
+      final income = results[1] as List<IncomeRecordModel>;
+      final expenses = results[2] as List<ExpenseRecordModel>;
+      final users = results[3] as List<UserModel>;
+
       final names = <String, String>{};
-      for (final id in patientIds) {
-        final u = await _firestore.getUser(id);
-        if (u != null) names[id] = u.displayName;
+      for (final u in users) {
+        names[u.id] = u.displayName;
       }
-      final income = await _firestore.getIncomeRecords(from: from, to: to);
-      final expenses = await _firestore.getExpenseRecords(from: from, to: to);
+      final patientIds = appointments.map((a) => a.patientId).toSet().toList();
+
       final incomeTotal = income.fold<double>(0, (s, r) => s + r.amount);
       final expenseTotal = expenses.fold<double>(0, (s, r) => s + r.amount);
 
@@ -145,7 +170,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         byStatus[a.status.value] = (byStatus[a.status.value] ?? 0) + 1;
       }
 
-      final users = await _firestore.getUsers();
       final byRole = <String, int>{};
       for (final u in users) {
         for (final r in u.roles) {
@@ -191,7 +215,11 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     for (final r in expense) {
       sb.writeln('${AppDateFormat.shortDate.format(r.expenseDate)},Expense,${r.amount},${r.category},${r.description ?? ''}');
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportIncomeExpense} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}', sharePositionOrigin: sharePositionOrigin);
+    await Share.share(
+      sb.toString(),
+      subject: '${l10n.exportIncomeExpense} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}',
+      sharePositionOrigin: sharePositionOrigin,
+    );
   }
 
   Future<void> _exportAppointments(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
@@ -200,9 +228,15 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final sb = StringBuffer();
     sb.writeln('Date,Start,End,PatientId,DoctorId,Status,Service');
     for (final a in appointments) {
-      sb.writeln('${AppDateFormat.shortDate.format(a.appointmentDate)},${a.startTime},${a.endTime},${a.patientId},${a.doctorId},${a.status.value},${a.servicesDisplay}');
+      sb.writeln(
+        '${AppDateFormat.shortDate.format(a.appointmentDate)},${a.startTime},${a.endTime},${a.patientId},${a.doctorId},${a.status.value},${a.servicesDisplay}',
+      );
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportAppointments} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}', sharePositionOrigin: sharePositionOrigin);
+    await Share.share(
+      sb.toString(),
+      subject: '${l10n.exportAppointments} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}',
+      sharePositionOrigin: sharePositionOrigin,
+    );
   }
 
   Future<void> _exportPatients(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
@@ -215,7 +249,11 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       final u = await _firestore.getUser(id);
       sb.writeln('$id,${u?.displayName ?? id}');
     }
-    await Share.share(sb.toString(), subject: '${l10n.exportPatients} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}', sharePositionOrigin: sharePositionOrigin);
+    await Share.share(
+      sb.toString(),
+      subject: '${l10n.exportPatients} ${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}',
+      sharePositionOrigin: sharePositionOrigin,
+    );
   }
 
   Future<void> _exportUsers(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
@@ -223,7 +261,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final sb = StringBuffer();
     sb.writeln('Id,Email,FullNameAr,FullNameEn,Phone,Roles,Active');
     for (final u in users) {
-      sb.writeln('${u.id},${u.email},${u.fullNameAr ?? ''},${u.fullNameEn ?? ''},${u.phone ?? ''},${u.roles.join(";")},${u.isActive}');
+      sb.writeln(
+        '${u.id},${u.email},${u.fullNameAr ?? ''},${u.fullNameEn ?? ''},${u.phone ?? ''},${u.roles.join(";")},${u.isActive}',
+      );
     }
     await Share.share(sb.toString(), subject: l10n.exportUsers, sharePositionOrigin: sharePositionOrigin);
   }
@@ -234,37 +274,143 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     sb.writeln('CreatedAt,Action,EntityType,EntityId,UserId,UserEmail,Details');
     for (final e in logs) {
       final details = e.details != null ? e.details!.toString().replaceAll(',', ';') : '';
-      sb.writeln('${e.createdAt != null ? AppDateFormat.shortDateTimeSec.format(e.createdAt!) : ''},${e.action},${e.entityType},${e.entityId ?? ''},${e.userId},${e.userEmail ?? ''},$details');
+      sb.writeln(
+        '${e.createdAt != null ? AppDateFormat.shortDateTimeSec.format(e.createdAt!) : ''},${e.action},${e.entityType},${e.entityId ?? ''},${e.userId},${e.userEmail ?? ''},$details',
+      );
     }
     await Share.share(sb.toString(), subject: l10n.exportAuditLog, sharePositionOrigin: sharePositionOrigin);
   }
 
   String _statusLabel(String value, AppLocalizations l10n) {
     switch (value) {
-      case 'pending': return l10n.pending;
-      case 'confirmed': return l10n.confirmed;
-      case 'completed': return l10n.completed;
-      case 'cancelled': return l10n.cancelled;
-      case 'no_show': return l10n.absentWithoutCause;
-      case 'absent_with_cause': return l10n.absentWithCause;
-      case 'absent_without_cause': return l10n.absentWithoutCause;
-      default: return value;
+      case 'pending':
+        return l10n.pending;
+      case 'confirmed':
+        return l10n.confirmed;
+      case 'completed':
+        return l10n.attended;
+      case 'cancelled':
+        return l10n.cancelled;
+      case 'no_show':
+        return l10n.absent;
+      case 'absent_with_cause':
+        return l10n.apologized;
+      case 'absent_without_cause':
+        return l10n.absent;
+      default:
+        return value;
     }
+  }
+
+  String _sessionPaymentStatusLabel(String? value, AppLocalizations l10n) {
+    switch (value) {
+      case 'paid':
+        return l10n.paid;
+      case 'partial_paid':
+        return l10n.partialPaid;
+      case 'prepaid':
+        return l10n.prepaid;
+      case 'not_paid':
+        return l10n.notPaid;
+      default:
+        return value ?? '';
+    }
+  }
+
+  /// Cairo only for web (Income & expenses, Appointments); full list for other platforms.
+  static const _pdfCairoRegularPaths = ['assets/fonts/Cairo-Regular.ttf'];
+  static const _pdfCairoBoldPaths = ['assets/fonts/Cairo-Bold.ttf'];
+  static const _pdfArabicRegularPaths = [
+    'assets/fonts/Cairo-Regular.ttf',
+    'assets/fonts/Tajawal-Regular.ttf',
+    'assets/fonts/Amiri-Regular.ttf',
+    'assets/fonts/Fonts/KacstFarsi.ttf',
+    'assets/fonts/Fonts/DTNASKH2.TTF',
+    'assets/fonts/Fonts/Candarab.ttf',
+    'assets/fonts/Fonts/ARIALUNI.TTF',
+  ];
+  static const _pdfArabicBoldPaths = [
+    'assets/fonts/Cairo-Bold.ttf',
+    'assets/fonts/Tajawal-Bold.ttf',
+    'assets/fonts/Amiri-Bold.ttf',
+    'assets/fonts/Amiri-Regular.ttf',
+    'assets/fonts/Fonts/KacstFarsi.ttf',
+    'assets/fonts/Fonts/DTNASKH2.TTF',
+    'assets/fonts/Fonts/Candarab.ttf',
+    'assets/fonts/Fonts/ARIALUNI.TTF',
+  ];
+
+  Future<pw.Font?> _tryLoadPdfFont(List<String> paths) async {
+    for (final path in paths) {
+      try {
+        final raw = await rootBundle.load(path);
+        final byteData = raw.buffer.asByteData(raw.offsetInBytes, raw.lengthInBytes);
+        final font = pw.Font.ttf(byteData);
+        debugPrint('Reports PDF font loaded: $path');
+        return font;
+      } catch (e, st) {
+        debugPrint('Reports PDF font failed: $path');
+        debugPrint('$e');
+        debugPrint('$st');
+      }
+    }
+    return null;
   }
 
   Future<void> _exportCurrentAsPdf(AppLocalizations l10n, Rect? shareOrigin) async {
     final (from, to) = _range();
     final periodLabel = '${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}';
-    // Noto Sans Arabic for correct Arabic rendering in PDF (presentation forms + reshaper).
-    pw.ThemeData? pdfTheme;
-    pw.Font? arabicFont;
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+              const SizedBox(width: 24),
+              Expanded(child: Text(l10n.generatingReport)),
+            ],
+          ),
+        ),
+      ),
+    );
+    await Future.delayed(const Duration(milliseconds: 250));
+
     try {
-      final fontData = await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
-      arabicFont = pw.Font.ttf(fontData);
-      pdfTheme = pw.ThemeData.withFont(base: arabicFont, fontFallback: [arabicFont]);
-    } catch (_) {
-      // Fallback: no custom theme (Arabic may render as replacement glyphs)
+    pw.Font? arabicFont;
+    pw.Font? arabicBoldFont;
+    try {
+      if (kIsWeb) {
+        arabicFont = await _tryLoadPdfFont(_pdfCairoRegularPaths);
+        arabicBoldFont = await _tryLoadPdfFont(_pdfCairoBoldPaths) ?? arabicFont;
+      } else {
+        arabicFont = await _tryLoadPdfFont(_pdfArabicRegularPaths);
+        arabicBoldFont = await _tryLoadPdfFont(_pdfArabicBoldPaths) ?? arabicFont;
+      }
+    } catch (e, st) {
+      debugPrint('Reports PDF font load error: $e\n$st');
+      arabicFont = null;
+      arabicBoldFont = null;
     }
+    if (arabicFont == null) {
+      debugPrint('Reports PDF: no Arabic font; using default.');
+    }
+
+    final pdfTheme = arabicFont == null
+        ? null
+        : pw.ThemeData.withFont(
+            base: arabicFont,
+            bold: arabicBoldFont ?? arabicFont,
+            italic: arabicFont,
+            boldItalic: arabicBoldFont ?? arabicFont,
+            fontFallback: [arabicFont],
+          );
+
     final doc = pw.Document(theme: pdfTheme);
     final int tabIndex = _tabController.index;
     final isArabic = l10n.isArabic;
@@ -273,104 +419,714 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final headerText = PdfColors.blue900;
     final sectionGreen = PdfColor.fromInt(0xFFE8F5E9);
 
+    bool hasArabic(String text) {
+      try {
+        return ArabicPdfReshaper.hasArabic(text);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    String shape(String text) {
+      if (text.isEmpty) return text;
+      if (arabicFont == null) return text;
+      try {
+        return hasArabic(text) ? ArabicPdfReshaper.reshape(text) : text;
+      } catch (_) {
+        return text;
+      }
+    }
+
+    pw.TextDirection dirForText(String text) {
+      return hasArabic(text) ? pw.TextDirection.rtl : pw.TextDirection.ltr;
+    }
+
+    pw.TextStyle pdfTextStyle({
+      double fontSize = 10,
+      bool bold = false,
+      PdfColor? color,
+    }) {
+      return pw.TextStyle(
+        fontSize: fontSize,
+        fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        color: color,
+        font: bold ? (arabicBoldFont ?? arabicFont) : arabicFont,
+      );
+    }
+
+    pw.Widget pdfText(
+      String? text, {
+      double fontSize = 10,
+      bool bold = false,
+      PdfColor? color,
+      pw.TextDirection? textDirection,
+      pw.TextAlign? textAlign,
+    }) {
+      final s = text ?? '';
+      return pw.Text(
+        shape(s),
+        textDirection: textDirection ?? dirForText(s),
+        textAlign: textAlign,
+        style: pdfTextStyle(
+          fontSize: fontSize,
+          bold: bold,
+          color: color,
+        ),
+      );
+    }
+
     pw.Widget pdfHeaderCell(String text, {PdfColor? bg, PdfColor? textColor}) {
-      final displayText = (isArabic && ArabicPdfReshaper.hasArabic(text)) ? ArabicPdfReshaper.reshape(text) : text;
-      final useRtl = isArabic && ArabicPdfReshaper.hasArabic(text);
       return pw.Container(
         padding: const pw.EdgeInsets.all(6),
         color: bg ?? PdfColors.blue50,
-        child: pw.Text(displayText, textDirection: useRtl ? pw.TextDirection.rtl : pw.TextDirection.ltr, textAlign: useRtl ? pw.TextAlign.right : pw.TextAlign.left, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: textColor ?? PdfColors.blue900, font: useRtl ? arabicFont : null)),
+        child: pdfText(
+          text,
+          fontSize: 10,
+          bold: true,
+          color: textColor ?? PdfColors.blue900,
+          textDirection: dirForText(text),
+          textAlign: hasArabic(text) ? pw.TextAlign.right : pw.TextAlign.left,
+        ),
       );
     }
-    pw.Widget pdfCell(String text, {bool alternate = false}) {
-      final displayText = (isArabic && ArabicPdfReshaper.hasArabic(text)) ? ArabicPdfReshaper.reshape(text) : text;
-      final useRtl = isArabic && ArabicPdfReshaper.hasArabic(text);
+
+    pw.Widget pdfCell(
+      String? text, {
+      bool alternate = false,
+      pw.TextDirection? textDirection,
+      pw.TextAlign? textAlign,
+    }) {
+      final t = text ?? '';
       return pw.Container(
         padding: const pw.EdgeInsets.all(4),
         color: alternate ? PdfColor.fromInt(0xFFF5F5F5) : null,
-        child: pw.Text(displayText, textDirection: useRtl ? pw.TextDirection.rtl : pw.TextDirection.ltr, textAlign: useRtl ? pw.TextAlign.right : pw.TextAlign.left, style: pw.TextStyle(fontSize: 9, font: useRtl ? arabicFont : null)),
+        child: pdfText(
+          t,
+          fontSize: 9,
+          textDirection: textDirection ?? dirForText(t),
+          textAlign: textAlign ?? (hasArabic(t) ? pw.TextAlign.right : pw.TextAlign.left),
+        ),
       );
     }
 
-    if (tabIndex == 0) {
-      final names = _patientNames.toSet().toList()..sort();
-      doc.addPage(pw.MultiPage(
-        build: (context) => [
-          pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.patientsReport} ($periodLabel)') : '${l10n.patientsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-          pw.SizedBox(height: 8),
-          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.total}: ${names.length} ${l10n.patient}') : '${l10n.total}: ${names.length} ${l10n.patient}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr)),
-          pw.SizedBox(height: 8),
-          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.patient, bg: headerBg, textColor: headerText)]),
-            ...names.asMap().entries.map((e) => pw.TableRow(children: [pdfCell(e.value, alternate: e.key.isOdd)])),
-          ]),
-        ],
-      ));
-    } else if (tabIndex == 1) {
-      final net = _incomeTotal - _expenseTotal;
-      final nf = NumberFormat.currency(symbol: '', decimalDigits: 0);
-      doc.addPage(pw.MultiPage(
-        build: (context) => [
-          pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.incomeExpensesReport} ($periodLabel)') : '${l10n.incomeExpensesReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-          pw.SizedBox(height: 8),
-          pw.Container(padding: const pw.EdgeInsets.all(8), color: sectionGreen, child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.totalIncome}: ${nf.format(_incomeTotal)}') : '${l10n.totalIncome}: ${nf.format(_incomeTotal)}', style: pw.TextStyle(fontSize: 11, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-            pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.totalExpenses}: ${nf.format(_expenseTotal)}') : '${l10n.totalExpenses}: ${nf.format(_expenseTotal)}', style: pw.TextStyle(fontSize: 11, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-            pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.net}: ${nf.format(net)}') : '${l10n.net}: ${nf.format(net)}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-          ])),
-          pw.SizedBox(height: 12),
-          pw.Text(isArabic ? ArabicPdfReshaper.reshape(l10n.income) : l10n.income, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.source, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText)]),
-            ..._income.asMap().entries.map((e) => pw.TableRow(children: [pdfCell(e.value.source, alternate: e.key.isOdd), pdfCell(AppDateFormat.shortDate.format(e.value.incomeDate), alternate: e.key.isOdd), pdfCell(nf.format(e.value.amount), alternate: e.key.isOdd)])),
-          ]),
-          pw.SizedBox(height: 12),
-          pw.Text(isArabic ? ArabicPdfReshaper.reshape(l10n.expenses) : l10n.expenses, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.category, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText)]),
-            ..._expenses.asMap().entries.map((e) => pw.TableRow(children: [pdfCell(e.value.category, alternate: e.key.isOdd), pdfCell(AppDateFormat.shortDate.format(e.value.expenseDate), alternate: e.key.isOdd), pdfCell(nf.format(e.value.amount), alternate: e.key.isOdd)])),
-          ]),
-        ],
-      ));
-    } else if (tabIndex == 2) {
-      doc.addPage(pw.MultiPage(
-        build: (context) => [
-          pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.appointmentsReport} ($periodLabel)') : '${l10n.appointmentsReport} ($periodLabel)', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-          pw.SizedBox(height: 8),
-          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.total}: ${_appointments.length} ${l10n.appointments}') : '${l10n.total}: ${_appointments.length} ${l10n.appointments}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr)),
-          pw.SizedBox(height: 8),
-          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(1), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.time, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.status, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.service, bg: headerBg, textColor: headerText)]),
-            ..._appointments.take(100).toList().asMap().entries.map((e) => pw.TableRow(children: [pdfCell(AppDateFormat.shortDate.format(e.value.appointmentDate), alternate: e.key.isOdd), pdfCell('${e.value.startTime}-${e.value.endTime}', alternate: e.key.isOdd), pdfCell(_statusLabel(e.value.status.value, l10n), alternate: e.key.isOdd), pdfCell(e.value.servicesDisplay, alternate: e.key.isOdd)])),
-          ]),
-        ],
-      ));
-    } else {
-      doc.addPage(pw.MultiPage(
-        build: (context) => [
-          pw.Text(isArabic ? ArabicPdfReshaper.reshape(l10n.usersReport) : l10n.usersReport, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
-          pw.SizedBox(height: 8),
-          pw.Container(padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8), color: sectionGreen, child: pw.Text(isArabic ? ArabicPdfReshaper.reshape('${l10n.total}: ${_users.length} ${l10n.users}') : '${l10n.total}: ${_users.length} ${l10n.users}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: isArabic ? arabicFont : null), textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr)),
-          pw.SizedBox(height: 8),
-          pw.Table(border: pw.TableBorder.all(color: PdfColors.grey400), columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(2), 3: const pw.FlexColumnWidth(1)}, children: [
-            pw.TableRow(decoration: pw.BoxDecoration(color: headerBg), children: [pdfHeaderCell(l10n.fullNameAr, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.fullNameEn, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.email, bg: headerBg, textColor: headerText), pdfHeaderCell(l10n.role, bg: headerBg, textColor: headerText)]),
-            ..._users.asMap().entries.map((e) {
-              final alt = e.key.isOdd;
-              final u = e.value;
-              return pw.TableRow(children: [pdfCell(u.fullNameAr ?? '', alternate: alt), pdfCell(u.fullNameEn ?? '', alternate: alt), pdfCell(u.email, alternate: alt), pdfCell(u.roles.join(', '), alternate: alt)]);
-            }),
-          ]),
-        ],
-      ));
+    String safeFormatDate(DateTime d) {
+      try {
+        return AppDateFormat.shortDate.format(d);
+      } catch (_) {
+        return '${d.year}-${d.month}-${d.day}';
+      }
     }
 
+    final usersById = <String, UserModel>{
+      for (final u in _users) u.id: u,
+    };
+    final appointmentsById = <String, AppointmentModel>{
+      for (final a in _appointments) a.id: a,
+    };
+
+    String displayName(String? userId) {
+      if (userId == null || userId.isEmpty) return '';
+      return usersById[userId]?.displayName ?? userId;
+    }
+
+    String incomeDetails(IncomeRecordModel r) {
+      final lines = <String>[];
+      final appointment = r.appointmentId == null
+          ? null
+          : appointmentsById[r.appointmentId!];
+
+      if (r.patientId != null && r.patientId!.isNotEmpty) {
+        lines.add('${l10n.patient}: ${displayName(r.patientId)}');
+      }
+      if (r.doctorId != null && r.doctorId!.isNotEmpty) {
+        lines.add('${l10n.doctor}: ${displayName(r.doctorId)}');
+      }
+      if (appointment != null) {
+        lines.add('${l10n.time}: ${appointment.startTime} - ${appointment.endTime}');
+        if (appointment.servicesDisplay.trim().isNotEmpty) {
+          lines.add('${l10n.services}: ${appointment.servicesDisplay}');
+        }
+        lines.add('${l10n.status}: ${_statusLabel(appointment.status.value, l10n)}');
+      }
+      if (r.sessionPaymentStatus != null && r.sessionPaymentStatus!.isNotEmpty) {
+        lines.add('${l10n.sessionPayment}: ${_sessionPaymentStatusLabel(r.sessionPaymentStatus, l10n)}');
+      }
+      if (r.notes != null && r.notes!.trim().isNotEmpty) {
+        lines.add('${l10n.notes}: ${r.notes!.trim()}');
+      }
+      return lines.join('\n');
+    }
+
+    String expenseDetails(ExpenseRecordModel r) {
+      final lines = <String>[];
+      if (r.paidByDoctorId != null && r.paidByDoctorId!.isNotEmpty) {
+        lines.add('${l10n.paidByDoctor}: ${displayName(r.paidByDoctorId)}');
+      }
+      if (r.recipientName != null && r.recipientName!.trim().isNotEmpty) {
+        lines.add('${l10n.patient}: ${r.recipientName!.trim()}');
+      }
+      if (r.description != null && r.description!.trim().isNotEmpty) {
+        lines.add('${l10n.notes}: ${r.description!.trim()}');
+      }
+      return lines.join('\n');
+    }
+
+    // On web, cap data to avoid "Array buffer allocation failed" (browser memory limit).
+    const int webPdfCap = 50;
+    if (tabIndex == 0) {
+      final allNames = _patientNames.toSet().toList()..sort();
+      final names = kIsWeb && allNames.length > webPdfCap ? allNames.sublist(0, webPdfCap) : allNames;
+      const int chunkSize = 25;
+      if (names.isEmpty) {
+        if (kIsWeb) await Future.delayed(Duration.zero);
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => pw.Directionality(
+              textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pdfText(
+                    '${l10n.patientsReport} ($periodLabel)',
+                    fontSize: 16,
+                    bold: true,
+                    textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                    color: sectionGreen,
+                    child: pdfText(
+                      '${l10n.total}: 0 ${l10n.patient}',
+                      fontSize: 12,
+                      bold: true,
+                      textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pdfText(l10n.noData, fontSize: 10, textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      for (int start = 0; start < names.length; start += chunkSize) {
+        final end = start + chunkSize > names.length ? names.length : start + chunkSize;
+        final chunk = names.sublist(start, end);
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => pw.Directionality(
+              textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (start == 0) ...[
+                    pdfText(
+                      '${l10n.patientsReport} ($periodLabel)',
+                      fontSize: 16,
+                      bold: true,
+                      textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                      color: sectionGreen,
+                      child: pdfText(
+                        '${l10n.total}: ${names.length} ${l10n.patient}',
+                        fontSize: 12,
+                        bold: true,
+                        textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                      ),
+                    ),
+                    pw.SizedBox(height: 8),
+                  ],
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400),
+                    columnWidths: {0: const pw.FlexColumnWidth(2)},
+                    children: [
+                      if (start == 0)
+                        pw.TableRow(
+                          decoration: pw.BoxDecoration(color: headerBg),
+                          children: [
+                            pdfHeaderCell(l10n.patient, bg: headerBg, textColor: headerText),
+                          ],
+                        ),
+                      ...chunk.asMap().entries.map(
+                            (e) => pw.TableRow(
+                              children: [pdfCell(e.value, alternate: (start + e.key).isOdd)],
+                            ),
+                          ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        if (kIsWeb) await Future.delayed(Duration.zero);
+      }
+    } else if (tabIndex == 1) {
+      final incomeTotal = _incomeTotal.isFinite ? _incomeTotal : 0.0;
+      final expenseTotal = _expenseTotal.isFinite ? _expenseTotal : 0.0;
+      final net = incomeTotal - expenseTotal;
+      final nf = NumberFormat.currency(symbol: '', decimalDigits: 0);
+      final incomeForPdf = kIsWeb && _income.length > webPdfCap ? _income.sublist(0, webPdfCap) : _income;
+      final expensesForPdf = kIsWeb && _expenses.length > webPdfCap ? _expenses.sublist(0, webPdfCap) : _expenses;
+      const int chunkSize = 25;
+      if (kIsWeb) await Future.delayed(Duration.zero);
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (context) => pw.Directionality(
+            textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pdfText(
+                  '${l10n.incomeExpensesReport} ($periodLabel)',
+                  fontSize: 16,
+                  bold: true,
+                  textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                ),
+                pw.SizedBox(height: 8),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(8),
+                  color: sectionGreen,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pdfText(
+                        '${l10n.totalIncome}: ${nf.format(incomeTotal)}',
+                        fontSize: 11,
+                        textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                      ),
+                      pdfText(
+                        '${l10n.totalExpenses}: ${nf.format(expenseTotal)}',
+                        fontSize: 11,
+                        textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                      ),
+                      pdfText(
+                        '${l10n.net}: ${nf.format(net)}',
+                        fontSize: 12,
+                        bold: true,
+                        textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      for (int start = 0; start < incomeForPdf.length; start += chunkSize) {
+        if (kIsWeb) await Future.delayed(Duration.zero);
+        final end = start + chunkSize > incomeForPdf.length ? incomeForPdf.length : start + chunkSize;
+        final chunk = incomeForPdf.sublist(start, end);
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => pw.Directionality(
+              textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pdfText(
+                    l10n.income,
+                    fontSize: 12,
+                    bold: true,
+                    textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                  ),
+                  pw.SizedBox(height: 6),
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400),
+                    columnWidths: {
+                      0: const pw.FlexColumnWidth(1.2),
+                      1: const pw.FlexColumnWidth(1.1),
+                      2: const pw.FlexColumnWidth(3),
+                      3: const pw.FlexColumnWidth(1),
+                    },
+                    children: [
+                      pw.TableRow(
+                        decoration: pw.BoxDecoration(color: headerBg),
+                        children: [
+                          pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText),
+                          pdfHeaderCell(l10n.source, bg: headerBg, textColor: headerText),
+                          pdfHeaderCell(l10n.notes, bg: headerBg, textColor: headerText),
+                          pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText),
+                        ],
+                      ),
+                      ...chunk.asMap().entries.map(
+                            (e) => pw.TableRow(
+                              children: [
+                                pdfCell(
+                                  safeFormatDate(e.value.incomeDate),
+                                  alternate: (start + e.key).isOdd,
+                                  textDirection: pw.TextDirection.ltr,
+                                ),
+                                pdfCell(
+                                  e.value.source,
+                                  alternate: (start + e.key).isOdd,
+                                ),
+                                pdfCell(
+                                  incomeDetails(e.value),
+                                  alternate: (start + e.key).isOdd,
+                                ),
+                                pdfCell(
+                                  nf.format(e.value.amount.isFinite ? e.value.amount : 0),
+                                  alternate: (start + e.key).isOdd,
+                                  textDirection: pw.TextDirection.ltr,
+                                ),
+                              ],
+                            ),
+                          ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      for (int start = 0; start < expensesForPdf.length; start += chunkSize) {
+        if (kIsWeb) await Future.delayed(Duration.zero);
+        final end = start + chunkSize > expensesForPdf.length ? expensesForPdf.length : start + chunkSize;
+        final chunk = expensesForPdf.sublist(start, end);
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => pw.Directionality(
+              textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pdfText(
+                    l10n.expenses,
+                    fontSize: 12,
+                    bold: true,
+                    textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                  ),
+                  pw.SizedBox(height: 6),
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400),
+                    columnWidths: {
+                      0: const pw.FlexColumnWidth(1.2),
+                      1: const pw.FlexColumnWidth(1.3),
+                      2: const pw.FlexColumnWidth(2.7),
+                      3: const pw.FlexColumnWidth(1),
+                    },
+                    children: [
+                      pw.TableRow(
+                        decoration: pw.BoxDecoration(color: headerBg),
+                        children: [
+                          pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText),
+                          pdfHeaderCell(l10n.category, bg: headerBg, textColor: headerText),
+                          pdfHeaderCell(l10n.notes, bg: headerBg, textColor: headerText),
+                          pdfHeaderCell(l10n.amount, bg: headerBg, textColor: headerText),
+                        ],
+                      ),
+                      ...chunk.asMap().entries.map(
+                            (e) => pw.TableRow(
+                              children: [
+                                pdfCell(
+                                  safeFormatDate(e.value.expenseDate),
+                                  alternate: (start + e.key).isOdd,
+                                  textDirection: pw.TextDirection.ltr,
+                                ),
+                                pdfCell(
+                                  e.value.category,
+                                  alternate: (start + e.key).isOdd,
+                                ),
+                                pdfCell(
+                                  expenseDetails(e.value),
+                                  alternate: (start + e.key).isOdd,
+                                ),
+                                pdfCell(
+                                  nf.format(e.value.amount.isFinite ? e.value.amount : 0),
+                                  alternate: (start + e.key).isOdd,
+                                  textDirection: pw.TextDirection.ltr,
+                                ),
+                              ],
+                            ),
+                          ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    } else if (tabIndex == 2) {
+      final appointmentsForPdf = kIsWeb && _appointments.length > webPdfCap ? _appointments.sublist(0, webPdfCap) : _appointments;
+      const int chunkSize = 25;
+      if (appointmentsForPdf.isEmpty) {
+        if (kIsWeb) await Future.delayed(Duration.zero);
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => pw.Directionality(
+              textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pdfText(
+                    '${l10n.appointmentsReport} ($periodLabel)',
+                    fontSize: 16,
+                    bold: true,
+                    textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                    color: sectionGreen,
+                    child: pdfText(
+                      '${l10n.total}: 0 ${l10n.appointments}',
+                      fontSize: 12,
+                      bold: true,
+                      textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pdfText(l10n.noData, fontSize: 10, textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      for (int start = 0; start < appointmentsForPdf.length; start += chunkSize) {
+        if (kIsWeb) await Future.delayed(Duration.zero);
+        final end = start + chunkSize > appointmentsForPdf.length ? appointmentsForPdf.length : start + chunkSize;
+        final chunk = appointmentsForPdf.sublist(start, end);
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => pw.Directionality(
+              textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (start == 0) ...[
+                    pdfText(
+                      '${l10n.appointmentsReport} ($periodLabel)',
+                      fontSize: 16,
+                      bold: true,
+                      textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                      color: sectionGreen,
+                      child: pdfText(
+                        '${l10n.total}: ${appointmentsForPdf.length} ${l10n.appointments}',
+                        fontSize: 12,
+                        bold: true,
+                        textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                      ),
+                    ),
+                    pw.SizedBox(height: 8),
+                  ],
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400),
+                    columnWidths: {
+                      0: const pw.FlexColumnWidth(1),
+                      1: const pw.FlexColumnWidth(1),
+                      2: const pw.FlexColumnWidth(1),
+                      3: const pw.FlexColumnWidth(1),
+                    },
+                    children: [
+                      if (start == 0)
+                        pw.TableRow(
+                          decoration: pw.BoxDecoration(color: headerBg),
+                          children: [
+                            pdfHeaderCell(l10n.date, bg: headerBg, textColor: headerText),
+                            pdfHeaderCell(l10n.time, bg: headerBg, textColor: headerText),
+                            pdfHeaderCell(l10n.status, bg: headerBg, textColor: headerText),
+                            pdfHeaderCell(l10n.service, bg: headerBg, textColor: headerText),
+                          ],
+                        ),
+                      ...chunk.asMap().entries.map(
+                            (e) => pw.TableRow(
+                              children: [
+                                pdfCell(
+                                  safeFormatDate(e.value.appointmentDate),
+                                  alternate: (start + e.key).isOdd,
+                                  textDirection: pw.TextDirection.ltr,
+                                ),
+                                pdfCell(
+                                  '${e.value.startTime}-${e.value.endTime}',
+                                  alternate: (start + e.key).isOdd,
+                                  textDirection: pw.TextDirection.ltr,
+                                ),
+                                pdfCell(
+                                  _statusLabel(e.value.status.value, l10n),
+                                  alternate: (start + e.key).isOdd,
+                                ),
+                                pdfCell(
+                                  e.value.servicesDisplay,
+                                  alternate: (start + e.key).isOdd,
+                                ),
+                              ],
+                            ),
+                          ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    } else {
+      final usersForPdf = kIsWeb && _users.length > webPdfCap ? _users.sublist(0, webPdfCap) : _users;
+      const int chunkSize = 25;
+      if (usersForPdf.isEmpty) {
+        if (kIsWeb) await Future.delayed(Duration.zero);
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => pw.Directionality(
+              textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pdfText(
+                    l10n.usersReport,
+                    fontSize: 16,
+                    bold: true,
+                    textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                    color: sectionGreen,
+                    child: pdfText(
+                      '${l10n.total}: 0 ${l10n.users}',
+                      fontSize: 12,
+                      bold: true,
+                      textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pdfText(l10n.noData, fontSize: 10, textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      for (int start = 0; start < usersForPdf.length; start += chunkSize) {
+        if (kIsWeb) await Future.delayed(Duration.zero);
+        final end = start + chunkSize > usersForPdf.length ? usersForPdf.length : start + chunkSize;
+        final chunk = usersForPdf.sublist(start, end);
+        doc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => pw.Directionality(
+              textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (start == 0) ...[
+                    pdfText(
+                      l10n.usersReport,
+                      fontSize: 16,
+                      bold: true,
+                      textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                      color: sectionGreen,
+                      child: pdfText(
+                        '${l10n.total}: ${usersForPdf.length} ${l10n.users}',
+                        fontSize: 12,
+                        bold: true,
+                        textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                      ),
+                    ),
+                    pw.SizedBox(height: 8),
+                  ],
+                  pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400),
+                    columnWidths: {
+                      0: const pw.FlexColumnWidth(2),
+                      1: const pw.FlexColumnWidth(2),
+                      2: const pw.FlexColumnWidth(2),
+                      3: const pw.FlexColumnWidth(1),
+                    },
+                    children: [
+                      if (start == 0)
+                        pw.TableRow(
+                          decoration: pw.BoxDecoration(color: headerBg),
+                          children: [
+                            pdfHeaderCell(l10n.fullNameAr, bg: headerBg, textColor: headerText),
+                            pdfHeaderCell(l10n.fullNameEn, bg: headerBg, textColor: headerText),
+                            pdfHeaderCell(l10n.email, bg: headerBg, textColor: headerText),
+                            pdfHeaderCell(l10n.role, bg: headerBg, textColor: headerText),
+                          ],
+                        ),
+                      ...chunk.asMap().entries.map((e) {
+                        final alt = (start + e.key).isOdd;
+                        final u = e.value;
+                        return pw.TableRow(
+                          children: [
+                            pdfCell(u.fullNameAr ?? '', alternate: alt),
+                            pdfCell(u.fullNameEn ?? '', alternate: alt, textDirection: pw.TextDirection.ltr),
+                            pdfCell(u.email, alternate: alt, textDirection: pw.TextDirection.ltr),
+                            pdfCell(u.roles.join(', '), alternate: alt, textDirection: pw.TextDirection.ltr),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    if (kIsWeb) await Future.delayed(Duration.zero);
     final bytes = await doc.save();
+    if (mounted) Navigator.of(context).pop();
     final filename = 'report_${tabIndex}_${from.millisecondsSinceEpoch}.pdf';
     await savePdfAndShare(filename, bytes, shareOrigin);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF ready — download or share')));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF ready — download or share')),
+      );
+    }
+  } catch (e) {
+    if (mounted) Navigator.of(context).pop();
+    rethrow;
+  }
   }
 
   Future<void> _exportCurrentAsExcel(AppLocalizations l10n, Rect? shareOrigin) async {
+    if (kIsWeb) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Excel export is available on mobile and desktop. Use PDF or CSV export on web.')),
+        );
+      }
+      return;
+    }
     final (from, to) = _range();
     final periodLabel = '${AppDateFormat.shortDate.format(from)} - ${AppDateFormat.shortDate.format(to)}';
     final excel = Excel.createExcel();
@@ -382,7 +1138,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       sheet.appendRow([TextCellValue(l10n.patientsReport), TextCellValue(periodLabel)]);
       sheet.appendRow([TextCellValue('${l10n.total}: ${names.length}')]);
       sheet.appendRow([TextCellValue(l10n.patient)]);
-      for (final n in names) sheet.appendRow([TextCellValue(n)]);
+      for (final n in names) {
+        sheet.appendRow([TextCellValue(n)]);
+      }
     } else if (tabIndex == 1) {
       sheet.appendRow([TextCellValue(l10n.incomeExpensesReport), TextCellValue(periodLabel)]);
       sheet.appendRow([TextCellValue(l10n.totalIncome), TextCellValue(NumberFormat.currency(symbol: '').format(_incomeTotal))]);
@@ -391,11 +1149,23 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       sheet.appendRow([]);
       sheet.appendRow([TextCellValue(l10n.income)]);
       sheet.appendRow([TextCellValue(l10n.source), TextCellValue(l10n.date), TextCellValue(l10n.amount)]);
-      for (final r in _income) sheet.appendRow([TextCellValue(r.source), TextCellValue(AppDateFormat.shortDate.format(r.incomeDate)), TextCellValue(r.amount.toString())]);
+      for (final r in _income) {
+        sheet.appendRow([
+          TextCellValue(r.source),
+          TextCellValue(AppDateFormat.shortDate.format(r.incomeDate)),
+          TextCellValue(r.amount.toString()),
+        ]);
+      }
       sheet.appendRow([]);
       sheet.appendRow([TextCellValue(l10n.expenses)]);
       sheet.appendRow([TextCellValue(l10n.category), TextCellValue(l10n.date), TextCellValue(l10n.amount)]);
-      for (final r in _expenses) sheet.appendRow([TextCellValue(r.category), TextCellValue(AppDateFormat.shortDate.format(r.expenseDate)), TextCellValue(r.amount.toString())]);
+      for (final r in _expenses) {
+        sheet.appendRow([
+          TextCellValue(r.category),
+          TextCellValue(AppDateFormat.shortDate.format(r.expenseDate)),
+          TextCellValue(r.amount.toString()),
+        ]);
+      }
     } else if (tabIndex == 2) {
       sheet.appendRow([TextCellValue(l10n.appointmentsReport), TextCellValue(periodLabel)]);
       sheet.appendRow([TextCellValue(l10n.date), TextCellValue(l10n.time), TextCellValue(l10n.status), TextCellValue(l10n.service)]);
@@ -410,14 +1180,25 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     } else {
       sheet.appendRow([TextCellValue(l10n.usersReport)]);
       sheet.appendRow([TextCellValue(l10n.fullNameAr), TextCellValue(l10n.fullNameEn), TextCellValue(l10n.email), TextCellValue(l10n.role)]);
-      for (final u in _users) sheet.appendRow([TextCellValue(u.fullNameAr ?? ''), TextCellValue(u.fullNameEn ?? ''), TextCellValue(u.email), TextCellValue(u.roles.join(', '))]);
+      for (final u in _users) {
+        sheet.appendRow([
+          TextCellValue(u.fullNameAr ?? ''),
+          TextCellValue(u.fullNameEn ?? ''),
+          TextCellValue(u.email),
+          TextCellValue(u.roles.join(', ')),
+        ]);
+      }
     }
 
     final bytes = excel.encode();
     if (bytes == null) return;
     final path = await report_io.writeReportBytes('report_${tabIndex}_$from.xlsx', bytes);
     if (path == null || !mounted) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Excel export is available on mobile and desktop. Use CSV on web.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Excel export is available on mobile and desktop. Use CSV on web.')),
+        );
+      }
       return;
     }
     await Share.shareXFiles([XFile(path)], sharePositionOrigin: shareOrigin);
@@ -433,42 +1214,44 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.reports),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
+          ),
           actions: [
             const NotificationsButton(),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Breakpoint.isMobile(context)
-                  ? IconButton(
-                      icon: const Icon(Icons.picture_as_pdf),
-                      tooltip: 'Download PDF',
-                      onPressed: () async {
-                        try {
-                          await _exportCurrentAsPdf(l10n, _sharePositionOriginFrom(context));
-                        } catch (e, st) {
-                          debugPrint('PDF export error: $e\n$st');
-                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e)))));
-                        }
-                      },
-                    )
-                  : FilledButton.icon(
-                      icon: const Icon(Icons.picture_as_pdf, size: 20),
-                      label: const Text('PDF'),
-                      onPressed: () async {
-                    try {
-                      await _exportCurrentAsPdf(l10n, _sharePositionOriginFrom(context));
-                    } catch (e, st) {
-                      debugPrint('PDF export error: $e\n$st');
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e)))));
-                    }
-                  },
-                ),
-            ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.upload),
               tooltip: l10n.export,
               onSelected: (v) async {
                 final shareOrigin = _sharePositionOriginFrom(context);
+                final showOverlay = v != 'pdf' && v != 'excel';
+                if (showOverlay && mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (ctx) => PopScope(
+                      canPop: false,
+                      child: AlertDialog(
+                        content: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                            const SizedBox(width: 24),
+                            Expanded(child: Text(l10n.export)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                  await Future.delayed(const Duration(milliseconds: 150));
+                }
                 try {
                   if (v == 'income') await _exportIncome(l10n, shareOrigin);
                   if (v == 'appointments') await _exportAppointments(l10n, shareOrigin);
@@ -477,6 +1260,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   if (v == 'audit') await _exportAuditLog(l10n, shareOrigin);
                   if (v == 'pdf') await _exportCurrentAsPdf(l10n, shareOrigin);
                   if (v == 'excel') await _exportCurrentAsExcel(l10n, shareOrigin);
+
+                  if (showOverlay && mounted) Navigator.of(context).pop();
                   if (context.mounted && v != 'pdf' && v != 'excel') {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Export ready — use share sheet to save or send')),
@@ -488,6 +1273,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                     );
                   }
                 } catch (e, st) {
+                  if (showOverlay && mounted) Navigator.of(context).pop();
                   debugPrint('Export error: $e\n$st');
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -539,7 +1325,12 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       DropdownMenuItem(value: 'year', child: Text(l10n.year)),
                     ],
                     onChanged: (v) {
-                      if (v != null) setState(() { _period = v; _load(); });
+                      if (v != null) {
+                        setState(() {
+                          _period = v;
+                          _load();
+                        });
+                      }
                     },
                   ),
                   TextButton.icon(
@@ -589,9 +1380,11 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               ),
             ),
             const SizedBox(height: 8),
-            ...uniqueNames.map((name) => Card(
+            ...uniqueNames.map(
+              (name) => Card(
                   child: ListTile(title: Text(name)),
-                )),
+              ),
+            ),
           ],
         ),
       ),
@@ -614,11 +1407,20 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${l10n.totalIncome}: ${NumberFormat.currency(symbol: '').format(_incomeTotal)}', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      '${l10n.totalIncome}: ${NumberFormat.currency(symbol: '').format(_incomeTotal)}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 4),
-                    Text('${l10n.totalExpenses}: ${NumberFormat.currency(symbol: '').format(_expenseTotal)}', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      '${l10n.totalExpenses}: ${NumberFormat.currency(symbol: '').format(_expenseTotal)}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 4),
-                    Text('${l10n.net}: ${NumberFormat.currency(symbol: '').format(net)}', style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      '${l10n.net}: ${NumberFormat.currency(symbol: '').format(net)}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                   ],
                 ),
               ),
@@ -628,25 +1430,33 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             if (_income.isEmpty)
               Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
             else
-              ..._income.map((r) => Card(
+              ..._income.map(
+                (r) => Card(
                     child: ListTile(
                       title: Text(r.source),
-                      subtitle: Text(AppDateFormat.shortDate.format(r.incomeDate)),
+                    subtitle: Text(AppDateFormat.shortDate.format(r.incomeDate)),
                       trailing: Text(NumberFormat.currency(symbol: '').format(r.amount)),
                     ),
-                  )),
+                ),
+              ),
             const SizedBox(height: 16),
             Text(l10n.expenses, style: Theme.of(context).textTheme.titleSmall),
             if (_expenses.isEmpty)
               Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
             else
-              ..._expenses.map((r) => Card(
+              ..._expenses.map(
+                (r) => Card(
                     child: ListTile(
-                      title: Text(r.category == 'Salary' && r.recipientName != null && r.recipientName!.isNotEmpty ? 'Salary – ${r.recipientName}' : r.category),
-                      subtitle: Text(AppDateFormat.shortDate.format(r.expenseDate)),
+                    title: Text(
+                      r.category == 'Salary' && r.recipientName != null && r.recipientName!.isNotEmpty
+                          ? 'Salary – ${r.recipientName}'
+                          : r.category,
+                    ),
+                    subtitle: Text(AppDateFormat.shortDate.format(r.expenseDate)),
                       trailing: Text(NumberFormat.currency(symbol: '').format(r.amount)),
                     ),
-                  )),
+                ),
+              ),
           ],
         ),
       ),
@@ -668,11 +1478,15 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${l10n.total}: ${_appointments.length} ${l10n.appointments.toLowerCase()}', style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      '${l10n.total}: ${_appointments.length} ${l10n.appointments.toLowerCase()}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     if (_appointmentsByStatus.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(l10n.byStatus, style: Theme.of(context).textTheme.titleSmall),
-                      ..._appointmentsByStatus.entries.map((e) => Padding(
+                      ..._appointmentsByStatus.entries.map(
+                        (e) => Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -681,7 +1495,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                                 Text('${e.value}'),
                               ],
                             ),
-                          )),
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -691,14 +1506,18 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             if (_appointments.isEmpty)
               Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
             else
-              ..._appointments.take(50).map((a) => Card(
+              ..._appointments.take(50).map(
+                (a) => Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      title: Text(AppDateFormat.shortDate.format(a.appointmentDate)),
-                      subtitle: Text('${a.startTime} - ${a.endTime} • ${_statusLabel(a.status.value, l10n)} ${a.hasServices ? '• ${a.servicesDisplay}' : ''}'),
+                    title: Text(AppDateFormat.shortDate.format(a.appointmentDate)),
+                    subtitle: Text(
+                      '${a.startTime} - ${a.endTime} • ${_statusLabel(a.status.value, l10n)} ${a.hasServices ? '• ${a.servicesDisplay}' : ''}',
+                    ),
                       trailing: Text(a.status.value),
                     ),
-                  )),
+                ),
+              ),
           ],
         ),
       ),
@@ -720,11 +1539,15 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${l10n.total}: ${_users.length} ${l10n.users.toLowerCase()}', style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      '${l10n.total}: ${_users.length} ${l10n.users.toLowerCase()}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     if (_usersByRole.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(l10n.role, style: Theme.of(context).textTheme.titleSmall),
-                      ..._usersByRole.entries.map((e) => Padding(
+                      ..._usersByRole.entries.map(
+                        (e) => Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -733,7 +1556,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                                 Text('${e.value}'),
                               ],
                             ),
-                          )),
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -743,14 +1567,16 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             if (_users.isEmpty)
               Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
             else
-              ..._users.map((u) => Card(
+              ..._users.map(
+                (u) => Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       title: Text(u.displayName),
                       subtitle: Text('${u.email} • ${u.roles.map((r) => l10n.roleDisplay(r)).join(", ")}'),
                       trailing: u.isActive ? null : Chip(label: Text(l10n.inactive, style: const TextStyle(fontSize: 12))),
                     ),
-                  )),
+                ),
+              ),
           ],
         ),
       ),

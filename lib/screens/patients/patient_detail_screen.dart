@@ -20,6 +20,8 @@ import '../../core/date_format.dart';
 import 'patient_profile_edit_dialog.dart';
 import 'patient_document_dialog.dart';
 import 'document_viewer.dart';
+import 'patient_report_pdf.dart';
+import '../reports/report_pdf_share.dart';
 
 class PatientDetailScreen extends StatefulWidget {
   final String patientId;
@@ -51,9 +53,6 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       if (!mounted) return;
       final list = snapshot.docs
           .map((d) => AppointmentModel.fromFirestore(d))
-          .where((a) =>
-              a.status == AppointmentStatus.confirmed ||
-              a.status == AppointmentStatus.completed)
           .toList();
       list.sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
       setState(() => _appointmentSessions = list);
@@ -73,12 +72,8 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     final sessions = await _firestore.getSessionsForPatient(widget.patientId);
     final appointments = await _firestore.getAppointments(patientId: widget.patientId);
     final packages = await _firestore.getAllPackages();
-    final appointmentSessions = appointments
-        .where((a) =>
-            a.status == AppointmentStatus.confirmed ||
-            a.status == AppointmentStatus.completed)
-        .toList();
-    appointmentSessions.sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
+    final appointmentSessions = List<AppointmentModel>.from(appointments)
+      ..sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
     final docs = await _firestore.getPatientDocuments(widget.patientId);
     setState(() {
       _user = user;
@@ -108,7 +103,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     return out;
   }
 
-  /// Merged session rows: from sessions collection and from confirmed/completed appointments, sorted by date desc.
+  /// Merged session rows: from sessions collection and from all appointments, sorted by date desc. Status reflects current appointment status.
   List<_SessionRow> _mergedSessionRows(AppLocalizations l10n) {
     final rows = <_SessionRow>[];
     for (final s in _sessions) {
@@ -118,22 +113,72 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         endTime: s.endTime,
         service: s.service,
         statusLabel: null,
+        paymentStatusLabel: null,
       ));
     }
     for (final a in _appointmentSessions) {
-      final statusLabel = a.status == AppointmentStatus.confirmed
-          ? l10n.confirmed
-          : l10n.completed;
+      final statusLabel = _appointmentStatusLabel(a.status, l10n);
       rows.add(_SessionRow(
         date: a.appointmentDate,
         startTime: a.startTime,
         endTime: a.endTime,
         service: a.hasServices ? a.servicesDisplay : null,
         statusLabel: statusLabel,
+        paymentStatusLabel: _paymentStatusLabel(a.sessionPaymentStatus, l10n),
       ));
     }
     rows.sort((a, b) => b.date.compareTo(a.date));
     return rows.take(50).toList();
+  }
+
+  static String _appointmentStatusLabel(AppointmentStatus status, AppLocalizations l10n) {
+    switch (status) {
+      case AppointmentStatus.pending: return l10n.pending;
+      case AppointmentStatus.confirmed: return l10n.confirmed;
+      case AppointmentStatus.completed: return l10n.attended;
+      case AppointmentStatus.cancelled: return l10n.cancelled;
+      case AppointmentStatus.noShow: return l10n.absent;
+      case AppointmentStatus.absentWithCause: return l10n.apologized;
+      case AppointmentStatus.absentWithoutCause: return l10n.absent;
+    }
+  }
+
+  Future<void> _generateReport(AppLocalizations l10n) async {
+    if (_user == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(SnackBar(content: Text(l10n.generatingReport)));
+    try {
+      final incomeList = await _firestore.getIncomeRecordsForPatient(widget.patientId);
+      final merged = _mergedSessionRows(l10n);
+      final sessionRows = merged
+          .map((r) => PatientReportSessionRow(
+                date: r.date,
+                startTime: r.startTime,
+                endTime: r.endTime,
+                service: r.service,
+                statusLabel: r.statusLabel,
+                paymentStatusLabel: r.paymentStatusLabel,
+              ))
+          .toList();
+      final bytes = await buildPatientReportPdf(
+        user: _user!,
+        profile: _profile,
+        sessionRows: sessionRows,
+        incomeForPatient: incomeList,
+        packageProgress: _packageProgress(),
+        l10n: l10n,
+        centerName: l10n.appTitle,
+      );
+      final name = _user!.displayName.replaceAll(RegExp(r'[^\w\s\u0600-\u06FF-]'), '').trim();
+      final safeName = name.isEmpty ? 'patient' : name.split(RegExp(r'\s+')).first;
+      final filename = 'patient_report_${safeName}_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf';
+      await savePdfAndShare(filename, bytes);
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(l10n.reportReady)));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('${l10n.reportError}: $e')));
+    }
   }
 
   Widget _buildPersonalDetails(AppLocalizations l10n) {
@@ -237,7 +282,12 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
           title: Text(l10n.patientDetail),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/patients'); }),
           actions: [
-            if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
+            if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true) ...[
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                tooltip: l10n.generateReport,
+                onPressed: () => _generateReport(l10n),
+              ),
               IconButton(
                 icon: const Icon(Icons.edit),
                 tooltip: l10n.editProfile,
@@ -249,6 +299,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                   if (ok == true && mounted) _load();
                 },
               ),
+            ],
           ],
         ),
         body: _loading
@@ -290,39 +341,53 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                             ),
                           ),
                         ),
-                        if (context.watch<AuthProvider>().currentUser?.canAccessAppointments == true)
+                        if (context.watch<AuthProvider>().currentUser?.canAccessAppointments == true ||
+                            context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 16),
-                            child: FilledButton.icon(
-                              icon: const Icon(Icons.calendar_today, size: 20),
-                              label: Text(l10n.bookAppointment),
-                              onPressed: () async {
-                                final cache = context.read<DataCacheProvider>();
-                                final currentUserId = context.read<AuthProvider>().currentUser?.id;
-                                final ok = await showDialog<bool>(
-                                  context: context,
-                                  builder: (_) {
-                                    final user = context.read<AuthProvider>().currentUser;
-                                    final canBookPast = user?.hasRole(UserRole.admin) == true || user?.hasRole(UserRole.supervisor) == true;
-                                    return AppointmentFormDialog(
-                                      currentUserId: currentUserId,
-                                      patients: cache.patients,
-                                      doctors: cache.doctors,
-                                      rooms: cache.rooms,
-                                      services: cache.services,
-                                      packages: _packages,
-                                      initialPatientId: widget.patientId,
-                                      allowPastDate: canBookPast,
-                                    );
-                                  },
-                                );
-                                if (ok == true && mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(l10n.appointmentBooked)),
-                                  );
-                                  _load();
-                                }
-                              },
+                            child: Wrap(
+                              spacing: 12,
+                              runSpacing: 8,
+                              children: [
+                                if (context.watch<AuthProvider>().currentUser?.canAccessAppointments == true)
+                                  FilledButton.icon(
+                                    icon: const Icon(Icons.calendar_today, size: 20),
+                                    label: Text(l10n.bookAppointment),
+                                    onPressed: () async {
+                                      final cache = context.read<DataCacheProvider>();
+                                      final currentUserId = context.read<AuthProvider>().currentUser?.id;
+                                      final ok = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) {
+                                          final user = context.read<AuthProvider>().currentUser;
+                                          final canBookPast = user?.hasRole(UserRole.admin) == true || user?.hasRole(UserRole.supervisor) == true;
+                                          return AppointmentFormDialog(
+                                            currentUserId: currentUserId,
+                                            patients: cache.patients,
+                                            doctors: cache.doctors,
+                                            rooms: cache.rooms,
+                                            services: cache.services,
+                                            packages: _packages,
+                                            initialPatientId: widget.patientId,
+                                            allowPastDate: canBookPast,
+                                          );
+                                        },
+                                      );
+                                      if (ok == true && mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(l10n.appointmentBooked)),
+                                        );
+                                        _load();
+                                      }
+                                    },
+                                  ),
+                                if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
+                                  OutlinedButton.icon(
+                                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 20),
+                                    label: Text(l10n.generateReport),
+                                    onPressed: () => _generateReport(l10n),
+                                  ),
+                              ],
                             ),
                           ),
                         const SizedBox(height: 16),
@@ -364,6 +429,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                                     '${r.startTime} - ${r.endTime}',
                                     if (r.service != null && r.service!.isNotEmpty) r.service,
                                     if (r.statusLabel != null) r.statusLabel,
+                                    if (r.paymentStatusLabel != null) r.paymentStatusLabel,
                                   ].where((e) => e != null && e.isNotEmpty).join(' • ')),
                                 ),
                               )).toList(),
@@ -505,6 +571,7 @@ class _SessionRow {
   final String endTime;
   final String? service;
   final String? statusLabel;
+  final String? paymentStatusLabel;
 
   _SessionRow({
     required this.date,
@@ -512,5 +579,17 @@ class _SessionRow {
     required this.endTime,
     this.service,
     this.statusLabel,
+    this.paymentStatusLabel,
   });
+}
+
+String? _paymentStatusLabel(String? status, AppLocalizations l10n) {
+  if (status == null || status.isEmpty) return null;
+  switch (status) {
+    case 'paid': return l10n.paid;
+    case 'partial_paid': return l10n.partialPaid;
+    case 'prepaid': return l10n.prepaid;
+    case 'not_paid': return l10n.notPaid;
+    default: return status;
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -41,7 +42,33 @@ class NotificationService {
   Future<void> init() async {
     await _initLocalNotifications();
     _setupFcmHandlers();
+    _setupTokenRefreshListener();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  /// When FCM token rotates (e.g. web, reinstall), update Firestore so Cloud Functions can still send.
+  void _setupTokenRefreshListener() {
+    _fcm.onTokenRefresh.listen((String newToken) async {
+      if (newToken.isEmpty) return;
+      try {
+        final uid = await _currentUserIdForTokenRefresh();
+        if (uid != null && uid.isNotEmpty) {
+          await _firestore.updateUserFcmToken(uid, newToken);
+        }
+      } catch (e, st) {
+        if (kDebugMode) debugPrint('NotificationService onTokenRefresh error: $e\n$st');
+      }
+    });
+  }
+
+  /// Returns current user id if available (from Auth is not accessible here; we use a simple approach).
+  Future<String?> _currentUserIdForTokenRefresh() async {
+    try {
+      final user = await FirebaseAuth.instance.currentUser;
+      return user?.uid;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _initLocalNotifications() async {

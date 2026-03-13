@@ -13,6 +13,8 @@ class IncomeRecordModel {
   final DateTime? createdAt;
   /// When source is Session, link to appointment so admin delete can remove this income.
   final String? appointmentId;
+  /// When source is Session: 'paid', 'partial_paid', 'prepaid', 'not_paid'.
+  final String? sessionPaymentStatus;
 
   const IncomeRecordModel({
     required this.id,
@@ -26,6 +28,7 @@ class IncomeRecordModel {
     required this.incomeDate,
     this.createdAt,
     this.appointmentId,
+    this.sessionPaymentStatus,
   });
 
   factory IncomeRecordModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -43,6 +46,7 @@ class IncomeRecordModel {
       incomeDate: dateTs?.toDate() ?? DateTime.now(),
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       appointmentId: d['appointmentId'] as String?,
+      sessionPaymentStatus: d['sessionPaymentStatus'] as String?,
     );
   }
 
@@ -58,6 +62,7 @@ class IncomeRecordModel {
       'incomeDate': Timestamp.fromDate(incomeDate),
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       if (appointmentId != null) 'appointmentId': appointmentId,
+      if (sessionPaymentStatus != null) 'sessionPaymentStatus': sessionPaymentStatus,
     };
   }
 }

@@ -493,10 +493,10 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     pw.Font? arabicFont;
     try {
       try {
-        final fontData = await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
+        final fontData = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
         arabicFont = pw.Font.ttf(fontData);
       } catch (_) {
-        final fontData = await rootBundle.load('assets/fonts/Amiri-Regular.ttf');
+        final fontData = await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
         arabicFont = pw.Font.ttf(fontData);
       }
       pdfTheme = pw.ThemeData.withFont(base: arabicFont, fontFallback: [arabicFont]);

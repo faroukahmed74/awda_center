@@ -439,6 +439,14 @@ class FirestoreService {
     return list;
   }
 
+  /// Income records for a specific patient (e.g. for patient report PDF).
+  Future<List<IncomeRecordModel>> getIncomeRecordsForPatient(String patientId) async {
+    final all = await getIncomeRecords();
+    final list = all.where((r) => r.patientId == patientId).toList();
+    list.sort((a, b) => b.incomeDate.compareTo(a.incomeDate));
+    return list;
+  }
+
   Future<List<ExpenseRecordModel>> getExpenseRecords({DateTime? from, DateTime? to}) async {
     final snapshot = await _firestore.collection('expense_records').orderBy('expenseDate', descending: true).get();
     var list = snapshot.docs.map((d) => ExpenseRecordModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();

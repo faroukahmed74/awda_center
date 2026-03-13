@@ -51,6 +51,8 @@ class AppointmentModel {
   final String? packageId;
   /// True if this session was marked as VIP/starred when booking. Same star icon as "new patient" on schedule.
   final bool isStarred;
+  /// Payment status when session was marked completed: 'paid', 'partial_paid', 'prepaid', 'not_paid'.
+  final String? sessionPaymentStatus;
   final String? createdByUserId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -71,6 +73,7 @@ class AppointmentModel {
     this.isExtraSlot = false,
     this.packageId,
     this.isStarred = false,
+    this.sessionPaymentStatus,
     this.createdByUserId,
     this.createdAt,
     this.updatedAt,
@@ -109,6 +112,7 @@ class AppointmentModel {
       isExtraSlot: d['isExtraSlot'] as bool? ?? false,
       packageId: d['packageId'] as String?,
       isStarred: d['isStarred'] as bool? ?? false,
+      sessionPaymentStatus: d['sessionPaymentStatus'] as String?,
       createdByUserId: d['createdByUserId'] as String?,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
@@ -131,13 +135,14 @@ class AppointmentModel {
       'isExtraSlot': isExtraSlot,
       'packageId': packageId,
       'isStarred': isStarred,
+      if (sessionPaymentStatus != null) 'sessionPaymentStatus': sessionPaymentStatus,
       'createdByUserId': createdByUserId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 
-  AppointmentModel copyWith({AppointmentStatus? status, bool? isStarred}) {
+  AppointmentModel copyWith({AppointmentStatus? status, bool? isStarred, String? sessionPaymentStatus}) {
     return AppointmentModel(
       id: id,
       patientId: patientId,
@@ -154,6 +159,7 @@ class AppointmentModel {
       isExtraSlot: isExtraSlot,
       packageId: packageId,
       isStarred: isStarred ?? this.isStarred,
+      sessionPaymentStatus: sessionPaymentStatus ?? this.sessionPaymentStatus,
       createdByUserId: createdByUserId,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
