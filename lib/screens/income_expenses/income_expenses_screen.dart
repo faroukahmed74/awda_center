@@ -26,6 +26,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   final FirestoreService _firestore = FirestoreService();
   List<IncomeRecordModel> _income = [];
   List<ExpenseRecordModel> _expense = [];
+  final Map<String, String> _sessionNotesByAppointmentId = {};
   bool _loading = true;
   DateTime? _filterDay;
   int? _filterYear;
@@ -33,6 +34,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   String? _filterDoctorId;
   String? _filterPatientId;
   String _searchQuery = '';
+  String _typeFilter = 'both';
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _incomeSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _expenseSub;
 
@@ -124,6 +126,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
       _filterMonth = null;
       _filterDoctorId = null;
       _filterPatientId = null;
+      _typeFilter = 'both';
     });
   }
 
@@ -179,14 +182,33 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     setState(() => _loading = true);
     _incomeSub?.cancel();
     _expenseSub?.cancel();
-    _incomeSub = _firestore.incomeRecordsStream().listen((snapshot) {
+    _incomeSub = _firestore.incomeRecordsStream().listen((snapshot) async {
       final list = snapshot.docs
           .map((d) => IncomeRecordModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>))
           .toList();
-      if (mounted) setState(() {
-        _income = list;
-        _loading = false;
-      });
+      final appointmentIds = list
+          .where((r) => r.appointmentId != null && r.appointmentId!.isNotEmpty)
+          .map((r) => r.appointmentId!)
+          .toSet()
+          .toList();
+      final notesById = <String, String>{};
+      if (appointmentIds.isNotEmpty) {
+        final sessions = await _firestore.getSessionsByAppointmentIds(appointmentIds);
+        for (final s in sessions) {
+          if (s.appointmentId != null && s.notes != null && s.notes!.trim().isNotEmpty) {
+            notesById[s.appointmentId!] = s.notes!.trim();
+          }
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _income = list;
+          _sessionNotesByAppointmentId
+            ..clear()
+            ..addAll(notesById);
+          _loading = false;
+        });
+      }
     }, onError: (e) {
       if (mounted) setState(() => _loading = false);
     });
@@ -243,8 +265,14 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
 
     final filteredIncome = _filteredIncome;
     final filteredExpense = _filteredExpense;
-    final totalIncome = filteredIncome.fold<double>(0, (s, r) => s + r.amount);
-    final totalExpense = filteredExpense.fold<double>(0, (s, r) => s + r.amount);
+    final showIncome = _typeFilter == 'both' || _typeFilter == 'income';
+    final showExpense = _typeFilter == 'both' || _typeFilter == 'expense';
+    final totalIncome = showIncome
+        ? filteredIncome.fold<double>(0, (s, r) => s + r.amount)
+        : 0;
+    final totalExpense = showExpense
+        ? filteredExpense.fold<double>(0, (s, r) => s + r.amount)
+        : 0;
     final net = totalIncome - totalExpense;
 
     return Directionality(
@@ -294,8 +322,31 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                             if (context.watch<AuthProvider>().currentUser?.canAccessFinanceSummary == true) const SizedBox(width: 12),
                             FilterChip(
                               label: Text(l10n.filterAll),
-                              selected: _filterDay == null && _filterYear == null && _filterMonth == null && _filterDoctorId == null && _filterPatientId == null,
+                              selected: _filterDay == null &&
+                                  _filterYear == null &&
+                                  _filterMonth == null &&
+                                  _filterDoctorId == null &&
+                                  _filterPatientId == null &&
+                                  _typeFilter == 'both',
                               onSelected: (_) => _clearAllFilters(),
+                            ),
+                            const SizedBox(width: 8),
+                            FilterChip(
+                              label: const Text('Both'),
+                              selected: _typeFilter == 'both',
+                              onSelected: (_) => setState(() => _typeFilter = 'both'),
+                            ),
+                            const SizedBox(width: 8),
+                            FilterChip(
+                              label: Text(l10n.income),
+                              selected: _typeFilter == 'income',
+                              onSelected: (_) => setState(() => _typeFilter = 'income'),
+                            ),
+                            const SizedBox(width: 8),
+                            FilterChip(
+                              label: Text(l10n.expenses),
+                              selected: _typeFilter == 'expense',
+                              onSelected: (_) => setState(() => _typeFilter = 'expense'),
                             ),
                             const SizedBox(width: 8),
                             FilterChip(
@@ -500,7 +551,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                           ),
                         ],
                       ),
-                      if (filteredIncome.isNotEmpty) ...[
+                      if (showIncome && filteredIncome.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         Text(l10n.incomeByDoctor, style: Theme.of(context).textTheme.titleSmall),
                         const SizedBox(height: 8),
@@ -520,8 +571,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                           ),
                         ),
                       ],
-                      if (filteredExpense.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+                      if (showExpense && filteredExpense.isNotEmpty) ...[
+                        const SizedBox(height: 12),
                         Text(l10n.expenseByDoctor, style: Theme.of(context).textTheme.titleSmall),
                         const SizedBox(height: 8),
                         SingleChildScrollView(
@@ -541,12 +592,21 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                         ),
                       ],
                       const SizedBox(height: 24),
-                      Text(l10n.income, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      if (filteredIncome.isEmpty)
-                        Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
-                      else
-                        ...filteredIncome.take(50).map((r) => Card(
+                      if (showIncome) ...[
+                        Text(l10n.income, style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        if (filteredIncome.isEmpty)
+                          Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
+                        else
+                          ...filteredIncome.take(50).map((r) {
+                            final sessionNote = r.appointmentId == null
+                                ? null
+                                : _sessionNotesByAppointmentId[r.appointmentId!];
+                            final visibleNotes =
+                                (r.source == 'Session' && sessionNote != null && sessionNote.isNotEmpty)
+                                ? sessionNote
+                                : r.notes;
+                            return Card(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: Padding(
                                 padding: const EdgeInsets.all(12),
@@ -578,10 +638,10 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                     ),
                                     const SizedBox(height: 6),
                                     Text('${l10n.date}: ${AppDateFormat.shortDateTime.format(r.incomeDate)}', style: Theme.of(context).textTheme.bodySmall),
-                                    if (r.notes != null && r.notes!.isNotEmpty)
+                                    if (visibleNotes != null && visibleNotes.isNotEmpty)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 4),
-                                        child: Text('${l10n.notes}: ${r.notes}', style: Theme.of(context).textTheme.bodySmall, maxLines: 3, overflow: TextOverflow.ellipsis),
+                                        child: Text('${l10n.notes}: $visibleNotes', style: Theme.of(context).textTheme.bodySmall, maxLines: 3, overflow: TextOverflow.ellipsis),
                                       ),
                                     if (r.patientId != null && r.patientId!.isNotEmpty)
                                       Padding(
@@ -606,14 +666,17 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                   ],
                                 ),
                               ),
-                            )),
-                      const SizedBox(height: 16),
-                      Text(l10n.expenses, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      if (filteredExpense.isEmpty)
-                        Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
-                      else
-                        ...filteredExpense.take(50).map((r) => Card(
+                            );
+                          }),
+                        const SizedBox(height: 16),
+                      ],
+                      if (showExpense) ...[
+                        Text(l10n.expenses, style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        if (filteredExpense.isEmpty)
+                          Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
+                        else
+                          ...filteredExpense.take(50).map((r) => Card(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: Padding(
                                 padding: const EdgeInsets.all(12),
@@ -665,6 +728,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                 ),
                               ),
                             )),
+                      ],
                     ],
                   ),
                 ),

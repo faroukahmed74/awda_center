@@ -69,25 +69,39 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final user = await _firestore.getUser(widget.patientId);
-    final profile = await _firestore.getPatientProfile(widget.patientId);
-    final sessions = await _firestore.getSessionsForPatient(widget.patientId);
-    final incomeRecords = await _firestore.getIncomeRecordsForPatient(widget.patientId);
-    final appointments = await _firestore.getAppointments(patientId: widget.patientId);
-    final packages = await _firestore.getAllPackages();
-    final appointmentSessions = List<AppointmentModel>.from(appointments)
-      ..sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
-    final docs = await _firestore.getPatientDocuments(widget.patientId);
-    setState(() {
-      _user = user;
-      _profile = profile;
-      _sessions = sessions;
-      _incomeRecords = incomeRecords;
-      _appointmentSessions = appointmentSessions;
-      _packages = packages;
-      _documents = docs;
-      _loading = false;
-    });
+    try {
+      final auth = context.read<AuthProvider>().currentUser;
+      final canReadFinance = auth?.canAccessIncomeExpenses == true;
+
+      final user = await _firestore.getUser(widget.patientId);
+      final profile = await _firestore.getPatientProfile(widget.patientId);
+      final sessions = await _firestore.getSessionsForPatient(widget.patientId);
+      final incomeRecords = canReadFinance
+          ? await _firestore.getIncomeRecordsForPatient(widget.patientId)
+          : <IncomeRecordModel>[];
+      final appointments = await _firestore.getAppointments(patientId: widget.patientId);
+      final packages = await _firestore.getAllPackages();
+      final appointmentSessions = List<AppointmentModel>.from(appointments)
+        ..sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
+      final docs = await _firestore.getPatientDocuments(widget.patientId);
+      if (!mounted) return;
+      setState(() {
+        _user = user;
+        _profile = profile;
+        _sessions = sessions;
+        _incomeRecords = incomeRecords;
+        _appointmentSessions = appointmentSessions;
+        _packages = packages;
+        _documents = docs;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).generalErrorMessage('errorLoadFailed'))),
+      );
+    }
   }
 
   /// Package progress for this patient: list of (package, completedCount, totalSessions).

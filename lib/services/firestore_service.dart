@@ -289,6 +289,23 @@ class FirestoreService {
     return snapshot.docs.map((d) => SessionModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
   }
 
+  Future<List<SessionModel>> getSessionsByAppointmentIds(List<String> appointmentIds) async {
+    final ids = appointmentIds.where((id) => id.trim().isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return const [];
+    final out = <SessionModel>[];
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk = ids.sublist(i, (i + 10) > ids.length ? ids.length : (i + 10));
+      final snapshot = await _firestore
+          .collection('sessions')
+          .where('appointmentId', whereIn: chunk)
+          .get();
+      out.addAll(
+        snapshot.docs.map((d) => SessionModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)),
+      );
+    }
+    return out;
+  }
+
   // Patient profile
 
   /// Returns user ids of staff-created patients (email contains @awda.local). For migration to Auth login.
