@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
+import '../../models/income_expense_models.dart';
 import '../../models/package_model.dart';
 import '../../models/patient_profile_model.dart';
 import '../../models/session_model.dart';
@@ -37,6 +38,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
   UserModel? _user;
   PatientProfileModel? _profile;
   List<SessionModel> _sessions = [];
+  List<IncomeRecordModel> _incomeRecords = [];
   List<AppointmentModel> _appointmentSessions = [];
   List<PackageModel> _packages = [];
   List<PatientDocumentModel> _documents = [];
@@ -70,6 +72,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     final user = await _firestore.getUser(widget.patientId);
     final profile = await _firestore.getPatientProfile(widget.patientId);
     final sessions = await _firestore.getSessionsForPatient(widget.patientId);
+    final incomeRecords = await _firestore.getIncomeRecordsForPatient(widget.patientId);
     final appointments = await _firestore.getAppointments(patientId: widget.patientId);
     final packages = await _firestore.getAllPackages();
     final appointmentSessions = List<AppointmentModel>.from(appointments)
@@ -79,6 +82,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       _user = user;
       _profile = profile;
       _sessions = sessions;
+      _incomeRecords = incomeRecords;
       _appointmentSessions = appointmentSessions;
       _packages = packages;
       _documents = docs;
@@ -104,16 +108,40 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
   }
 
   /// Merged session rows: from sessions collection and from all appointments, sorted by date desc. Status reflects current appointment status.
-  List<_SessionRow> _mergedSessionRows(AppLocalizations l10n) {
+  List<_SessionRow> _mergedSessionRows(
+    AppLocalizations l10n,
+    DataCacheProvider cache,
+  ) {
     final rows = <_SessionRow>[];
+    final paymentByAppointmentId = <String, String?>{
+      for (final r in _incomeRecords)
+        if (r.appointmentId != null && r.appointmentId!.isNotEmpty)
+          r.appointmentId!: r.sessionPaymentStatus,
+    };
+    final paymentAmountByAppointmentId = <String, double>{
+      for (final r in _incomeRecords)
+        if (r.appointmentId != null &&
+            r.appointmentId!.isNotEmpty &&
+            r.amount.isFinite)
+          r.appointmentId!: r.amount,
+    };
     for (final s in _sessions) {
       rows.add(_SessionRow(
         date: s.sessionDate,
         startTime: s.startTime,
         endTime: s.endTime,
         service: s.service,
+        doctorLabel: s.doctorId.isEmpty
+            ? null
+            : '${l10n.doctor}: ${cache.doctorDisplayName(s.doctorId) ?? cache.userName(s.doctorId) ?? s.doctorId}',
         statusLabel: null,
-        paymentStatusLabel: null,
+        paymentStatusLabel: _paymentStatusLabel(
+          s.appointmentId == null ? null : paymentByAppointmentId[s.appointmentId!],
+          l10n,
+        ),
+        paymentAmountLabel: s.appointmentId == null
+            ? null
+            : _paymentAmountLabel(paymentAmountByAppointmentId[s.appointmentId!]),
       ));
     }
     for (final a in _appointmentSessions) {
@@ -123,8 +151,14 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         startTime: a.startTime,
         endTime: a.endTime,
         service: a.hasServices ? a.servicesDisplay : null,
+        doctorLabel:
+            '${l10n.doctor}: ${cache.doctorDisplayName(a.doctorId) ?? cache.userName(a.doctorId) ?? a.doctorId}',
         statusLabel: statusLabel,
-        paymentStatusLabel: _paymentStatusLabel(a.sessionPaymentStatus, l10n),
+        paymentStatusLabel: _paymentStatusLabel(
+          paymentByAppointmentId[a.id] ?? a.sessionPaymentStatus,
+          l10n,
+        ),
+        paymentAmountLabel: _paymentAmountLabel(paymentAmountByAppointmentId[a.id]),
       ));
     }
     rows.sort((a, b) => b.date.compareTo(a.date));
@@ -149,7 +183,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     messenger.showSnackBar(SnackBar(content: Text(l10n.generatingReport)));
     try {
       final incomeList = await _firestore.getIncomeRecordsForPatient(widget.patientId);
-      final merged = _mergedSessionRows(l10n);
+      final merged = _mergedSessionRows(l10n, context.read<DataCacheProvider>());
       final sessionRows = merged
           .map((r) => PatientReportSessionRow(
                 date: r.date,
@@ -416,7 +450,10 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                         const SizedBox(height: 8),
                         Builder(
                           builder: (context) {
-                            final rows = _mergedSessionRows(l10n);
+                            final rows = _mergedSessionRows(
+                              l10n,
+                              context.watch<DataCacheProvider>(),
+                            );
                             if (rows.isEmpty) {
                               return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)));
                             }
@@ -428,8 +465,10 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                                   subtitle: Text([
                                     '${r.startTime} - ${r.endTime}',
                                     if (r.service != null && r.service!.isNotEmpty) r.service,
+                                    if (r.doctorLabel != null && r.doctorLabel!.isNotEmpty) r.doctorLabel,
                                     if (r.statusLabel != null) r.statusLabel,
                                     if (r.paymentStatusLabel != null) r.paymentStatusLabel,
+                                    if (r.paymentAmountLabel != null) r.paymentAmountLabel,
                                   ].where((e) => e != null && e.isNotEmpty).join(' • ')),
                                 ),
                               )).toList(),
@@ -570,16 +609,20 @@ class _SessionRow {
   final String startTime;
   final String endTime;
   final String? service;
+  final String? doctorLabel;
   final String? statusLabel;
   final String? paymentStatusLabel;
+  final String? paymentAmountLabel;
 
   _SessionRow({
     required this.date,
     required this.startTime,
     required this.endTime,
     this.service,
+    this.doctorLabel,
     this.statusLabel,
     this.paymentStatusLabel,
+    this.paymentAmountLabel,
   });
 }
 
@@ -592,4 +635,9 @@ String? _paymentStatusLabel(String? status, AppLocalizations l10n) {
     case 'not_paid': return l10n.notPaid;
     default: return status;
   }
+}
+
+String? _paymentAmountLabel(double? amount) {
+  if (amount == null || !amount.isFinite) return null;
+  return NumberFormat.currency(symbol: '', decimalDigits: 0).format(amount).trim();
 }

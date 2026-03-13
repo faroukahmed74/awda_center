@@ -317,28 +317,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     }
   }
 
-  /// Cairo only for web (Income & expenses, Appointments); full list for other platforms.
+  /// Use only Cairo fonts from assets/fonts for all reports.
   static const _pdfCairoRegularPaths = ['assets/fonts/Cairo-Regular.ttf'];
   static const _pdfCairoBoldPaths = ['assets/fonts/Cairo-Bold.ttf'];
-  static const _pdfArabicRegularPaths = [
-    'assets/fonts/Cairo-Regular.ttf',
-    'assets/fonts/Tajawal-Regular.ttf',
-    'assets/fonts/Amiri-Regular.ttf',
-    'assets/fonts/Fonts/KacstFarsi.ttf',
-    'assets/fonts/Fonts/DTNASKH2.TTF',
-    'assets/fonts/Fonts/Candarab.ttf',
-    'assets/fonts/Fonts/ARIALUNI.TTF',
-  ];
-  static const _pdfArabicBoldPaths = [
-    'assets/fonts/Cairo-Bold.ttf',
-    'assets/fonts/Tajawal-Bold.ttf',
-    'assets/fonts/Amiri-Bold.ttf',
-    'assets/fonts/Amiri-Regular.ttf',
-    'assets/fonts/Fonts/KacstFarsi.ttf',
-    'assets/fonts/Fonts/DTNASKH2.TTF',
-    'assets/fonts/Fonts/Candarab.ttf',
-    'assets/fonts/Fonts/ARIALUNI.TTF',
-  ];
 
   Future<pw.Font?> _tryLoadPdfFont(List<String> paths) async {
     for (final path in paths) {
@@ -385,13 +366,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     pw.Font? arabicFont;
     pw.Font? arabicBoldFont;
     try {
-      if (kIsWeb) {
-        arabicFont = await _tryLoadPdfFont(_pdfCairoRegularPaths);
-        arabicBoldFont = await _tryLoadPdfFont(_pdfCairoBoldPaths) ?? arabicFont;
-      } else {
-        arabicFont = await _tryLoadPdfFont(_pdfArabicRegularPaths);
-        arabicBoldFont = await _tryLoadPdfFont(_pdfArabicBoldPaths) ?? arabicFont;
-      }
+      arabicFont = await _tryLoadPdfFont(_pdfCairoRegularPaths);
+      arabicBoldFont = await _tryLoadPdfFont(_pdfCairoBoldPaths) ?? arabicFont;
     } catch (e, st) {
       debugPrint('Reports PDF font load error: $e\n$st');
       arabicFont = null;
@@ -1066,7 +1042,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       0: const pw.FlexColumnWidth(2),
                       1: const pw.FlexColumnWidth(2),
                       2: const pw.FlexColumnWidth(2),
-                      3: const pw.FlexColumnWidth(1),
+                      3: const pw.FlexColumnWidth(1.6),
+                      4: const pw.FlexColumnWidth(1.2),
                     },
                     children: [
                       if (start == 0)
@@ -1076,6 +1053,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                             pdfHeaderCell(l10n.fullNameAr, bg: headerBg, textColor: headerText),
                             pdfHeaderCell(l10n.fullNameEn, bg: headerBg, textColor: headerText),
                             pdfHeaderCell(l10n.email, bg: headerBg, textColor: headerText),
+                            pdfHeaderCell(l10n.phone, bg: headerBg, textColor: headerText),
                             pdfHeaderCell(l10n.role, bg: headerBg, textColor: headerText),
                           ],
                         ),
@@ -1087,6 +1065,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                             pdfCell(u.fullNameAr ?? '', alternate: alt),
                             pdfCell(u.fullNameEn ?? '', alternate: alt, textDirection: pw.TextDirection.ltr),
                             pdfCell(u.email, alternate: alt, textDirection: pw.TextDirection.ltr),
+                            pdfCell(u.phone ?? '', alternate: alt, textDirection: pw.TextDirection.ltr),
                             pdfCell(u.roles.join(', '), alternate: alt, textDirection: pw.TextDirection.ltr),
                           ],
                         );
@@ -1179,12 +1158,19 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       }
     } else {
       sheet.appendRow([TextCellValue(l10n.usersReport)]);
-      sheet.appendRow([TextCellValue(l10n.fullNameAr), TextCellValue(l10n.fullNameEn), TextCellValue(l10n.email), TextCellValue(l10n.role)]);
+      sheet.appendRow([
+        TextCellValue(l10n.fullNameAr),
+        TextCellValue(l10n.fullNameEn),
+        TextCellValue(l10n.email),
+        TextCellValue(l10n.phone),
+        TextCellValue(l10n.role),
+      ]);
       for (final u in _users) {
         sheet.appendRow([
           TextCellValue(u.fullNameAr ?? ''),
           TextCellValue(u.fullNameEn ?? ''),
           TextCellValue(u.email),
+          TextCellValue(u.phone ?? ''),
           TextCellValue(u.roles.join(', ')),
         ]);
       }

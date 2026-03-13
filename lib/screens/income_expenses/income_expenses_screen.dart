@@ -37,6 +37,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _expenseSub;
 
   List<IncomeRecordModel> get _filteredIncome {
+    final cache = context.read<DataCacheProvider>();
     var out = _income;
     if (_filterDay != null) {
       final d = _filterDay!;
@@ -58,7 +59,13 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         final source = (r.source).toLowerCase();
         final notes = (r.notes ?? '').toLowerCase();
         final amountStr = r.amount.toString().toLowerCase();
-        return source.contains(q) || notes.contains(q) || amountStr.contains(q);
+        final doctor = (cache.doctorDisplayName(r.doctorId) ?? cache.userName(r.doctorId) ?? '').toLowerCase();
+        final patient = (cache.userName(r.patientId) ?? '').toLowerCase();
+        return source.contains(q) ||
+            notes.contains(q) ||
+            amountStr.contains(q) ||
+            doctor.contains(q) ||
+            patient.contains(q);
       }).toList();
     }
     out.sort((a, b) {
@@ -72,6 +79,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   }
 
   List<ExpenseRecordModel> get _filteredExpense {
+    final cache = context.read<DataCacheProvider>();
     var out = _expense;
     if (_filterDay != null) {
       final d = _filterDay!;
@@ -91,7 +99,12 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         final desc = (r.description ?? '').toLowerCase();
         final amountStr = r.amount.toString().toLowerCase();
         final recipient = (r.recipientName ?? '').toLowerCase();
-        return category.contains(q) || desc.contains(q) || amountStr.contains(q) || recipient.contains(q);
+        final doctor = (cache.doctorDisplayName(r.paidByDoctorId) ?? cache.userName(r.paidByDoctorId) ?? '').toLowerCase();
+        return category.contains(q) ||
+            desc.contains(q) ||
+            amountStr.contains(q) ||
+            recipient.contains(q) ||
+            doctor.contains(q);
       }).toList();
     }
     out.sort((a, b) {
@@ -508,7 +521,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                         ),
                       ],
                       if (filteredExpense.isNotEmpty) ...[
-                        const SizedBox(height: 12),
+                      const SizedBox(height: 12),
                         Text(l10n.expenseByDoctor, style: Theme.of(context).textTheme.titleSmall),
                         const SizedBox(height: 8),
                         SingleChildScrollView(
@@ -783,7 +796,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
             FilledButton(
               onPressed: () async {
                 final amount = double.tryParse(amountController.text);
-                if (amount == null || amount <= 0 || sourceController.text.trim().isEmpty) return;
+                if (amount == null || amount < 0 || sourceController.text.trim().isEmpty) return;
                 await _firestore.updateIncomeRecord(r.id, {
                   'amount': amount,
                   'currency': currencyController.text.trim().isEmpty ? 'EGP' : currencyController.text.trim(),
@@ -1027,7 +1040,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
               FilledButton(
                 onPressed: () async {
                   final amount = double.tryParse(amountController.text);
-                  if (amount == null || amount <= 0 || categoryController.text.trim().isEmpty) return;
+                  if (amount == null || amount < 0 || categoryController.text.trim().isEmpty) return;
                   final category = categoryController.text.trim().isEmpty ? 'Salary' : categoryController.text.trim();
                   await _firestore.updateExpenseRecord(r.id, {
                     'amount': amount,
