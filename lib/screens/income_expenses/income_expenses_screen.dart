@@ -26,7 +26,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   final FirestoreService _firestore = FirestoreService();
   List<IncomeRecordModel> _income = [];
   List<ExpenseRecordModel> _expense = [];
-  final Map<String, String> _sessionNotesByAppointmentId = {};
+  final Map<String, String> _appointmentNotesById = {};
   bool _loading = true;
   DateTime? _filterDay;
   int? _filterYear;
@@ -191,22 +191,26 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
           .map((r) => r.appointmentId!)
           .toSet()
           .toList();
+      if (mounted) {
+        setState(() {
+          _income = list;
+          _appointmentNotesById.removeWhere((key, _) => !appointmentIds.contains(key));
+          _loading = false;
+        });
+      }
+      if (appointmentIds.isEmpty) return;
       final notesById = <String, String>{};
-      if (appointmentIds.isNotEmpty) {
-        final sessions = await _firestore.getSessionsByAppointmentIds(appointmentIds);
-        for (final s in sessions) {
-          if (s.appointmentId != null && s.notes != null && s.notes!.trim().isNotEmpty) {
-            notesById[s.appointmentId!] = s.notes!.trim();
-          }
+      final appointments = await _firestore.getAppointmentsByIds(appointmentIds);
+      for (final a in appointments) {
+        if (a.notes != null && a.notes!.trim().isNotEmpty) {
+          notesById[a.id] = a.notes!.trim();
         }
       }
       if (mounted) {
         setState(() {
-          _income = list;
-          _sessionNotesByAppointmentId
-            ..clear()
+          _appointmentNotesById
+            ..removeWhere((key, _) => !appointmentIds.contains(key))
             ..addAll(notesById);
-          _loading = false;
         });
       }
     }, onError: (e) {
@@ -599,12 +603,12 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                           Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)))
                         else
                           ...filteredIncome.take(50).map((r) {
-                            final sessionNote = r.appointmentId == null
+                            final appointmentNote = r.appointmentId == null
                                 ? null
-                                : _sessionNotesByAppointmentId[r.appointmentId!];
+                                : _appointmentNotesById[r.appointmentId!];
                             final visibleNotes =
-                                (r.source == 'Session' && sessionNote != null && sessionNote.isNotEmpty)
-                                ? sessionNote
+                                (r.source == 'Session' && appointmentNote != null && appointmentNote.isNotEmpty)
+                                ? appointmentNote
                                 : r.notes;
                             return Card(
                               margin: const EdgeInsets.only(bottom: 8),

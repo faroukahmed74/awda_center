@@ -732,7 +732,11 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                     : isDoctor
                         ? _patientName(a, cache)
                         : '${_patientName(a, cache)} • ${_doctorName(a, cache)}';
-                final subtitle = '${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}';
+                final subtitle = [
+                  '${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}',
+                  if (a.notes != null && a.notes!.trim().isNotEmpty)
+                    '${l10n.notes}: ${a.notes!.trim()}',
+                ].join('\n');
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
@@ -748,7 +752,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall,
                       overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
+                      maxLines: 3,
                     ),
                   ),
                 );

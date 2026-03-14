@@ -940,7 +940,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                           ),
                                         ],
                                       ),
-                                      subtitle: Text('$dateStr ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status, l10n)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}'),
+                                      subtitle: Text(
+                                        [
+                                          '$dateStr ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status, l10n)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}',
+                                          if (a.notes != null && a.notes!.trim().isNotEmpty)
+                                            '${l10n.notes}: ${a.notes!.trim()}',
+                                        ].join('\n'),
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                             trailing: canUpdate
                                 ? PopupMenuButton<String>(
                                     onSelected: (v) async {

@@ -247,6 +247,21 @@ class FirestoreService {
     return AppointmentModel.fromFirestore(doc);
   }
 
+  Future<List<AppointmentModel>> getAppointmentsByIds(List<String> appointmentIds) async {
+    final ids = appointmentIds.where((id) => id.trim().isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return const [];
+    final out = <AppointmentModel>[];
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk = ids.sublist(i, (i + 10) > ids.length ? ids.length : (i + 10));
+      final snapshot = await _firestore
+          .collection('appointments')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      out.addAll(snapshot.docs.map((d) => AppointmentModel.fromFirestore(d)));
+    }
+    return out;
+  }
+
   Future<void> updateAppointmentStatus(String id, AppointmentStatus status) async {
     await _firestore.collection('appointments').doc(id).update({
       'status': status.value,
