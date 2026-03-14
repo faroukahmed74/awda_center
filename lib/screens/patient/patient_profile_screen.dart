@@ -144,8 +144,19 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     for (final pkg in _packages) {
       final list = byPackage[pkg.id];
       if (list == null) continue;
-      final completed = list.where((a) => a.status == AppointmentStatus.completed).length;
-      out.add((pkg: pkg, completed: completed, total: pkg.numberOfSessions));
+      final ordered = List<AppointmentModel>.from(list)
+        ..sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
+      final totalSessions = pkg.numberOfSessions <= 0 ? 1 : pkg.numberOfSessions;
+      for (var i = 0; i < ordered.length; i += totalSessions) {
+        final end = (i + totalSessions) > ordered.length
+            ? ordered.length
+            : (i + totalSessions);
+        final cycle = ordered.sublist(i, end);
+        final completed = cycle
+            .where((a) => a.status == AppointmentStatus.completed)
+            .length;
+        out.add((pkg: pkg, completed: completed, total: totalSessions));
+      }
     }
     return out;
   }

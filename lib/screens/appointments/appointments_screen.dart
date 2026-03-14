@@ -219,7 +219,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (pkg == null) return;
     final list = await _firestore.getAppointments(patientId: a.patientId);
     final completedForPackage = list.where((x) => x.packageId == a.packageId && x.status == AppointmentStatus.completed).length;
-    if (completedForPackage >= pkg.numberOfSessions && mounted) {
+    final totalSessions = pkg.numberOfSessions <= 0 ? 1 : pkg.numberOfSessions;
+    final justCompletedPackage = completedForPackage > 0 && completedForPackage % totalSessions == 0;
+    if (justCompletedPackage && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${pkg.displayName}: ${l10n.packageCompleted}')),
       );

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/app_logo.dart';
 import '../../core/date_format.dart';
 import '../../core/responsive.dart';
@@ -30,6 +29,23 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int? _todayAppointmentsCount;
+  String? _lastSyncedLocaleCode;
+  String? _lastSyncedUserId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final user = context.read<AuthProvider>().currentUser;
+    final localeCode = context.read<LocaleProvider>().locale.languageCode;
+    if (user != null &&
+        user.id.isNotEmpty &&
+        (_lastSyncedUserId != user.id ||
+            _lastSyncedLocaleCode != localeCode)) {
+      _lastSyncedUserId = user.id;
+      _lastSyncedLocaleCode = localeCode;
+      unawaited(FirestoreService().updateUserLocale(user.id, localeCode));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,11 +53,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser!;
     final isRtl = l10n.isArabic;
-    // Sync current locale to Firestore so push notifications use the right language
-    final localeCode = context.watch<LocaleProvider>().locale.languageCode;
-    if (user.id.isNotEmpty) {
-      FirestoreService().updateUserLocale(user.id, localeCode);
-    }
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
@@ -430,9 +441,6 @@ class _DashboardAppointmentsSection extends StatefulWidget {
 class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSection> {
   final FirestoreService _firestore = FirestoreService();
   List<AppointmentModel> _appointments = [];
-  Map<String, String> _names = {};
-  /// Patient id -> (name, email, phone, code) for search by name/email/phone/code.
-  final Map<String, ({String name, String email, String phone})> _patientData = {};
   bool _loading = true;
   _DashboardPeriod _period = _DashboardPeriod.today;
   String? _filterDoctorId;
@@ -496,33 +504,8 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
       return a.startTime.compareTo(b.startTime);
     });
     if (!mounted) return;
-    setState(() => _appointments = list);
-    if (list.isEmpty) setState(() => _loading = false);
-    else _loadNamesAndPatientData(list);
-  }
-
-  Future<void> _loadNamesAndPatientData(List<AppointmentModel> list) async {
-    final ids = <String>{};
-    for (final a in list) {
-      ids.add(a.patientId);
-      ids.add(a.doctorId);
-    }
-    final names = <String, String>{};
-    for (final id in ids) {
-      final u = await _firestore.getUser(id);
-      if (u != null) {
-        names[id] = u.displayName;
-        _patientData[id] = (name: u.displayName, email: u.email, phone: u.phone ?? '');
-      } else {
-        final d = await _firestore.getDoctorById(id);
-        if (d != null) {
-          final du = await _firestore.getUser(d.userId);
-          names[id] = du?.displayName ?? d.displayName ?? id;
-        }
-      }
-    }
-    if (mounted) setState(() {
-      _names = names;
+    setState(() {
+      _appointments = list;
       _loading = false;
     });
   }
@@ -545,6 +528,7 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
 
   List<AppointmentModel> get _filteredAppointments {
     final (start, end) = _periodRange();
+    final cache = context.read<DataCacheProvider>();
     final q = _searchController.text.trim().toLowerCase();
     var list = _appointments
         .where((a) => !a.appointmentDate.isBefore(start) && a.appointmentDate.isBefore(end))
@@ -552,13 +536,16 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       list = list.where((a) => a.doctorId == _filterDoctorId).toList();
     }
-    if (q.isNotEmpty && _patientData.isNotEmpty) {
+    if (q.isNotEmpty) {
       list = list.where((a) {
-        final p = _patientData[a.patientId];
-        if (p == null) return true;
-        return p.name.toLowerCase().contains(q) ||
-            p.email.toLowerCase().contains(q) ||
-            p.phone.toLowerCase().contains(q);
+        final patient = cache.users.cast<UserModel?>().firstWhere(
+          (u) => u?.id == a.patientId,
+          orElse: () => null,
+        );
+        if (patient == null) return true;
+        return patient.displayName.toLowerCase().contains(q) ||
+            patient.email.toLowerCase().contains(q) ||
+            (patient.phone ?? '').toLowerCase().contains(q);
       }).toList();
     }
     list.sort((a, b) {
@@ -595,6 +582,16 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
       case AppointmentStatus.absentWithCause: return l10n.apologized;
       case AppointmentStatus.absentWithoutCause: return l10n.absent;
     }
+  }
+
+  String _patientName(AppointmentModel appointment, DataCacheProvider cache) {
+    return cache.userName(appointment.patientId) ?? appointment.patientId;
+  }
+
+  String _doctorName(AppointmentModel appointment, DataCacheProvider cache) {
+    return cache.doctorDisplayName(appointment.doctorId) ??
+        cache.userName(appointment.doctorId) ??
+        appointment.doctorId;
   }
 
   @override
@@ -731,10 +728,10 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
             else
               ...filtered.take(15).map((a) {
                 final otherName = isPatient
-                    ? (_names[a.doctorId] ?? a.doctorId)
+                    ? _doctorName(a, cache)
                     : isDoctor
-                        ? (_names[a.patientId] ?? a.patientId)
-                        : '${_names[a.patientId] ?? a.patientId} • ${_names[a.doctorId] ?? a.doctorId}';
+                        ? _patientName(a, cache)
+                        : '${_patientName(a, cache)} • ${_doctorName(a, cache)}';
                 final subtitle = '${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}';
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),

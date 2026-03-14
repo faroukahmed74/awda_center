@@ -45,6 +45,21 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
   bool _loading = true;
   StreamSubscription<dynamic>? _appointmentsSubscription;
 
+  Rect? _sharePositionOriginFromContext() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is RenderBox &&
+        renderObject.hasSize &&
+        renderObject.size.width > 0 &&
+        renderObject.size.height > 0) {
+      return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    }
+    final size = MediaQuery.maybeSizeOf(context);
+    if (size != null && size.width > 0 && size.height > 0) {
+      return Rect.fromLTWH(0, 0, size.width, size.height);
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -115,8 +130,19 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     for (final pkg in _packages) {
       final list = byPackage[pkg.id];
       if (list == null) continue;
-      final completed = list.where((a) => a.status == AppointmentStatus.completed).length;
-      out.add((pkg: pkg, completed: completed, total: pkg.numberOfSessions));
+      final ordered = List<AppointmentModel>.from(list)
+        ..sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
+      final totalSessions = pkg.numberOfSessions <= 0 ? 1 : pkg.numberOfSessions;
+      for (var i = 0; i < ordered.length; i += totalSessions) {
+        final end = (i + totalSessions) > ordered.length
+            ? ordered.length
+            : (i + totalSessions);
+        final cycle = ordered.sublist(i, end);
+        final completed = cycle
+            .where((a) => a.status == AppointmentStatus.completed)
+            .length;
+        out.add((pkg: pkg, completed: completed, total: totalSessions));
+      }
     }
     return out;
   }
@@ -220,7 +246,11 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       final name = _user!.displayName.replaceAll(RegExp(r'[^\w\s\u0600-\u06FF-]'), '').trim();
       final safeName = name.isEmpty ? 'patient' : name.split(RegExp(r'\s+')).first;
       final filename = 'patient_report_${safeName}_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf';
-      await savePdfAndShare(filename, bytes);
+      await savePdfAndShare(
+        filename,
+        bytes,
+        _sharePositionOriginFromContext(),
+      );
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(l10n.reportReady)));
     } catch (e) {
