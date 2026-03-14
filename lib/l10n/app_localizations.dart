@@ -127,6 +127,8 @@ class AppLocalizations {
   String get starredPatientVip => _map['starredPatientVip']!;
   String get starredSessionVip => _map['starredSessionVip']!;
   String get filterDay => _map['filterDay']!;
+  String get previousDay => _map['previousDay']!;
+  String get nextDay => _map['nextDay']!;
   String get filterByDoctor => _map['filterByDoctor']!;
   String get incomeByDoctor => _map['incomeByDoctor']!;
   String get expenseByDoctor => _map['expenseByDoctor']!;
@@ -430,6 +432,8 @@ class AppLocalizations {
     'starredPatientVip': 'Patient (VIP)',
     'starredSessionVip': ' Session (VIP)',
     'filterDay': 'Day',
+    'previousDay': 'Previous day',
+    'nextDay': 'Next day',
     'filterByDoctor': 'Filter by doctor',
     'incomeByDoctor': 'Income by doctor',
     'expenseByDoctor': 'Expense by doctor',
@@ -739,6 +743,8 @@ class AppLocalizations {
     'starredPatientVip': 'مميز (VIP)',
     'starredSessionVip': 'جلسة مميزة (VIP)',
     'filterDay': 'يوم',
+    'previousDay': 'اليوم السابق',
+    'nextDay': 'اليوم التالي',
     'filterByDoctor': 'تصفية حسب الطبيب',
     'incomeByDoctor': 'الدخل حسب الطبيب',
     'expenseByDoctor': 'المصروفات حسب الطبيب',

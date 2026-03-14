@@ -115,15 +115,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             children: [
               Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    DrawerHeader(
-                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
                           AppLogo(size: responsiveDrawerHeaderLogoSize(context)),
                           const SizedBox(height: 6),
                           Flexible(
@@ -134,31 +134,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               maxLines: 1,
                             ),
                           ),
-                          Text(
+                    Text(
                             l10n.roleDisplay(user.role.value),
                             style: Theme.of(context).textTheme.bodySmall,
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
-                        ],
-                      ),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.dashboard),
-                      title: Text(l10n.dashboard),
-                      onTap: () { Navigator.pop(context); },
-                    ),
-                    if (canAccessRoute(user, '/admin-dashboard')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.admin_panel_settings),
-                        title: Text(l10n.adminDashboard),
-                        onTap: () { Navigator.pop(context); context.push('/admin-dashboard'); },
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.meeting_room),
-                        title: Text(l10n.rooms),
-                        onTap: () { Navigator.pop(context); context.push('/rooms'); },
-                      ),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.dashboard),
+                title: Text(l10n.dashboard),
+                onTap: () { Navigator.pop(context); },
+              ),
+              if (canAccessRoute(user, '/admin-dashboard')) ...[
+                ListTile(
+                  leading: const Icon(Icons.admin_panel_settings),
+                  title: Text(l10n.adminDashboard),
+                  onTap: () { Navigator.pop(context); context.push('/admin-dashboard'); },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.meeting_room),
+                  title: Text(l10n.rooms),
+                  onTap: () { Navigator.pop(context); context.push('/rooms'); },
+                ),
                       ListTile(
                         leading: const Icon(Icons.miscellaneous_services),
                         title: Text(l10n.services),
@@ -169,78 +169,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: Text(l10n.packages),
                         onTap: () { Navigator.pop(context); context.push('/packages'); },
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.badge),
-                        title: Text(l10n.manageDoctors),
-                        onTap: () { Navigator.pop(context); context.push('/doctors-admin'); },
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.history),
-                        title: Text(l10n.auditLog),
-                        onTap: () { Navigator.pop(context); context.push('/audit-log'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/users')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.people),
-                        title: Text(l10n.users),
-                        onTap: () { Navigator.pop(context); context.push('/users'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/appointments')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.calendar_today),
-                        title: Text(l10n.appointments),
-                        onTap: () { Navigator.pop(context); context.push('/appointments'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/doctors')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.medical_services_outlined),
-                        title: Text(l10n.ourDoctors),
-                        onTap: () { Navigator.pop(context); context.push('/doctors'); },
-                      ),
-                    ],
+                ListTile(
+                  leading: const Icon(Icons.badge),
+                  title: Text(l10n.manageDoctors),
+                  onTap: () { Navigator.pop(context); context.push('/doctors-admin'); },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: Text(l10n.auditLog),
+                  onTap: () { Navigator.pop(context); context.push('/audit-log'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/users')) ...[
+                ListTile(
+                  leading: const Icon(Icons.people),
+                  title: Text(l10n.users),
+                  onTap: () { Navigator.pop(context); context.push('/users'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/appointments')) ...[
+                ListTile(
+                  leading: const Icon(Icons.calendar_today),
+                  title: Text(l10n.appointments),
+                  onTap: () { Navigator.pop(context); context.push('/appointments'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/doctors')) ...[
+                ListTile(
+                  leading: const Icon(Icons.medical_services_outlined),
+                  title: Text(l10n.ourDoctors),
+                  onTap: () { Navigator.pop(context); context.push('/doctors'); },
+                ),
+              ],
                     ListTile(
                       leading: const Icon(Icons.request_quote_outlined),
                       title: Text(l10n.priceQuote),
                       onTap: () { Navigator.pop(context); context.push('/price-quote'); },
                     ),
-                    if (canAccessRoute(user, '/my-doctor-profile')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.badge_outlined),
-                        title: Text(l10n.myDoctorProfile),
-                        onTap: () { Navigator.pop(context); context.push('/my-doctor-profile'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/my-appointments')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.event),
-                        title: Text(l10n.myAppointments),
-                        onTap: () { Navigator.pop(context); context.push('/my-appointments'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/profile')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.person),
-                        title: Text(l10n.profile),
-                        onTap: () { Navigator.pop(context); context.push('/profile'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/patients')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.medical_services),
-                        title: Text(l10n.patients),
-                        onTap: () { Navigator.pop(context); context.push('/patients'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/income-expenses')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.attach_money),
-                        title: Text(l10n.incomeAndExpenses),
-                        onTap: () { Navigator.pop(context); context.push('/income-expenses'); },
-                      ),
-                    ],
+              if (canAccessRoute(user, '/my-doctor-profile')) ...[
+                ListTile(
+                  leading: const Icon(Icons.badge_outlined),
+                  title: Text(l10n.myDoctorProfile),
+                  onTap: () { Navigator.pop(context); context.push('/my-doctor-profile'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/my-appointments')) ...[
+                ListTile(
+                  leading: const Icon(Icons.event),
+                  title: Text(l10n.myAppointments),
+                  onTap: () { Navigator.pop(context); context.push('/my-appointments'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/profile')) ...[
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: Text(l10n.profile),
+                  onTap: () { Navigator.pop(context); context.push('/profile'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/patients')) ...[
+                ListTile(
+                  leading: const Icon(Icons.medical_services),
+                  title: Text(l10n.patients),
+                  onTap: () { Navigator.pop(context); context.push('/patients'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/income-expenses')) ...[
+                ListTile(
+                  leading: const Icon(Icons.attach_money),
+                  title: Text(l10n.incomeAndExpenses),
+                  onTap: () { Navigator.pop(context); context.push('/income-expenses'); },
+                ),
+              ],
                     if (canAccessRoute(user, '/income-expenses-summary')) ...[
                       ListTile(
                         leading: const Icon(Icons.summarize),
@@ -248,27 +248,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onTap: () { Navigator.pop(context); context.push('/income-expenses-summary'); },
                       ),
                     ],
-                    if (canAccessRoute(user, '/reports')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.assessment),
-                        title: Text(l10n.reports),
-                        onTap: () { Navigator.pop(context); context.push('/reports'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/requirements')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.shopping_cart_outlined),
-                        title: Text(l10n.requirements),
-                        onTap: () { Navigator.pop(context); context.push('/requirements'); },
-                      ),
-                    ],
-                    if (canAccessRoute(user, '/admin-todos')) ...[
-                      ListTile(
-                        leading: const Icon(Icons.check_circle_outline),
-                        title: Text(l10n.toDoList),
-                        onTap: () { Navigator.pop(context); context.push('/admin-todos'); },
-                      ),
-                    ],
+              if (canAccessRoute(user, '/reports')) ...[
+                ListTile(
+                  leading: const Icon(Icons.assessment),
+                  title: Text(l10n.reports),
+                  onTap: () { Navigator.pop(context); context.push('/reports'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/requirements')) ...[
+                ListTile(
+                  leading: const Icon(Icons.shopping_cart_outlined),
+                  title: Text(l10n.requirements),
+                  onTap: () { Navigator.pop(context); context.push('/requirements'); },
+                ),
+              ],
+              if (canAccessRoute(user, '/admin-todos')) ...[
+                ListTile(
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: Text(l10n.toDoList),
+                  onTap: () { Navigator.pop(context); context.push('/admin-todos'); },
+                ),
+              ],
                   ],
                 ),
               ),
@@ -473,15 +473,15 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
         _subscription?.cancel();
         _subscription = _firestore.appointmentsStream().listen(_onSnapshot);
       } else {
-        _firestore.getDoctorByUserId(user.id).then((doc) {
-          if (!mounted) return;
-          if (doc != null) {
-            _subscription?.cancel();
-            _subscription = _firestore.appointmentsStream(doctorId: doc.id).listen(_onSnapshot);
-          } else {
-            setState(() => _loading = false);
-          }
-        });
+      _firestore.getDoctorByUserId(user.id).then((doc) {
+        if (!mounted) return;
+        if (doc != null) {
+          _subscription?.cancel();
+          _subscription = _firestore.appointmentsStream(doctorId: doc.id).listen(_onSnapshot);
+        } else {
+          setState(() => _loading = false);
+        }
+      });
       }
     } else if (user.canAccessFeature('appointments') || user.canAccessFeature('appointments_view_all')) {
       _subscription?.cancel();

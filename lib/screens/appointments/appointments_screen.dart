@@ -422,6 +422,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () => setState(() => _scheduleDate = _scheduleDate.subtract(const Duration(days: 1))),
+                tooltip: l10n.previousDay,
+              ),
               Text(AppDateFormat.mediumDate().format(_scheduleDate), style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(width: 12),
               TextButton.icon(
@@ -436,6 +441,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   );
                   if (d != null) setState(() => _scheduleDate = d);
                 },
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: () => setState(() => _scheduleDate = _scheduleDate.add(const Duration(days: 1))),
+                tooltip: l10n.nextDay,
               ),
             ],
           ),
