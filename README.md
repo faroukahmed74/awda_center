@@ -2,7 +2,7 @@
 
 A Flutter app for a physical therapy clinic: appointments, patient profiles, sessions, income/expenses, finance summary, and multi-role users. Single codebase for **Web**, **Android**, **iOS**, and **Windows**. Backend: **Firebase** (Auth, Firestore, Storage, Messaging).
 
-**Version 1.0.7** — Finance summary PDF with Arabic/English and **Arabic letter shaping** (correct joining in PDF); PDF and Excel reports on all platforms (web download, mobile share); colored report PDFs; light/dark mode and full localization on all screens.
+**Version 1.0.11** — Appointments **schedule view**: previous/next day arrows for quick date navigation; **fixed header row** (Time, rooms, Extra slot) that stays visible when scrolling; **responsive full-width schedule** on all platforms (web, tablet, phone). Finance summary PDF with Arabic/English and Arabic letter shaping; PDF and Excel reports; light/dark mode and full localization.
 
 ---
 
@@ -24,7 +24,7 @@ Role-based dashboards and navigation. Admins can grant **per-feature privileges*
 | Dashboard | Role-specific; today’s appointments, quick links |
 | Admin dashboard | Stats (users, appointments, patients, doctors, todos), two-column layout on desktop, quick access to all admin sections |
 | Users | List and manage users (admin/secretary); invite user |
-| Appointments | Create, edit, reschedule; filter by status; search; **no double-booking** (same room + overlapping time on same date blocked); appointment status changes logged to audit |
+| Appointments | Create, edit, reschedule; filter by status; search; **no double-booking** (same room + overlapping time on same date blocked); appointment status changes logged to audit. **Schedule view:** previous/next day arrows, **fixed header row** while scrolling, **responsive full-width** table (Time + rooms + extra slot) on all devices |
 | My Appointments | Patient/doctor view of own appointments; search |
 | Profile | View/edit own info; change language and theme |
 | User profile | View another user (by role) |

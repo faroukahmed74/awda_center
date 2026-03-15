@@ -454,42 +454,133 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final minTableHeight = constraints.maxHeight;
-              return SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: minTableHeight, minWidth: constraints.maxWidth),
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(Theme.of(context).colorScheme.surfaceContainerHighest),
-                      columns: [
-                        DataColumn(label: Text(l10n.time)),
-                        DataColumn(label: Text(roomHeaders[0])),
-                        DataColumn(label: Text(roomHeaders[1])),
-                        DataColumn(label: Text(roomHeaders[2])),
-                        DataColumn(label: Text(l10n.extraSlot)),
-                      ],
-                      rows: _scheduleHours.map((hour) {
-                        final slotApps = _appointmentsForSlot(_scheduleDate, hour, list);
-                        return DataRow(
-                          cells: [
-                            DataCell(Text(hour)),
-                            DataCell(_slotCell(_appointmentForCell(0, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds)),
-                            DataCell(_slotCell(_appointmentForCell(1, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds)),
-                            DataCell(_slotCell(_appointmentForCell(2, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds)),
-                            DataCell(_slotCell(_appointmentForCell(3, slotApps, cache.rooms), hour, true, cache, l10n, auth, canUpdate, firstSessionIds)),
-                          ],
-                        );
-                      }).toList(),
+              const rowHeight = 56.0;
+              const timeColumnWidth = 72.0;
+              // Time column fixed; room + extra columns share remaining width equally (full screen)
+              final columnWidths = <int, TableColumnWidth>{
+                0: const FixedColumnWidth(timeColumnWidth),
+                1: const FlexColumnWidth(1),
+                2: const FlexColumnWidth(1),
+                3: const FlexColumnWidth(1),
+                4: const FlexColumnWidth(1),
+              };
+              final headerColor = Theme.of(context).colorScheme.surfaceContainerHighest;
+              final dividerColor = Theme.of(context).dividerColor;
+              final tableBorder = TableBorder(
+                horizontalInside: BorderSide(color: dividerColor, width: 1),
+              );
+              final tableWidth = constraints.maxWidth;
+              return SizedBox(
+                width: tableWidth,
+                height: constraints.maxHeight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Fixed header row (stays visible when scrolling vertically)
+                    Container(
+                      height: rowHeight,
+                      decoration: BoxDecoration(
+                        color: headerColor,
+                        border: Border(bottom: BorderSide(color: dividerColor, width: 1)),
+                      ),
+                      child: Table(
+                        columnWidths: columnWidths,
+                        border: tableBorder,
+                        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                        children: [
+                          TableRow(
+                            children: [
+                              _scheduleHeaderCell(context, l10n.time),
+                              _scheduleHeaderCell(context, roomHeaders[0]),
+                              _scheduleHeaderCell(context, roomHeaders[1]),
+                              _scheduleHeaderCell(context, roomHeaders[2]),
+                              _scheduleHeaderCell(context, l10n.extraSlot),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    // Scrollable body
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.vertical,
+                        child: Table(
+                          columnWidths: columnWidths,
+                          border: tableBorder,
+                          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                          children: _scheduleHours.map((hour) {
+                            final slotApps = _appointmentsForSlot(_scheduleDate, hour, list);
+                            return TableRow(
+                              children: [
+                                TableCell(
+                                  child: SizedBox(
+                                    height: rowHeight,
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        child: Text(hour),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                TableCell(
+                                  child: SizedBox(
+                                    height: rowHeight,
+                                    child: _slotCell(_appointmentForCell(0, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds),
+                                  ),
+                                ),
+                                TableCell(
+                                  child: SizedBox(
+                                    height: rowHeight,
+                                    child: _slotCell(_appointmentForCell(1, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds),
+                                  ),
+                                ),
+                                TableCell(
+                                  child: SizedBox(
+                                    height: rowHeight,
+                                    child: _slotCell(_appointmentForCell(2, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds),
+                                  ),
+                                ),
+                                TableCell(
+                                  child: SizedBox(
+                                    height: rowHeight,
+                                    child: _slotCell(_appointmentForCell(3, slotApps, cache.rooms), hour, true, cache, l10n, auth, canUpdate, firstSessionIds),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _scheduleHeaderCell(BuildContext context, String label) {
+    return SizedBox(
+      height: 56,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
     );
   }
 
