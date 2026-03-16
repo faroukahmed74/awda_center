@@ -45,6 +45,49 @@ class DataCacheProvider with ChangeNotifier {
 
   String? userName(String? userId) => userId == null ? null : _userNames[userId];
 
+  /// All name variants for a user (Arabic, English, displayName, email) for search in both languages.
+  List<String> userSearchNames(String? userId) {
+    if (userId == null || userId.isEmpty) return [];
+    for (final u in _users) {
+      if (u.id == userId) {
+        final list = <String>[];
+        if (u.fullNameAr != null && u.fullNameAr!.isNotEmpty) list.add(u.fullNameAr!);
+        if (u.fullNameEn != null && u.fullNameEn!.isNotEmpty) list.add(u.fullNameEn!);
+        if (u.displayName.isNotEmpty && !list.contains(u.displayName)) list.add(u.displayName);
+        if (u.email.isNotEmpty && !list.contains(u.email)) list.add(u.email);
+        return list;
+      }
+    }
+    final fallback = _userNames[userId];
+    return fallback != null && fallback.isNotEmpty ? [fallback] : [];
+  }
+
+  /// All name variants for a doctor (user's Arabic/English names, displayName) for search in both languages.
+  List<String> doctorSearchNames(String? doctorId) {
+    if (doctorId == null || doctorId.isEmpty) return [];
+    for (final d in _doctors) {
+      if (d.id != doctorId) continue;
+      final list = <String>[];
+      for (final u in _users) {
+        if (u.id == d.userId) {
+          if (u.fullNameAr != null && u.fullNameAr!.isNotEmpty) list.add(u.fullNameAr!);
+          if (u.fullNameEn != null && u.fullNameEn!.isNotEmpty) list.add(u.fullNameEn!);
+          if (u.displayName.isNotEmpty && !list.contains(u.displayName)) list.add(u.displayName);
+          break;
+        }
+      }
+      if (d.displayName != null && d.displayName!.isNotEmpty && !list.contains(d.displayName!)) {
+        list.add(d.displayName!);
+      }
+      if (list.isEmpty) {
+        final fallback = _userNames[d.userId] ?? d.displayName ?? doctorId;
+        if (fallback.isNotEmpty) list.add(fallback);
+      }
+      return list;
+    }
+    return [];
+  }
+
   /// True if patient (user) is marked as starred (VIP). Same star icon as "new patient" in schedule.
   bool isPatientStarred(String? patientId) {
     if (patientId == null) return false;

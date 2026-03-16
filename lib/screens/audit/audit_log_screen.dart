@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/audit_log_model.dart';
+import '../../models/appointment_model.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
 import '../../core/date_format.dart';
@@ -19,6 +20,10 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   List<AuditLogModel> _list = [];
   Map<String, String> _userNameById = {};
   Map<String, String> _doctorNameById = {};
+  /// Current status (value) per appointment ID so audit log shows up-to-date session status.
+  Map<String, String> _currentStatusByAppointmentId = {};
+  /// Package display name by ID so audit log shows package name instead of ID.
+  Map<String, String> _packageNameById = {};
   bool _loading = true;
 
   @override
@@ -34,6 +39,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
 
     final userIds = <String>{};
     final doctorIds = <String>{};
+    final packageIds = <String>{};
     for (final e in list) {
       if (e.userId.isNotEmpty) userIds.add(e.userId);
       if (e.entityId != null && e.entityId!.isNotEmpty) {
@@ -44,24 +50,77 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
         if (pid is String && pid.isNotEmpty) userIds.add(pid);
         final did = e.details!['doctorId'];
         if (did is String && did.isNotEmpty) doctorIds.add(did);
+        final pkgId = e.details!['packageId'];
+        if (pkgId is String && pkgId.isNotEmpty) packageIds.add(pkgId);
       }
     }
 
-    final userNameById = <String, String>{};
-    for (final uid in userIds) {
-      final user = await _firestore.getUser(uid);
-      userNameById[uid] = user?.displayName ?? user?.email ?? uid;
+    // Fetch all users and doctors in parallel instead of sequentially
+    final userIdList = userIds.toList();
+    final doctorIdList = doctorIds.toList();
+    final userResults = await Future.wait(
+      userIdList.map((uid) => _firestore.getUser(uid)),
+    );
+    final userNameById = <String, String>{
+      for (var i = 0; i < userIdList.length; i++)
+        userIdList[i]: userResults[i]?.displayName ?? userResults[i]?.email ?? userIdList[i],
+    };
+
+    final doctorResults = await Future.wait(
+      doctorIdList.map((did) => _firestore.getDoctorById(did)),
+    );
+    final doctorUserIdList = <String>[];
+    final seenDoctorUserId = <String>{};
+    for (var i = 0; i < doctorIdList.length; i++) {
+      final d = doctorResults[i];
+      if (d != null && (d.displayName == null || d.displayName!.isEmpty) && d.userId.isNotEmpty && seenDoctorUserId.add(d.userId)) {
+        doctorUserIdList.add(d.userId);
+      }
     }
+    final doctorUserResults = await Future.wait(
+      doctorUserIdList.map((uid) => _firestore.getUser(uid)),
+    );
+    final doctorUserByName = <String, String>{
+      for (var i = 0; i < doctorUserIdList.length; i++)
+        doctorUserIdList[i]:
+            doctorUserResults[i]?.displayName ?? doctorUserResults[i]?.email ?? '',
+    };
 
     final doctorNameById = <String, String>{};
-    for (final did in doctorIds) {
-      final doctor = await _firestore.getDoctorById(did);
-      String name = doctor?.displayName ?? '';
-      if (name.isEmpty && doctor?.userId != null) {
-        final user = await _firestore.getUser(doctor!.userId);
-        name = user?.displayName ?? user?.email ?? did;
+    for (var i = 0; i < doctorIdList.length; i++) {
+      final did = doctorIdList[i];
+      final d = doctorResults[i];
+      String name = d?.displayName ?? '';
+      if (name.isEmpty && d != null && d.userId.isNotEmpty) {
+        name = doctorUserByName[d.userId] ?? did;
       }
       doctorNameById[did] = name.isEmpty ? did : name;
+    }
+
+    // Fetch current status for all appointments in the log so we show up-to-date session status
+    final appointmentIds = list
+        .where((e) => e.entityType == 'appointment' && e.entityId != null && e.entityId!.isNotEmpty)
+        .map((e) => e.entityId!)
+        .toSet()
+        .toList();
+    final appointmentResults = await Future.wait(
+      appointmentIds.map((id) => _firestore.getAppointmentById(id)),
+    );
+    final currentStatusByAppointmentId = <String, String>{};
+    for (var i = 0; i < appointmentIds.length; i++) {
+      final a = appointmentResults[i];
+      if (a != null) currentStatusByAppointmentId[appointmentIds[i]] = a.status.value;
+    }
+
+    // Fetch package names so we show package name instead of package ID in logs
+    final packageIdList = packageIds.toList();
+    final packageResults = await Future.wait(
+      packageIdList.map((id) => _firestore.getPackageById(id)),
+    );
+    final packageNameById = <String, String>{};
+    for (var i = 0; i < packageIdList.length; i++) {
+      final pkg = packageResults[i];
+      if (pkg != null) packageNameById[packageIdList[i]] = pkg.displayName;
     }
 
     if (mounted) {
@@ -69,12 +128,28 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
         _list = list;
         _userNameById = userNameById;
         _doctorNameById = doctorNameById;
+        _currentStatusByAppointmentId = currentStatusByAppointmentId;
+        _packageNameById = packageNameById;
         _loading = false;
       });
     }
   }
 
-  String _auditActionLabel(AuditLogModel e) {
+  /// Localized label for appointment status value (e.g. 'completed' -> Attended).
+  String _statusLabelForValue(String? value, AppLocalizations l10n) {
+    final s = AppointmentStatusExt.fromString(value);
+    switch (s) {
+      case AppointmentStatus.pending: return l10n.pending;
+      case AppointmentStatus.confirmed: return l10n.confirmed;
+      case AppointmentStatus.completed: return l10n.attended;
+      case AppointmentStatus.cancelled: return l10n.cancelled;
+      case AppointmentStatus.noShow: return l10n.absent;
+      case AppointmentStatus.absentWithCause: return l10n.apologized;
+      case AppointmentStatus.absentWithoutCause: return l10n.absent;
+    }
+  }
+
+  String _auditActionLabel(AuditLogModel e, AppLocalizations l10n) {
     final action = e.action.replaceAll('_', ' ');
     final entityType = e.entityType;
     final entityId = e.entityId;
@@ -103,7 +178,15 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
           resolved.add('patient: ${_userNameById[value] ?? value}');
         } else if (key == 'doctorId' && value is String) {
           resolved.add('doctor: ${_doctorNameById[value] ?? value}');
-        } else if (key == 'targetEmail' || key == 'fileName' || key == 'status' || key == 'roles' || key == 'permissions' || key == 'amount' || key == 'category' || key == 'source') {
+        } else if (key == 'status') {
+          // For appointments, show current session status (from live data) with localized label
+          final statusValue = entityType == 'appointment' && entityId != null
+              ? (_currentStatusByAppointmentId[entityId] ?? value?.toString())
+              : value?.toString();
+          resolved.add('${l10n.status}: ${_statusLabelForValue(statusValue, l10n)}');
+        } else if (key == 'packageId' && value is String) {
+          resolved.add('package: ${_packageNameById[value] ?? value}');
+        } else if (key == 'targetEmail' || key == 'fileName' || key == 'roles' || key == 'permissions' || key == 'amount' || key == 'category' || key == 'source') {
           resolved.add('$key: $value');
         } else {
           resolved.add('$key: $value');
@@ -141,7 +224,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                           final e = _list[i];
                           final when = e.createdAt != null ? AppDateFormat.shortDateTime.format(e.createdAt!) : '';
                           final who = _userNameById[e.userId] ?? e.userEmail ?? e.userId;
-                          final what = _auditActionLabel(e);
+                          final what = _auditActionLabel(e, l10n);
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(

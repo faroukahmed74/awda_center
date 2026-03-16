@@ -383,7 +383,16 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                         value: _timeSlots.contains(_startTime) ? _startTime : _timeSlots.first,
                         decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                         items: _timeSlots.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                        onChanged: (v) => setState(() { _startTime = v ?? _startTime; _errorMessage = null; }),
+                        onChanged: (v) => setState(() {
+                          final newStart = v ?? _startTime;
+                          _startTime = newStart;
+                          // If current end time is not after new start, move it to the next valid slot.
+                          final endOptions = _timeSlots.where((t) => _minutesOfDay(t) > _minutesOfDay(newStart)).toList();
+                          if (endOptions.isNotEmpty && _minutesOfDay(_endTime) <= _minutesOfDay(newStart)) {
+                            _endTime = endOptions.first;
+                          }
+                          _errorMessage = null;
+                        }),
                       ),
                     ],
                   ),
@@ -399,7 +408,11 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                       DropdownButtonFormField<String>(
                         value: _timeSlots.contains(_endTime) ? _endTime : _timeSlots[1],
                         decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                        items: _timeSlots.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        // End time options must be strictly after start time (e.g. start 21:00 -> end 21:30, 22:00, ...).
+                        items: _timeSlots
+                            .where((t) => _minutesOfDay(t) > _minutesOfDay(_startTime))
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                            .toList(),
                         onChanged: (v) => setState(() { _endTime = v ?? _endTime; _errorMessage = null; }),
                       ),
                     ],

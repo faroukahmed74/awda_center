@@ -63,6 +63,9 @@ dependencies:
   # i18n / intl
   intl: ^0.20.2
 
+  # Charts (admin dashboard)
+  fl_chart: ^0.69.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

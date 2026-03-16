@@ -293,6 +293,28 @@ class AppLocalizations {
   String get addDoctor => _map['addDoctor']!;
   String get edit => _map['edit']!;
   String get quickAccess => _map['quickAccess']!;
+  String get statistics => _map['statistics']!;
+  String get appointmentsLast7Days => _map['appointmentsLast7Days']!;
+  String get incomeVsExpense6Months => _map['incomeVsExpense6Months']!;
+  String get usersByRole => _map['usersByRole']!;
+  String get filterByPeriod => _map['filterByPeriod']!;
+  String get periodDay => _map['periodDay']!;
+  String get periodWeek => _map['periodWeek']!;
+  String get periodMonth => _map['periodMonth']!;
+  String get period3Months => _map['period3Months']!;
+  String get period6Months => _map['period6Months']!;
+  String get period9Months => _map['period9Months']!;
+  String get periodYear => _map['periodYear']!;
+  String get exportPdf => _map['exportPdf']!;
+  String get barChart => _map['barChart']!;
+  String get lineChart => _map['lineChart']!;
+  String get pieChart => _map['pieChart']!;
+  String get periodIncome => _map['periodIncome']!;
+  String get periodExpense => _map['periodExpense']!;
+  String get periodNet => _map['periodNet']!;
+  String get totalRooms => _map['totalRooms']!;
+  String get totalServices => _map['totalServices']!;
+  String get totalPackages => _map['totalPackages']!;
   String get addNewPatient => _map['addNewPatient']!;
   String get findPatient => _map['findPatient']!;
   String get patientAdded => _map['patientAdded']!;
@@ -600,6 +622,28 @@ class AppLocalizations {
     'addDoctor': 'Add doctor',
     'edit': 'Edit',
     'quickAccess': 'Quick access',
+    'statistics': 'Statistics',
+    'appointmentsLast7Days': 'Appointments (last 7 days)',
+    'incomeVsExpense6Months': 'Income vs expenses (last 6 months)',
+    'usersByRole': 'Users by role',
+    'filterByPeriod': 'Filter by period',
+    'periodDay': 'Day',
+    'periodWeek': 'Week',
+    'periodMonth': 'Month',
+    'period3Months': '3 Months',
+    'period6Months': '6 Months',
+    'period9Months': '9 Months',
+    'periodYear': 'Year',
+    'exportPdf': 'Export PDF',
+    'barChart': 'Bar',
+    'lineChart': 'Line',
+    'pieChart': 'Pie',
+    'periodIncome': 'Income (period)',
+    'periodExpense': 'Expenses (period)',
+    'periodNet': 'Net (period)',
+    'totalRooms': 'Rooms',
+    'totalServices': 'Services',
+    'totalPackages': 'Packages',
     'addNewPatient': 'Add new patient',
     'findPatient': 'Find patient',
     'patientAdded': 'Patient added',
@@ -911,6 +955,28 @@ class AppLocalizations {
     'addDoctor': 'إضافة طبيب',
     'edit': 'تعديل',
     'quickAccess': 'وصول سريع',
+    'statistics': 'إحصائيات',
+    'appointmentsLast7Days': 'المواعيد (آخر 7 أيام)',
+    'incomeVsExpense6Months': 'الإيرادات والمصروفات (آخر 6 أشهر)',
+    'usersByRole': 'المستخدمون حسب الدور',
+    'filterByPeriod': 'تصفية حسب الفترة',
+    'periodDay': 'يوم',
+    'periodWeek': 'أسبوع',
+    'periodMonth': 'شهر',
+    'period3Months': '٣ أشهر',
+    'period6Months': '٦ أشهر',
+    'period9Months': '٩ أشهر',
+    'periodYear': 'سنة',
+    'exportPdf': 'تصدير PDF',
+    'barChart': 'أعمدة',
+    'lineChart': 'خط',
+    'pieChart': 'دائري',
+    'periodIncome': 'الإيرادات (الفترة)',
+    'periodExpense': 'المصروفات (الفترة)',
+    'periodNet': 'الصافي (الفترة)',
+    'totalRooms': 'الغرف',
+    'totalServices': 'الخدمات',
+    'totalPackages': 'الباقات',
     'addNewPatient': 'إضافة مريض جديد',
     'findPatient': 'البحث عن مريض',
     'patientAdded': 'تمت إضافة المريض',

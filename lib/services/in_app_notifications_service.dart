@@ -23,60 +23,79 @@ class InAppNotificationsService {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final weekEnd = todayStart.add(const Duration(days: 7));
-    final list = <AppNotification>[];
 
-    // Upcoming appointments (patient, doctor, or users with appointments access)
+    // Run independent data sources in parallel to reduce total wait time
+    final results = await Future.wait([
+      _getAppointmentsNotifications(user, todayStart, weekEnd),
+      _getAuditAndStatusNotifications(user),
+      _getTodosNotifications(user),
+    ]);
+
+    final list = <AppNotification>[
+      ...results[0],
+      ...results[1],
+      ...results[2],
+    ];
+    list.sort((a, b) => b.time.compareTo(a.time));
+    return list.take(50).toList();
+  }
+
+  Future<List<AppNotification>> _getAppointmentsNotifications(
+    UserModel user,
+    DateTime todayStart,
+    DateTime weekEnd,
+  ) async {
     if (user.hasRole(UserRole.patient)) {
       final appointments = await _firestore.getAppointments(
         from: todayStart,
         to: weekEnd,
         patientId: user.id,
       );
-      list.addAll(_appointmentsToNotifications(appointments, true));
-    } else if (user.hasRole(UserRole.doctor)) {
+      return _appointmentsToNotifications(appointments, true);
+    }
+    if (user.hasRole(UserRole.doctor)) {
       final doctor = await _firestore.getDoctorByUserId(user.id);
-      if (doctor != null) {
-        final appointments = await _firestore.getAppointments(
-          from: todayStart,
-          to: weekEnd,
-          doctorId: doctor.id,
-        );
-        list.addAll(_appointmentsToNotifications(appointments, false));
-      }
-    } else if (user.canAccessFeature('appointments')) {
+      if (doctor == null) return [];
+      final appointments = await _firestore.getAppointments(
+        from: todayStart,
+        to: weekEnd,
+        doctorId: doctor.id,
+      );
+      return _appointmentsToNotifications(appointments, false);
+    }
+    if (user.canAccessFeature('appointments')) {
       final appointments = await _firestore.getAppointments(
         from: todayStart,
         to: weekEnd,
       );
-      list.addAll(_appointmentsToNotifications(appointments, false).take(15));
+      return _appointmentsToNotifications(appointments, false).take(15).toList();
     }
-
-    // Appointment status changes from audit log — only for users allowed to read audit_log (admin)
-    if (user.hasRole(UserRole.admin)) {
-      list.addAll(
-        await _appointmentStatusNotifications(user),
-      );
-    }
-
-    // Recent audit log — only admins can read audit_log in Firestore
-    if (user.hasRole(UserRole.admin)) {
-      final logs = await _firestore.getAuditLogs(limit: 15);
-      list.addAll(_auditLogsToNotifications(logs));
-    }
-
-    // Open admin todos (admin_todos access)
-    if (user.canAccessAdminTodos) {
-      final todos = await _firestore.getAdminTodos(includeCompleted: false);
-      list.addAll(_todosToNotifications(todos));
-    }
-
-    list.sort((a, b) => b.time.compareTo(a.time));
-    return list.take(50).toList();
+    return [];
   }
 
-  /// Fetches audit log entries for appointments and returns notifications for the current user (patient/doctor/appointments access).
-  Future<List<AppNotification>> _appointmentStatusNotifications(UserModel user) async {
+  /// For admin: one getAuditLogs(60), then build both appointment-status and audit notifications.
+  Future<List<AppNotification>> _getAuditAndStatusNotifications(UserModel user) async {
+    if (!user.hasRole(UserRole.admin)) return [];
     final logs = await _firestore.getAuditLogs(limit: 60);
+    final statusNotifs = await _appointmentStatusNotificationsFromLogs(user, logs);
+    final list = <AppNotification>[
+      ...statusNotifs,
+      ..._auditLogsToNotifications(logs.take(15).toList()),
+    ];
+    return list;
+  }
+
+  Future<List<AppNotification>> _getTodosNotifications(UserModel user) async {
+    if (!user.canAccessAdminTodos) return [];
+    final todos = await _firestore.getAdminTodos(includeCompleted: false);
+    return _todosToNotifications(todos);
+  }
+
+  /// Builds appointment-status notifications from pre-fetched audit logs (avoids duplicate getAuditLogs).
+  Future<List<AppNotification>> _appointmentStatusNotificationsFromLogs(
+    UserModel user,
+    List<AuditLogModel> logs,
+  ) async {
     final appointmentLogs = logs
         .where((l) =>
             l.entityType == 'appointment' &&
@@ -92,9 +111,15 @@ class InAppNotificationsService {
       doctorIdForUser = doctor?.id;
     }
 
+    // Fetch all appointments in parallel instead of sequentially
+    final appointmentFutures = appointmentLogs
+        .map((log) => _firestore.getAppointmentById(log.entityId!));
+    final appointments = await Future.wait(appointmentFutures);
+
     final result = <AppNotification>[];
-    for (final log in appointmentLogs) {
-      final appointment = await _firestore.getAppointmentById(log.entityId!);
+    for (var i = 0; i < appointmentLogs.length; i++) {
+      final log = appointmentLogs[i];
+      final appointment = appointments[i];
       if (appointment == null) continue;
 
       final isPatient = user.id == appointment.patientId;

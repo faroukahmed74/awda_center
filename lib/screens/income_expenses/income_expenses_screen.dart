@@ -61,13 +61,13 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         final source = (r.source).toLowerCase();
         final notes = (r.notes ?? '').toLowerCase();
         final amountStr = r.amount.toString().toLowerCase();
-        final doctor = (cache.doctorDisplayName(r.doctorId) ?? cache.userName(r.doctorId) ?? '').toLowerCase();
-        final patient = (cache.userName(r.patientId) ?? '').toLowerCase();
+        final doctorMatches = cache.doctorSearchNames(r.doctorId).any((s) => s.toLowerCase().contains(q));
+        final patientMatches = cache.userSearchNames(r.patientId).any((s) => s.toLowerCase().contains(q));
         return source.contains(q) ||
             notes.contains(q) ||
             amountStr.contains(q) ||
-            doctor.contains(q) ||
-            patient.contains(q);
+            doctorMatches ||
+            patientMatches;
       }).toList();
     }
     out.sort((a, b) {
@@ -101,12 +101,12 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
         final desc = (r.description ?? '').toLowerCase();
         final amountStr = r.amount.toString().toLowerCase();
         final recipient = (r.recipientName ?? '').toLowerCase();
-        final doctor = (cache.doctorDisplayName(r.paidByDoctorId) ?? cache.userName(r.paidByDoctorId) ?? '').toLowerCase();
+        final doctorMatches = cache.doctorSearchNames(r.paidByDoctorId).any((s) => s.toLowerCase().contains(q));
         return category.contains(q) ||
             desc.contains(q) ||
             amountStr.contains(q) ||
             recipient.contains(q) ||
-            doctor.contains(q);
+            doctorMatches;
       }).toList();
     }
     out.sort((a, b) {
@@ -164,10 +164,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   @override
   void initState() {
     super.initState();
-    // Default to current month so "new" months start at zero; past data remains viewable via Month/Year filter
-    final now = DateTime.now();
-    _filterYear = now.year;
-    _filterMonth = now.month;
+    // Default to current day; user can switch to Month/Year filter for other ranges
+    _filterDay = DateTime.now();
     _listen();
   }
 

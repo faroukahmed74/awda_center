@@ -649,7 +649,7 @@ class FirestoreService {
         .set({...data, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
   }
 
-  // Admin dashboard stats
+  // Admin dashboard stats (includes rooms, services, packages counts)
   Future<Map<String, int>> getAdminStats() async {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
@@ -661,6 +661,9 @@ class FirestoreService {
     final doctors = await getDoctors();
     final patients = users.where((u) => u.roles.contains('patient')).length;
     final openTodos = await getAdminTodos(includeCompleted: false).then((l) => l.length);
+    final rooms = await getRooms();
+    final services = await getServices();
+    final packages = await getPackages();
     return {
       'totalUsers': users.length,
       'activeUsers': users.where((u) => u.isActive).length,
@@ -669,6 +672,116 @@ class FirestoreService {
       'totalPatients': patients,
       'totalDoctors': doctors.length,
       'openTodos': openTodos,
+      'totalRooms': rooms.length,
+      'totalServices': services.length,
+      'totalPackages': packages.length,
     };
+  }
+
+  /// Range: day, week, month, 3months, 6months, 9months, year. Returns chart series + periodTotals.
+  Future<Map<String, dynamic>> getAdminChartData(String range) async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    DateTime rangeStart;
+    switch (range) {
+      case 'day':
+        rangeStart = todayStart;
+        break;
+      case 'week':
+        rangeStart = todayStart.subtract(const Duration(days: 6));
+        break;
+      case 'month':
+        rangeStart = DateTime(now.year, now.month - 1, 1);
+        break;
+      case '3months':
+        rangeStart = DateTime(now.year, now.month - 2, 1);
+        break;
+      case '6months':
+        rangeStart = DateTime(now.year, now.month - 5, 1);
+        break;
+      case '9months':
+        rangeStart = DateTime(now.year, now.month - 8, 1);
+        break;
+      case 'year':
+        rangeStart = DateTime(now.year - 1, now.month, 1);
+        break;
+      default:
+        rangeStart = todayStart.subtract(const Duration(days: 6));
+    }
+    final rangeEnd = now.add(const Duration(days: 1));
+
+    final appointments = await getAppointments(from: rangeStart, to: rangeEnd);
+    final incomeList = await getIncomeRecords(from: rangeStart, to: rangeEnd);
+    final expenseList = await getExpenseRecords(from: rangeStart, to: rangeEnd);
+
+    final totalAppointments = appointments.length;
+    final totalIncome = incomeList.fold<double>(0, (s, r) => s + r.amount);
+    final totalExpense = expenseList.fold<double>(0, (s, r) => s + r.amount);
+
+    // Appointments series: by day for day/week, by week or month for longer
+    final appointmentsSeries = <Map<String, dynamic>>[];
+    if (range == 'day') {
+      final d = todayStart;
+      final count = appointments.where((a) {
+        final ad = a.appointmentDate;
+        return ad.year == d.year && ad.month == d.month && ad.day == d.day;
+      }).length;
+      appointmentsSeries.add({'date': d, 'label': _formatDay(d), 'count': count});
+    } else if (range == 'week') {
+      for (var i = 0; i < 7; i++) {
+        final d = rangeStart.add(Duration(days: i));
+        final count = appointments.where((a) {
+          final ad = a.appointmentDate;
+          return ad.year == d.year && ad.month == d.month && ad.day == d.day;
+        }).length;
+        appointmentsSeries.add({'date': d, 'label': _formatDay(d), 'count': count});
+      }
+    } else {
+      final months = <DateTime>[];
+      var d = DateTime(rangeStart.year, rangeStart.month, 1);
+      while (d.isBefore(rangeEnd) || d.isAtSameMomentAs(DateTime(rangeEnd.year, rangeEnd.month, 1))) {
+        months.add(d);
+        d = DateTime(d.year, d.month + 1, 1);
+      }
+      for (final m in months) {
+        final count = appointments.where((a) => a.appointmentDate.year == m.year && a.appointmentDate.month == m.month).length;
+        appointmentsSeries.add({'date': m, 'label': '${m.month}/${m.year}', 'count': count});
+      }
+    }
+
+    // Income/expense series by month
+    final incomeExpenseSeries = <Map<String, dynamic>>[];
+    var d = DateTime(rangeStart.year, rangeStart.month, 1);
+    while (d.isBefore(rangeEnd) || d.isAtSameMomentAs(DateTime(rangeEnd.year, rangeEnd.month, 1))) {
+      final income = incomeList.where((r) => r.incomeDate.year == d.year && r.incomeDate.month == d.month).fold<double>(0, (s, r) => s + r.amount);
+      final expense = expenseList.where((r) => r.expenseDate.year == d.year && r.expenseDate.month == d.month).fold<double>(0, (s, r) => s + r.amount);
+      incomeExpenseSeries.add({'year': d.year, 'month': d.month, 'label': '${d.month}/${d.year}', 'income': income, 'expense': expense});
+      d = DateTime(d.year, d.month + 1, 1);
+    }
+
+    final users = await getUsers();
+    final usersByRole = <String, int>{};
+    for (final u in users) {
+      final role = u.roles.isNotEmpty ? u.roles.first : 'patient';
+      usersByRole[role] = (usersByRole[role] ?? 0) + 1;
+    }
+
+    return {
+      'appointmentsByDay': appointmentsSeries,
+      'incomeExpenseByMonth': incomeExpenseSeries,
+      'usersByRole': usersByRole,
+      'periodTotals': {
+        'totalAppointments': totalAppointments,
+        'totalIncome': totalIncome,
+        'totalExpense': totalExpense,
+        'totalNet': totalIncome - totalExpense,
+      },
+      'rangeStart': rangeStart,
+      'rangeEnd': rangeEnd,
+    };
+  }
+
+  static String _formatDay(DateTime d) {
+    return '${d.day}/${d.month}';
   }
 }

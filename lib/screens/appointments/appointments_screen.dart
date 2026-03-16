@@ -51,6 +51,22 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
   });
 
+  /// Minutes since midnight for "HH:mm" (e.g. "09:30" -> 570).
+  static int _minutesOfDay(String timeStr) {
+    final parts = timeStr.split(':');
+    if (parts.length < 2) return 0;
+    final h = int.tryParse(parts[0].trim()) ?? 0;
+    final m = int.tryParse(parts[1].trim()) ?? 0;
+    return h * 60 + m;
+  }
+
+  /// True if [start1, end1] and [start2, end2] overlap (any time in common).
+  static bool _timeRangesOverlap(String start1, String end1, String start2, String end2) {
+    final s1 = _minutesOfDay(start1), e1 = _minutesOfDay(end1);
+    final s2 = _minutesOfDay(start2), e2 = _minutesOfDay(end2);
+    return s1 < e2 && s2 < e1;
+  }
+
   /// Next 30-min slot after [startTime] (e.g. 00:00 -> 00:30, 23:30 -> 23:30).
   static String _nextSlot(String startTime) {
     final parts = startTime.split(':');
@@ -74,12 +90,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   /// For schedule view: appointments at [date] and [startTime] that occupy the slot (pending/confirmed/completed).
   /// Apologized/absent do not appear in the grid so the new booking in the same room shows.
   List<AppointmentModel> _appointmentsForSlot(DateTime date, String startTime, List<AppointmentModel> list) {
-    return list.where((a) =>
-        a.appointmentDate.year == date.year &&
-        a.appointmentDate.month == date.month &&
-        a.appointmentDate.day == date.day &&
-        a.startTime == startTime &&
-        a.status.occupiesSlot).toList();
+    final slotEnd = _nextSlot(startTime);
+    return list.where((a) {
+      if (a.appointmentDate.year != date.year ||
+          a.appointmentDate.month != date.month ||
+          a.appointmentDate.day != date.day ||
+          !a.status.occupiesSlot) {
+        return false;
+      }
+      // Show the appointment in all 30‑minute cells that its [startTime, endTime] overlaps.
+      return _timeRangesOverlap(a.startTime, a.endTime, startTime, slotEnd);
+    }).toList();
   }
 
   /// Appointment to show in schedule cell: column [cellIndex] (0=room0, 1=room1, 2=room2, 3=extra).
@@ -659,7 +680,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final statusColor = _colorForStatus(a?.status);
     final isFirstSession = a != null && firstSessionIds.contains(a.id);
     final isStarredSession = a?.isStarred == true;
-    final showStar = isFirstSession || isStarredSession;
+    // For multi-slot appointments, only show the patient name (and star) in the first cell
+    // and keep continuation cells colored but without duplicate text.
+    final isContinuation = a != null && _minutesOfDay(startTime) > _minutesOfDay(a.startTime);
+    final showStar = !isContinuation && (isFirstSession || isStarredSession);
+    final displayLabel = a == null
+        ? label
+        : (isContinuation ? '' : label);
     final bgColor = statusColor != null
         ? statusColor.withValues(alpha: 0.4)
         : (showStar ? const Color(0xFFE8EAF6).withValues(alpha: 0.5) : null);
@@ -718,7 +745,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 padding: const EdgeInsets.only(right: 4),
                 child: Icon(Icons.star, size: 16, color: Theme.of(context).colorScheme.primary),
               ),
-            Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
+            Expanded(child: Text(displayLabel, overflow: TextOverflow.ellipsis)),
           ],
         ),
       ),
