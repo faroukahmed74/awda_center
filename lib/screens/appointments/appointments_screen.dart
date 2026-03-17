@@ -586,6 +586,62 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
+  /// Prev/next day row for list view (same UX as schedule view). Uses [_filterDay]; null means today.
+  Widget _buildListViewModelDateNavigator(BuildContext context, AppLocalizations l10n) {
+    final effectiveDate = _filterDay ?? DateTime.now();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => setState(() {
+              final d = effectiveDate.subtract(const Duration(days: 1));
+              _filterDay = d;
+              _filterMonth = null;
+              _filterYear = null;
+            }),
+            tooltip: l10n.previousDay,
+          ),
+          Expanded(
+            child: Text(
+              AppDateFormat.mediumDate().format(effectiveDate),
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+          ),
+          TextButton.icon(
+            icon: const Icon(Icons.calendar_today, size: 18),
+            label: Text(l10n.date),
+            onPressed: () async {
+              final d = await showDatePicker(
+                context: context,
+                initialDate: effectiveDate,
+                firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (d != null) setState(() {
+                _filterDay = d;
+                _filterMonth = null;
+                _filterYear = null;
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: () => setState(() {
+              final d = effectiveDate.add(const Duration(days: 1));
+              _filterDay = d;
+              _filterMonth = null;
+              _filterYear = null;
+            }),
+            tooltip: l10n.nextDay,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _scheduleHeaderCell(BuildContext context, String label) {
     return SizedBox(
       height: 56,
@@ -1025,12 +1081,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             ),
             Expanded(
               child: _loading
-            ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator())
                   : _scheduleView
                       ? _buildScheduleView(context, cache, l10n, auth, canUpdate)
-                          : _displayList(cache).isEmpty
-                ? Center(child: Text(l10n.noData))
-                : RefreshIndicator(
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildListViewModelDateNavigator(context, l10n),
+                            Expanded(
+                              child: _displayList(cache).isEmpty
+                                  ? Center(child: Text(l10n.noData))
+                                  : RefreshIndicator(
                     onRefresh: () async {
                       _subscription?.cancel();
                       _startAppointmentsStream();
@@ -1129,11 +1190,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         _logAppointmentAction(context, 'appointment_completed', a, AppointmentStatus.completed);
                                         _notifyAppointmentStatusChange(a);
                                         _checkPackageCompleted(a, l10n);
-                                      } else if (v == 'cancelled') {
-                                        await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.cancelled);
-                                        _updateListAfterChange(a.id, newStatus: AppointmentStatus.cancelled);
-                                        _logAppointmentAction(context, 'appointment_cancelled', a, AppointmentStatus.cancelled);
-                                        _notifyAppointmentStatusChange(a);
                                       } else if (v == 'absentWithCause') {
                                         await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.absentWithCause);
                                         _updateListAfterChange(a.id, newStatus: AppointmentStatus.absentWithCause);
@@ -1170,7 +1226,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                       if (a.status != AppointmentStatus.completed && a.status != AppointmentStatus.cancelled) ...[
                                         PopupMenuItem(value: 'confirmed', child: Text(l10n.confirmed)),
                                         PopupMenuItem(value: 'completed', child: Text(l10n.attended)),
-                                        PopupMenuItem(value: 'cancelled', child: Text(l10n.cancelled)),
                                         PopupMenuItem(value: 'absentWithCause', child: Text(l10n.apologized)),
                                         PopupMenuItem(value: 'absentWithoutCause', child: Text(l10n.absent)),
                                       ],
@@ -1185,6 +1240,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                       },
                     ),
                   ),
+                ),
+              ],
+            ),
             ),
           ],
         ),

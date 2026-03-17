@@ -263,10 +263,16 @@ class FirestoreService {
   }
 
   Future<void> updateAppointmentStatus(String id, AppointmentStatus status) async {
-    await _firestore.collection('appointments').doc(id).update({
+    // If an appointment is linked to a package, it should only count once it is attended/completed.
+    // For any other status, unlink it so patient profile package progress doesn't count it.
+    final update = <String, dynamic>{
       'status': status.value,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    };
+    if (status != AppointmentStatus.completed) {
+      update['packageId'] = null;
+    }
+    await _firestore.collection('appointments').doc(id).update(update);
   }
 
   /// Creates an appointment and returns the new document id.
