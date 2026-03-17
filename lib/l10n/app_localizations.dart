@@ -130,8 +130,6 @@ class AppLocalizations {
   String get previousDay => _map['previousDay']!;
   String get nextDay => _map['nextDay']!;
   String get filterByDoctor => _map['filterByDoctor']!;
-  String get filterByService => _map['filterByService']!;
-  String get filterByPackage => _map['filterByPackage']!;
   String get incomeByDoctor => _map['incomeByDoctor']!;
   String get expenseByDoctor => _map['expenseByDoctor']!;
   String get paidByDoctor => _map['paidByDoctor']!;
@@ -142,6 +140,8 @@ class AppLocalizations {
   String get extraSlot => _map['extraSlot']!;
   String get scheduleView => _map['scheduleView']!;
   String get listView => _map['listView']!;
+  String get showFilters => _map['showFilters']!;
+  String get hideFilters => _map['hideFilters']!;
   String get slotFull => _map['slotFull']!;
   String get roomTimeConflict => _map['roomTimeConflict']!;
   String get doctorTimeConflict => _map['doctorTimeConflict']!;
@@ -463,8 +463,6 @@ class AppLocalizations {
     'previousDay': 'Previous day',
     'nextDay': 'Next day',
     'filterByDoctor': 'Filter by doctor',
-    'filterByService': 'Filter by service',
-    'filterByPackage': 'Filter by package',
     'incomeByDoctor': 'Income by doctor',
     'expenseByDoctor': 'Expense by doctor',
     'paidByDoctor': 'Paid by (doctor)',
@@ -475,6 +473,8 @@ class AppLocalizations {
     'extraSlot': 'Extra slot (optional)',
     'scheduleView': 'Schedule',
     'listView': 'List',
+    'showFilters': 'Show filters',
+    'hideFilters': 'Hide filters',
     'slotFull': 'This time slot is full (max 3 sessions + 1 extra).',
     'roomTimeConflict': 'This room is already booked for an appointment in this time range.',
     'doctorTimeConflict': 'This doctor already has an appointment at the selected date and time. Please choose another time.',
@@ -802,8 +802,6 @@ class AppLocalizations {
     'previousDay': 'اليوم السابق',
     'nextDay': 'اليوم التالي',
     'filterByDoctor': 'تصفية حسب الطبيب',
-    'filterByService': 'تصفية حسب الخدمة',
-    'filterByPackage': 'تصفية حسب الباقة',
     'incomeByDoctor': 'الدخل حسب الطبيب',
     'expenseByDoctor': 'المصروفات حسب الطبيب',
     'paidByDoctor': 'مدفوع من (الطبيب)',
@@ -814,6 +812,8 @@ class AppLocalizations {
     'extraSlot': 'جلسة إضافية (اختياري)',
     'scheduleView': 'الجدول',
     'listView': 'قائمة',
+    'showFilters': 'إظهار الفلاتر',
+    'hideFilters': 'إخفاء الفلاتر',
     'slotFull': 'هذا الموعد ممتلئ (٣ جلسات + ١ إضافية).',
     'roomTimeConflict': 'هذه الغرفة محجوزة بالفعل لموعد في هذا التوقيت.',
     'doctorTimeConflict': 'هذا الطبيب لديه موعد بالفعل في التاريخ والوقت المحدد. يرجى اختيار وقت آخر.',

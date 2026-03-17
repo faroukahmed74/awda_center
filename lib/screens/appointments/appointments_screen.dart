@@ -39,13 +39,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   int? _filterMonth; // 1-12 when _filterYear is set
   /// Filter by doctor (appointments for this doctor only). Combines with status, date, and search.
   String? _filterDoctorId;
-  /// Filter by service (appointment's services list contains this display name).
-  String? _filterServiceName;
-  /// Filter by package (appointment.packageId equals this id).
+  /// Optional filter by main service.
+  String? _filterServiceId;
+  /// Optional filter by linked package.
   String? _filterPackageId;
   bool _scheduleView = false;
   DateTime _scheduleDate = DateTime.now();
   List<PackageModel> _packages = [];
+  /// When false, status/date row, service/package/doctor dropdowns, and count chips are hidden; search and list/schedule fill the screen.
+  bool _filtersVisible = true;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
 
   /// 24-hour schedule: time slots every 30 min from 00:00 to 23:30.
@@ -839,8 +841,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       out = out.where((a) => a.doctorId == _filterDoctorId).toList();
     }
-    if (_filterServiceName != null && _filterServiceName!.isNotEmpty) {
-      out = out.where((a) => a.services.any((s) => s == _filterServiceName)).toList();
+    if (_filterServiceId != null && _filterServiceId!.isNotEmpty && cache.services.isNotEmpty) {
+      final service = cache.services.firstWhere(
+        (s) => s.id == _filterServiceId,
+        orElse: () => cache.services.first,
+      );
+      final serviceName = service.displayName.toLowerCase();
+      out = out.where((a) => a.services.any((s) => s.toLowerCase() == serviceName)).toList();
     }
     if (_filterPackageId != null && _filterPackageId!.isNotEmpty) {
       out = out.where((a) => a.packageId == _filterPackageId).toList();
@@ -883,8 +890,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       out = out.where((a) => a.doctorId == _filterDoctorId).toList();
     }
-    if (_filterServiceName != null && _filterServiceName!.isNotEmpty) {
-      out = out.where((a) => a.services.any((s) => s == _filterServiceName)).toList();
+    if (_filterServiceId != null && _filterServiceId!.isNotEmpty && cache.services.isNotEmpty) {
+      final service = cache.services.firstWhere(
+        (s) => s.id == _filterServiceId,
+        orElse: () => cache.services.first,
+      );
+      final serviceName = service.displayName.toLowerCase();
+      out = out.where((a) => a.services.any((s) => s.toLowerCase() == serviceName)).toList();
     }
     if (_filterPackageId != null && _filterPackageId!.isNotEmpty) {
       out = out.where((a) => a.packageId == _filterPackageId).toList();
@@ -934,6 +946,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           title: Text(l10n.appointments),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
+            IconButton(
+              icon: Icon(_filtersVisible ? Icons.filter_list_off : Icons.filter_list),
+              tooltip: _filtersVisible ? l10n.hideFilters : l10n.showFilters,
+              onPressed: () => setState(() => _filtersVisible = !_filtersVisible),
+            ),
             const NotificationsButton(),
             if (canUpdate)
               IconButton(
@@ -960,232 +977,185 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: ResponsivePadding.horizontal(context).left,
-                vertical: 8,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: FilterChip(
-                              label: Text(l10n.filterAll),
-                              selected: _statusFilter == null && _filterDoctorId == null && _filterServiceName == null && _filterPackageId == null,
-                              onSelected: (_) => setState(() {
-                                _statusFilter = null;
-                                _filterDoctorId = null;
-                                _filterServiceName = null;
-                                _filterPackageId = null;
-                              }),
-                            ),
-                          ),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.pending), selected: _statusFilter == AppointmentStatus.pending, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.pending))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.confirmed), selected: _statusFilter == AppointmentStatus.confirmed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.confirmed))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.attended), selected: _statusFilter == AppointmentStatus.completed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.completed))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.apologized), selected: _statusFilter == AppointmentStatus.absentWithCause, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.absentWithCause))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.absent), selected: _statusFilter == AppointmentStatus.absentWithoutCause, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.absentWithoutCause))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.absentAll), selected: _statusFilter == AppointmentStatus.noShow, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.noShow))),
-                          const SizedBox(width: 8),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: FilterChip(
-                              label: Text(l10n.filterDay),
-                              selected: _filterDay != null,
-                              onSelected: (_) async {
-                                if (_filterDay != null) { setState(() => _filterDay = null); return; }
-                                final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
-                                if (d != null) setState(() { _filterDay = d; _filterMonth = null; _filterYear = null; });
-                              },
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: FilterChip(
-                              label: Text(l10n.filterMonth),
-                              selected: _filterMonth != null && _filterYear != null,
-                              onSelected: (_) async {
-                                if (_filterMonth != null && _filterYear != null) { setState(() { _filterMonth = null; _filterYear = null; _filterDay = null; }); return; }
-                                final now = DateTime.now();
-                                final d = await showDatePicker(context: context, initialDate: now, firstDate: DateTime(2020), lastDate: DateTime(now.year + 1));
-                                if (d != null) setState(() { _filterMonth = d.month; _filterYear = d.year; _filterDay = null; });
-                              },
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: FilterChip(
-                              label: Text(l10n.filterYear),
-                              selected: _filterYear != null && _filterMonth == null,
-                              onSelected: (_) async {
-                                if (_filterYear != null && _filterMonth == null) { setState(() { _filterYear = null; _filterDay = null; }); return; }
-                                final y = await showDialog<int>(context: context, builder: (ctx) {
-                                  final years = List.generate(6, (i) => DateTime.now().year - 2 + i);
-                                  return AlertDialog(
-                                    title: Text(l10n.filterYear),
-                                    content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: years.map((y) => ListTile(title: Text('$y'), onTap: () => Navigator.pop(ctx, y))).toList())),
-                                  );
-                                });
-                                if (y != null) setState(() { _filterYear = y; _filterMonth = null; _filterDay = null; });
-                              },
-                            ),
-                          ),
-                        ],
+            if (_filtersVisible) ...[
+              // Status + date + list/schedule row — responsive: wrap on narrow, scroll on wide
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  final useWrap = width < Breakpoint.tablet;
+                  final padding = EdgeInsets.symmetric(horizontal: ResponsivePadding.horizontal(context).left, vertical: 8);
+                  final chipsRow = [
+                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.filterAll), selected: _statusFilter == null && _filterDoctorId == null, onSelected: (_) => setState(() { _statusFilter = null; _filterDoctorId = null; }))),
+                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.pending), selected: _statusFilter == AppointmentStatus.pending, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.pending))),
+                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.confirmed), selected: _statusFilter == AppointmentStatus.confirmed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.confirmed))),
+                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.attended), selected: _statusFilter == AppointmentStatus.completed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.completed))),
+                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.apologized), selected: _statusFilter == AppointmentStatus.absentWithCause, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.absentWithCause))),
+                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.absent), selected: _statusFilter == AppointmentStatus.absentWithoutCause, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.absentWithoutCause))),
+                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.absentAll), selected: _statusFilter == AppointmentStatus.noShow, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.noShow))),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.filterDay),
+                        selected: _filterDay != null,
+                        onSelected: (_) async {
+                          if (_filterDay != null) { setState(() => _filterDay = null); return; }
+                          final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
+                          if (d != null) setState(() { _filterDay = d; _filterMonth = null; _filterYear = null; });
+                        },
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(left: ResponsivePadding.horizontal(context).left),
-                    child: SegmentedButton<bool>(
-                      segments: [
-                        ButtonSegment(value: false, label: Text(l10n.listView), icon: const Icon(Icons.list)),
-                        ButtonSegment(value: true, label: Text(l10n.scheduleView), icon: const Icon(Icons.calendar_view_week)),
-                      ],
-                      selected: {_scheduleView},
-                      onSelectionChanged: (s) => setState(() => _scheduleView = s.first),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.filterMonth),
+                        selected: _filterMonth != null && _filterYear != null,
+                        onSelected: (_) async {
+                          if (_filterMonth != null && _filterYear != null) { setState(() { _filterMonth = null; _filterYear = null; _filterDay = null; }); return; }
+                          final now = DateTime.now();
+                          final d = await showDatePicker(context: context, initialDate: now, firstDate: DateTime(2020), lastDate: DateTime(now.year + 1));
+                          if (d != null) setState(() { _filterMonth = d.month; _filterYear = d.year; _filterDay = null; });
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.filterYear),
+                        selected: _filterYear != null && _filterMonth == null,
+                        onSelected: (_) async {
+                          if (_filterYear != null && _filterMonth == null) { setState(() { _filterYear = null; _filterDay = null; }); return; }
+                          final y = await showDialog<int>(context: context, builder: (ctx) {
+                            final years = List.generate(6, (i) => DateTime.now().year - 2 + i);
+                            return AlertDialog(
+                              title: Text(l10n.filterYear),
+                              content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: years.map((y) => ListTile(title: Text('$y'), onTap: () => Navigator.pop(ctx, y))).toList())),
+                            );
+                          });
+                          if (y != null) setState(() { _filterYear = y; _filterMonth = null; _filterDay = null; });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: SegmentedButton<bool>(
+                        segments: [ButtonSegment(value: false, label: Text(l10n.listView), icon: const Icon(Icons.list)), ButtonSegment(value: true, label: Text(l10n.scheduleView), icon: const Icon(Icons.calendar_view_week))],
+                        selected: {_scheduleView},
+                        onSelectionChanged: (s) => setState(() => _scheduleView = s.first),
+                      ),
+                    ),
+                  ];
+                  if (useWrap) {
+                    return Padding(
+                      padding: padding,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: chipsRow,
+                      ),
+                    );
+                  }
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: padding,
+                    child: Row(children: chipsRow),
+                  );
+                },
               ),
-            ),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < Breakpoint.mobile;
-                final dropdownWidth = isNarrow ? double.infinity : 180.0;
-                final padding = ResponsivePadding.horizontal(context);
-                final dropdownPadding = EdgeInsets.symmetric(horizontal: padding.left, vertical: 6);
-                Widget doctorDropdown() => SizedBox(
-                  width: dropdownWidth,
-                  child: DropdownButtonFormField<String?>(
-                    value: _filterDoctorId,
-                    decoration: InputDecoration(
-                      labelText: l10n.filterByDoctor,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: [
-                      DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
-                      ...cache.doctors.map((d) => DropdownMenuItem<String?>(
-                        value: d.id,
-                        child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
-                      )),
-                    ],
-                    onChanged: (v) => setState(() => _filterDoctorId = v),
-                  ),
-                );
-                Widget serviceDropdown() => SizedBox(
-                  width: dropdownWidth,
-                  child: DropdownButtonFormField<String?>(
-                    value: _filterServiceName,
-                    decoration: InputDecoration(
-                      labelText: l10n.filterByService,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: [
-                      DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
-                      ...cache.services.map((s) => DropdownMenuItem<String?>(
-                        value: s.displayName,
-                        child: Text(s.displayName, overflow: TextOverflow.ellipsis),
-                      )),
-                      if (_filterServiceName != null &&
-                          !cache.services.any((s) => s.displayName == _filterServiceName))
-                        DropdownMenuItem<String?>(
-                          value: _filterServiceName,
-                          child: Text(_filterServiceName!, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: (v) => setState(() => _filterServiceName = v),
-                  ),
-                );
-                Widget packageDropdown() => SizedBox(
-                  width: dropdownWidth,
-                  child: DropdownButtonFormField<String?>(
-                    value: _filterPackageId,
-                    decoration: InputDecoration(
-                      labelText: l10n.filterByPackage,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: [
-                      DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
-                      ..._packages.map((p) => DropdownMenuItem<String?>(
-                        value: p.id,
-                        child: Text(p.displayName, overflow: TextOverflow.ellipsis),
-                      )),
-                      if (_filterPackageId != null && !_packages.any((p) => p.id == _filterPackageId))
-                        DropdownMenuItem<String?>(
-                          value: _filterPackageId,
-                          child: Text(_filterPackageId!, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: (v) => setState(() => _filterPackageId = v),
-                  ),
-                );
-                if (isNarrow) {
+              // Services / packages / doctor dropdowns — responsive width
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  final padding = ResponsivePadding.horizontal(context).left * 2;
+                  final count = _showDoctorFilter(context) ? 3 : 2;
+                  final available = w - padding - 12.0 * (count - 1);
+                  final dropdownWidth = (available / count).clamp(120.0, 260.0);
                   return Padding(
-                    padding: dropdownPadding,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
+                    padding: EdgeInsets.fromLTRB(ResponsivePadding.horizontal(context).left, 0, ResponsivePadding.horizontal(context).right, 4),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (_showDoctorFilter(context)) doctorDropdown(),
-                        if (_showDoctorFilter(context)) const SizedBox(height: 8),
-                        serviceDropdown(),
-                        const SizedBox(height: 8),
-                        packageDropdown(),
+                        SizedBox(
+                          width: dropdownWidth,
+                          child: DropdownButtonFormField<String?>(
+                            value: _filterServiceId,
+                            decoration: InputDecoration(
+                              labelText: l10n.services,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            items: [
+                              DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
+                              ...cache.services.map((s) => DropdownMenuItem<String?>(value: s.id, child: Text(s.displayName, overflow: TextOverflow.ellipsis))),
+                            ],
+                            onChanged: (v) => setState(() => _filterServiceId = v),
+                          ),
+                        ),
+                        SizedBox(
+                          width: dropdownWidth,
+                          child: DropdownButtonFormField<String?>(
+                            value: _filterPackageId,
+                            decoration: InputDecoration(
+                              labelText: l10n.packages,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            items: [
+                              DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
+                              ..._packages.map((p) => DropdownMenuItem<String?>(value: p.id, child: Text(p.displayName, overflow: TextOverflow.ellipsis))),
+                            ],
+                            onChanged: (v) => setState(() => _filterPackageId = v),
+                          ),
+                        ),
+                        if (_showDoctorFilter(context))
+                          SizedBox(
+                            width: dropdownWidth,
+                            child: DropdownButtonFormField<String?>(
+                              value: _filterDoctorId,
+                              decoration: InputDecoration(
+                                labelText: l10n.filterByDoctor,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              items: [
+                                DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
+                                ...cache.doctors.map((d) => DropdownMenuItem<String?>(value: d.id, child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis))),
+                              ],
+                              onChanged: (v) => setState(() => _filterDoctorId = v),
+                            ),
+                          ),
                       ],
                     ),
                   );
-                }
-                return Padding(
-                  padding: dropdownPadding,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                },
+              ),
+              // Count chips row
+              Builder(
+                builder: (context) {
+                  final filtered = _displayList(cache);
+                  final weekList = _displayListForWeek(cache);
+                  final absentWithCauseCount = filtered.where((a) => a.status == AppointmentStatus.absentWithCause).length;
+                  final absentWithoutCauseCount = filtered.where((a) => a.status == AppointmentStatus.absentWithoutCause || a.status == AppointmentStatus.noShow).length;
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(ResponsivePadding.horizontal(context).left, 0, ResponsivePadding.horizontal(context).right, 8),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 6,
                       children: [
-                        if (_showDoctorFilter(context)) ...[
-                          doctorDropdown(),
-                          const SizedBox(width: 12),
-                        ],
-                        serviceDropdown(),
-                        const SizedBox(width: 12),
-                        packageDropdown(),
+                        _CountChip(label: l10n.sessionsFiltered, count: filtered.length),
+                        _CountChip(label: l10n.apologized, count: absentWithCauseCount),
+                        _CountChip(label: l10n.absent, count: absentWithoutCauseCount),
+                        _CountChip(label: l10n.sessionsThisWeek, count: weekList.length),
                       ],
                     ),
-                  ),
-                );
-              },
-            ),
-            Builder(
-              builder: (context) {
-                final filtered = _displayList(cache);
-                final weekList = _displayListForWeek(cache);
-                final absentWithCauseCount = filtered.where((a) => a.status == AppointmentStatus.absentWithCause).length;
-                final absentWithoutCauseCount = filtered.where((a) => a.status == AppointmentStatus.absentWithoutCause || a.status == AppointmentStatus.noShow).length;
-                final padding = ResponsivePadding.horizontal(context);
-                return Padding(
-                  padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 8),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 6,
-                    children: [
-                      _CountChip(label: l10n.sessionsFiltered, count: filtered.length),
-                      _CountChip(label: l10n.apologized, count: absentWithCauseCount),
-                      _CountChip(label: l10n.absent, count: absentWithoutCauseCount),
-                      _CountChip(label: l10n.sessionsThisWeek, count: weekList.length),
-                    ],
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
+            ],
             Padding(
               padding: EdgeInsets.fromLTRB(ResponsivePadding.horizontal(context).left, 0, ResponsivePadding.horizontal(context).right, 8),
               child: TextField(
