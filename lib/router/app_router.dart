@@ -14,6 +14,7 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/users/user_profile_screen.dart';
 import '../screens/patients/patients_screen.dart';
 import '../screens/patients/patient_detail_screen.dart';
+import '../screens/patients/patient_sessions_packages_admin_screen.dart';
 import '../screens/income_expenses/income_expenses_screen.dart';
 import '../screens/income_expenses/finance_summary_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
@@ -101,6 +102,13 @@ GoRouter createAppRouter(BuildContext context) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return PatientDetailScreen(patientId: id);
+        },
+      ),
+      GoRoute(
+        path: '/patients/:id/sessions-admin',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return PatientSessionsPackagesAdminScreen(patientId: id);
         },
       ),
       GoRoute(

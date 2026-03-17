@@ -65,4 +65,26 @@ class SessionModel {
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      if (appointmentId != null && appointmentId!.isNotEmpty) 'appointmentId': appointmentId,
+      'patientId': patientId,
+      'doctorId': doctorId,
+      'sessionDate': Timestamp.fromDate(sessionDate),
+      'startTime': startTime,
+      'endTime': endTime,
+      if (sessionType != null) 'sessionType': sessionType,
+      if (service != null) 'service': service,
+      if (feesAmount != null) 'feesAmount': feesAmount,
+      if (discountPercent != null) 'discountPercent': discountPercent,
+      if (vas != null) 'vas': vas,
+      if (rom != null) 'rom': rom,
+      if (functionNote != null) 'functionNote': functionNote,
+      if (notes != null) 'notes': notes,
+      if (progressNotes != null) 'progressNotes': progressNotes,
+      if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    };
+  }
 }

@@ -327,6 +327,30 @@ class FirestoreService {
     return out;
   }
 
+  Future<SessionModel?> getSession(String sessionId) async {
+    final doc = await _firestore.collection('sessions').doc(sessionId).get();
+    if (doc.data() == null) return null;
+    return SessionModel.fromFirestore(doc);
+  }
+
+  Future<void> updateSession(String sessionId, Map<String, dynamic> data) async {
+    await _firestore.collection('sessions').doc(sessionId).update({
+      ...data,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Deletes a session doc and all relations: if the session has an appointmentId,
+  /// deletes that appointment and any income records linked to it.
+  Future<void> deleteSessionAndRelations(String sessionId) async {
+    final session = await getSession(sessionId);
+    if (session == null) return;
+    if (session.appointmentId != null && session.appointmentId!.trim().isNotEmpty) {
+      await deleteAppointment(session.appointmentId!);
+    }
+    await _firestore.collection('sessions').doc(sessionId).delete();
+  }
+
   // Patient profile
 
   /// Returns user ids of staff-created patients (email contains @awda.local). For migration to Auth login.

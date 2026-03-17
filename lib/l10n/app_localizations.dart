@@ -130,6 +130,8 @@ class AppLocalizations {
   String get previousDay => _map['previousDay']!;
   String get nextDay => _map['nextDay']!;
   String get filterByDoctor => _map['filterByDoctor']!;
+  String get filterByService => _map['filterByService']!;
+  String get filterByPackage => _map['filterByPackage']!;
   String get incomeByDoctor => _map['incomeByDoctor']!;
   String get expenseByDoctor => _map['expenseByDoctor']!;
   String get paidByDoctor => _map['paidByDoctor']!;
@@ -260,6 +262,10 @@ class AppLocalizations {
   String get priceQuote => _map['priceQuote']!;
   String get addPackage => _map['addPackage']!;
   String get editPackage => _map['editPackage']!;
+  String get editSession => _map['editSession']!;
+  String get sessionsAndPackages => _map['sessionsAndPackages']!;
+  String get viewDetails => _map['viewDetails']!;
+  String get deleteSession => _map['deleteSession']!;
   String get numberOfSessions => _map['numberOfSessions']!;
   String get packageAmount => _map['packageAmount']!;
   String get packageServices => _map['packageServices']!;
@@ -457,6 +463,8 @@ class AppLocalizations {
     'previousDay': 'Previous day',
     'nextDay': 'Next day',
     'filterByDoctor': 'Filter by doctor',
+    'filterByService': 'Filter by service',
+    'filterByPackage': 'Filter by package',
     'incomeByDoctor': 'Income by doctor',
     'expenseByDoctor': 'Expense by doctor',
     'paidByDoctor': 'Paid by (doctor)',
@@ -589,6 +597,10 @@ class AppLocalizations {
     'packages': 'Packages',
     'addPackage': 'Add package',
     'editPackage': 'Edit package',
+    'editSession': 'Edit session',
+    'sessionsAndPackages': 'Sessions & packages',
+    'viewDetails': 'View details',
+    'deleteSession': 'Delete session',
     'numberOfSessions': 'Number of sessions',
     'packageAmount': 'Package amount',
     'packageServices': 'Services in package',
@@ -790,6 +802,8 @@ class AppLocalizations {
     'previousDay': 'اليوم السابق',
     'nextDay': 'اليوم التالي',
     'filterByDoctor': 'تصفية حسب الطبيب',
+    'filterByService': 'تصفية حسب الخدمة',
+    'filterByPackage': 'تصفية حسب الباقة',
     'incomeByDoctor': 'الدخل حسب الطبيب',
     'expenseByDoctor': 'المصروفات حسب الطبيب',
     'paidByDoctor': 'مدفوع من (الطبيب)',
@@ -922,6 +936,10 @@ class AppLocalizations {
     'packages': 'الباقات',
     'addPackage': 'إضافة باقة',
     'editPackage': 'تعديل الباقة',
+    'editSession': 'تعديل الجلسة',
+    'sessionsAndPackages': 'الجلسات والباقات',
+    'viewDetails': 'عرض التفاصيل',
+    'deleteSession': 'حذف الجلسة',
     'numberOfSessions': 'عدد الجلسات',
     'packageAmount': 'مبلغ الباقة',
     'packageServices': 'الخدمات في الباقة',

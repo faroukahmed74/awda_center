@@ -378,6 +378,28 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                 },
               ),
             ],
+            if (context.watch<AuthProvider>().currentUser?.canAccessAdminDashboard == true)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                tooltip: l10n.sessionsAndPackages,
+                onSelected: (value) {
+                  if (value == 'sessions_admin') {
+                    context.push('/patients/${widget.patientId}/sessions-admin');
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'sessions_admin',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_view_week, size: 20),
+                        const SizedBox(width: 12),
+                        Text(l10n.sessionsAndPackages),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
         body: _loading
