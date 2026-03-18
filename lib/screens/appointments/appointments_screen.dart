@@ -169,6 +169,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   @override
   void initState() {
     super.initState();
+    // Default view: current day only.
+    _filterDay = DateTime.now();
+    _filterYear = null;
+    _filterMonth = null;
     _startAppointmentsStream();
     _loadPackages();
   }
@@ -206,16 +210,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         .appointmentsStream(doctorId: doctorId)
         .listen(
           (snapshot) {
-            final from = DateTime.now().subtract(const Duration(days: 30));
             var list = snapshot.docs
                 .map(
                   (d) => AppointmentModel.fromFirestore(
                     d as DocumentSnapshot<Map<String, dynamic>>,
-                  ),
-                )
-                .where(
-                  (a) => a.appointmentDate.isAfter(
-                    from.subtract(const Duration(days: 1)),
                   ),
                 )
                 .where((a) => a.status != AppointmentStatus.cancelled)
@@ -794,12 +792,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  /// Prev/next day row for list view (same UX as schedule view). Uses [_filterDay]; null means today.
+  /// Prev/next day row for list view (same UX as schedule view).
+  /// Uses [_filterDay]; when it's null but month/year is set, we display the first day of that month.
   Widget _buildListViewModelDateNavigator(
     BuildContext context,
     AppLocalizations l10n,
   ) {
-    final effectiveDate = _filterDay ?? DateTime.now();
+    final effectiveDate =
+        _filterDay ??
+        (_filterYear != null && _filterMonth != null
+            ? DateTime(_filterYear!, _filterMonth!, 1)
+            : DateTime.now());
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
@@ -1237,8 +1240,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             serviceMatch;
       }).toList();
     }
+    // Sort by calendar date (newest first), then within same day by start time 00:00 -> 23:59.
     out.sort((a, b) {
-      final dateCompare = a.appointmentDate.compareTo(b.appointmentDate);
+      final aDay = DateTime(a.appointmentDate.year, a.appointmentDate.month, a.appointmentDate.day);
+      final bDay = DateTime(b.appointmentDate.year, b.appointmentDate.month, b.appointmentDate.day);
+      final dateCompare = bDay.compareTo(aDay);
       if (dateCompare != 0) return dateCompare;
       return _compareTime(a.startTime, b.startTime);
     });
@@ -1340,10 +1346,25 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                       child: FilterChip(
                         label: Text(l10n.filterAll),
                         selected:
-                            _statusFilter == null && _filterDoctorId == null,
+                            _statusFilter == null &&
+                            _filterDoctorId == null &&
+                            _filterServiceId == null &&
+                            _filterPackageId == null &&
+                            _filterDay != null &&
+                            _filterYear == null &&
+                            _filterMonth == null &&
+                            _filterDay!.year == DateTime.now().year &&
+                            _filterDay!.month == DateTime.now().month &&
+                            _filterDay!.day == DateTime.now().day,
                         onSelected: (_) => setState(() {
                           _statusFilter = null;
                           _filterDoctorId = null;
+                          _filterServiceId = null;
+                          _filterPackageId = null;
+                          final now = DateTime.now();
+                          _filterDay = now;
+                          _filterYear = null;
+                          _filterMonth = null;
                         }),
                       ),
                     ),

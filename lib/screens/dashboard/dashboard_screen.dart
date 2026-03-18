@@ -39,8 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final localeCode = context.read<LocaleProvider>().locale.languageCode;
     if (user != null &&
         user.id.isNotEmpty &&
-        (_lastSyncedUserId != user.id ||
-            _lastSyncedLocaleCode != localeCode)) {
+        (_lastSyncedUserId != user.id || _lastSyncedLocaleCode != localeCode)) {
       _lastSyncedUserId = user.id;
       _lastSyncedLocaleCode = localeCode;
       unawaited(FirestoreService().updateUserLocale(user.id, localeCode));
@@ -84,9 +83,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     builder: (_) => const AddPatientDialog(),
                   );
                   if (patientId != null && mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.patientAdded)),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(l10n.patientAdded)));
                     context.push('/patients/$patientId');
                   }
                 },
@@ -97,7 +96,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () => context.read<LocaleProvider>().toggleLocale(),
             ),
             IconButton(
-              icon: Icon(context.watch<ThemeProvider>().isDark ? Icons.light_mode : Icons.dark_mode),
+              icon: Icon(
+                context.watch<ThemeProvider>().isDark
+                    ? Icons.light_mode
+                    : Icons.dark_mode,
+              ),
               tooltip: 'Theme',
               onPressed: () => context.read<ThemeProvider>().toggleDarkLight(),
             ),
@@ -115,16 +118,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             children: [
               Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
+                child: ListView(
+                  padding: EdgeInsets.zero,
                   children: [
-                          AppLogo(size: responsiveDrawerHeaderLogoSize(context)),
+                    DrawerHeader(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          AppLogo(
+                            size: responsiveDrawerHeaderLogoSize(context),
+                          ),
                           const SizedBox(height: 6),
                           Flexible(
                             child: Text(
@@ -134,141 +141,200 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               maxLines: 1,
                             ),
                           ),
-                    Text(
+                          Text(
                             l10n.roleDisplay(user.role.value),
                             style: Theme.of(context).textTheme.bodySmall,
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
-                  ],
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.dashboard),
-                title: Text(l10n.dashboard),
-                onTap: () { Navigator.pop(context); },
-              ),
-              if (canAccessRoute(user, '/admin-dashboard')) ...[
-                ListTile(
-                  leading: const Icon(Icons.admin_panel_settings),
-                  title: Text(l10n.adminDashboard),
-                  onTap: () { Navigator.pop(context); context.push('/admin-dashboard'); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.meeting_room),
-                  title: Text(l10n.rooms),
-                  onTap: () { Navigator.pop(context); context.push('/rooms'); },
-                ),
+                        ],
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.dashboard),
+                      title: Text(l10n.dashboard),
+                      onTap: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                    if (canAccessRoute(user, '/admin-dashboard')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.admin_panel_settings),
+                        title: Text(l10n.adminDashboard),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/admin-dashboard');
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.meeting_room),
+                        title: Text(l10n.rooms),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/rooms');
+                        },
+                      ),
                       ListTile(
                         leading: const Icon(Icons.miscellaneous_services),
                         title: Text(l10n.services),
-                        onTap: () { Navigator.pop(context); context.push('/services'); },
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/services');
+                        },
                       ),
                       ListTile(
                         leading: const Icon(Icons.inventory_2_outlined),
                         title: Text(l10n.packages),
-                        onTap: () { Navigator.pop(context); context.push('/packages'); },
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/packages');
+                        },
                       ),
-                ListTile(
-                  leading: const Icon(Icons.badge),
-                  title: Text(l10n.manageDoctors),
-                  onTap: () { Navigator.pop(context); context.push('/doctors-admin'); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.history),
-                  title: Text(l10n.auditLog),
-                  onTap: () { Navigator.pop(context); context.push('/audit-log'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/users')) ...[
-                ListTile(
-                  leading: const Icon(Icons.people),
-                  title: Text(l10n.users),
-                  onTap: () { Navigator.pop(context); context.push('/users'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/appointments')) ...[
-                ListTile(
-                  leading: const Icon(Icons.calendar_today),
-                  title: Text(l10n.appointments),
-                  onTap: () { Navigator.pop(context); context.push('/appointments'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/doctors')) ...[
-                ListTile(
-                  leading: const Icon(Icons.medical_services_outlined),
-                  title: Text(l10n.ourDoctors),
-                  onTap: () { Navigator.pop(context); context.push('/doctors'); },
-                ),
-              ],
+                      ListTile(
+                        leading: const Icon(Icons.badge),
+                        title: Text(l10n.manageDoctors),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/doctors-admin');
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.history),
+                        title: Text(l10n.auditLog),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/audit-log');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/users')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.people),
+                        title: Text(l10n.users),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/users');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/appointments')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.calendar_today),
+                        title: Text(l10n.appointments),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/appointments');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/doctors')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.medical_services_outlined),
+                        title: Text(l10n.ourDoctors),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/doctors');
+                        },
+                      ),
+                    ],
                     ListTile(
                       leading: const Icon(Icons.request_quote_outlined),
                       title: Text(l10n.priceQuote),
-                      onTap: () { Navigator.pop(context); context.push('/price-quote'); },
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/price-quote');
+                      },
                     ),
-              if (canAccessRoute(user, '/my-doctor-profile')) ...[
-                ListTile(
-                  leading: const Icon(Icons.badge_outlined),
-                  title: Text(l10n.myDoctorProfile),
-                  onTap: () { Navigator.pop(context); context.push('/my-doctor-profile'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/my-appointments')) ...[
-                ListTile(
-                  leading: const Icon(Icons.event),
-                  title: Text(l10n.myAppointments),
-                  onTap: () { Navigator.pop(context); context.push('/my-appointments'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/profile')) ...[
-                ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(l10n.profile),
-                  onTap: () { Navigator.pop(context); context.push('/profile'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/patients')) ...[
-                ListTile(
-                  leading: const Icon(Icons.medical_services),
-                  title: Text(l10n.patients),
-                  onTap: () { Navigator.pop(context); context.push('/patients'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/income-expenses')) ...[
-                ListTile(
-                  leading: const Icon(Icons.attach_money),
-                  title: Text(l10n.incomeAndExpenses),
-                  onTap: () { Navigator.pop(context); context.push('/income-expenses'); },
-                ),
-              ],
+                    if (canAccessRoute(user, '/my-doctor-profile')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.badge_outlined),
+                        title: Text(l10n.myDoctorProfile),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/my-doctor-profile');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/my-appointments')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.event),
+                        title: Text(l10n.myAppointments),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/my-appointments');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/profile')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.person),
+                        title: Text(l10n.profile),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/profile');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/patients')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.medical_services),
+                        title: Text(l10n.patients),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/patients');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/income-expenses')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.attach_money),
+                        title: Text(l10n.incomeAndExpenses),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/income-expenses');
+                        },
+                      ),
+                    ],
                     if (canAccessRoute(user, '/income-expenses-summary')) ...[
                       ListTile(
                         leading: const Icon(Icons.summarize),
                         title: Text(l10n.financeSummary),
-                        onTap: () { Navigator.pop(context); context.push('/income-expenses-summary'); },
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/income-expenses-summary');
+                        },
                       ),
                     ],
-              if (canAccessRoute(user, '/reports')) ...[
-                ListTile(
-                  leading: const Icon(Icons.assessment),
-                  title: Text(l10n.reports),
-                  onTap: () { Navigator.pop(context); context.push('/reports'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/requirements')) ...[
-                ListTile(
-                  leading: const Icon(Icons.shopping_cart_outlined),
-                  title: Text(l10n.requirements),
-                  onTap: () { Navigator.pop(context); context.push('/requirements'); },
-                ),
-              ],
-              if (canAccessRoute(user, '/admin-todos')) ...[
-                ListTile(
-                  leading: const Icon(Icons.check_circle_outline),
-                  title: Text(l10n.toDoList),
-                  onTap: () { Navigator.pop(context); context.push('/admin-todos'); },
-                ),
-              ],
+                    if (canAccessRoute(user, '/reports')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.assessment),
+                        title: Text(l10n.reports),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/reports');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/requirements')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.shopping_cart_outlined),
+                        title: Text(l10n.requirements),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/requirements');
+                        },
+                      ),
+                    ],
+                    if (canAccessRoute(user, '/admin-todos')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.check_circle_outline),
+                        title: Text(l10n.toDoList),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/admin-todos');
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -285,7 +351,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
                 behavior: HitTestBehavior.translucent,
                 child: SingleChildScrollView(
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: ResponsivePadding.all(context),
                   child: Center(
                     child: ConstrainedBox(
@@ -304,7 +371,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             style: Theme.of(context).textTheme.bodyLarge,
                             textAlign: TextAlign.center,
                           ),
-                          if (!user.hasRole(UserRole.patient) || canAccessRoute(user, '/patients') || canAccessRoute(user, '/appointments')) ...[
+                          if (!user.hasRole(UserRole.patient) ||
+                              canAccessRoute(user, '/patients') ||
+                              canAccessRoute(user, '/appointments')) ...[
                             const SizedBox(height: 20),
                             Wrap(
                               spacing: 8,
@@ -313,16 +382,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               children: [
                                 if (!kIsWeb && !user.hasRole(UserRole.patient))
                                   FilledButton.tonalIcon(
-                                    icon: const Icon(Icons.person_add, size: 20),
+                                    icon: const Icon(
+                                      Icons.person_add,
+                                      size: 20,
+                                    ),
                                     label: Text(l10n.addNewPatient),
                                     onPressed: () async {
-                                      final patientId = await showDialog<String>(
-                                        context: context,
-                                        builder: (_) => const AddPatientDialog(),
-                                      );
+                                      final patientId =
+                                          await showDialog<String>(
+                                            context: context,
+                                            builder: (_) =>
+                                                const AddPatientDialog(),
+                                          );
                                       if (patientId != null && mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(l10n.patientAdded)),
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(l10n.patientAdded),
+                                          ),
                                         );
                                         context.push('/patients/$patientId');
                                       }
@@ -340,7 +418,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                                 if (canAccessRoute(user, '/appointments')) ...[
                                   FilledButton.tonalIcon(
-                                    icon: const Icon(Icons.calendar_today, size: 20),
+                                    icon: const Icon(
+                                      Icons.calendar_today,
+                                      size: 20,
+                                    ),
                                     label: Text(l10n.bookAppointment),
                                     onPressed: () {
                                       Navigator.pop(context);
@@ -349,9 +430,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                   FilledButton.tonalIcon(
                                     icon: const Icon(Icons.today, size: 20),
-                                    label: Text(_todayAppointmentsCount != null
-                                        ? '${l10n.todayAppointments} ($_todayAppointmentsCount)'
-                                        : l10n.todayAppointments),
+                                    label: Text(
+                                      _todayAppointmentsCount != null
+                                          ? '${l10n.todayAppointments} ($_todayAppointmentsCount)'
+                                          : l10n.todayAppointments,
+                                    ),
                                     onPressed: () {
                                       Navigator.pop(context);
                                       context.push('/appointments');
@@ -366,7 +449,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             user: user,
                             l10n: l10n,
                             onTodayCountChanged: (count) {
-                              if (mounted) setState(() => _todayAppointmentsCount = count);
+                              if (mounted)
+                                setState(() => _todayAppointmentsCount = count);
                             },
                           ),
                         ],
@@ -398,7 +482,8 @@ class _DrawerVersionFooterState extends State<_DrawerVersionFooter> {
   void initState() {
     super.initState();
     PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _version = '${info.version}+${info.buildNumber}');
+      if (mounted)
+        setState(() => _version = '${info.version}+${info.buildNumber}');
     });
   }
 
@@ -435,10 +520,12 @@ class _DashboardAppointmentsSection extends StatefulWidget {
   });
 
   @override
-  State<_DashboardAppointmentsSection> createState() => _DashboardAppointmentsSectionState();
+  State<_DashboardAppointmentsSection> createState() =>
+      _DashboardAppointmentsSectionState();
 }
 
-class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSection> {
+class _DashboardAppointmentsSectionState
+    extends State<_DashboardAppointmentsSection> {
   final FirestoreService _firestore = FirestoreService();
   List<AppointmentModel> _appointments = [];
   bool _loading = true;
@@ -467,42 +554,43 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     setState(() => _loading = true);
     if (user.hasRole(UserRole.patient)) {
       _subscription?.cancel();
-      _subscription = _firestore.appointmentsStream(patientId: user.id).listen(_onSnapshot);
+      _subscription = _firestore
+          .appointmentsStream(patientId: user.id)
+          .listen(_onSnapshot);
     } else if (user.hasRole(UserRole.doctor) && !user.hasRole(UserRole.admin)) {
-      if (user.canAccessFeature('appointments_see_all') || user.canAccessFeature('appointments_view_all')) {
+      if (user.canAccessFeature('appointments_see_all') ||
+          user.canAccessFeature('appointments_view_all')) {
         _subscription?.cancel();
         _subscription = _firestore.appointmentsStream().listen(_onSnapshot);
       } else {
-      _firestore.getDoctorByUserId(user.id).then((doc) {
-        if (!mounted) return;
-        if (doc != null) {
-          _subscription?.cancel();
-          _subscription = _firestore.appointmentsStream(doctorId: doc.id).listen(_onSnapshot);
-        } else {
-          setState(() => _loading = false);
-        }
-      });
+        _firestore.getDoctorByUserId(user.id).then((doc) {
+          if (!mounted) return;
+          if (doc != null) {
+            _subscription?.cancel();
+            _subscription = _firestore
+                .appointmentsStream(doctorId: doc.id)
+                .listen(_onSnapshot);
+          } else {
+            setState(() => _loading = false);
+          }
+        });
       }
-    } else if (user.canAccessFeature('appointments') || user.canAccessFeature('appointments_view_all')) {
+    } else if (user.canAccessFeature('appointments') ||
+        user.canAccessFeature('appointments_view_all')) {
       _subscription?.cancel();
       _subscription = _firestore.appointmentsStream().listen(_onSnapshot);
     }
   }
 
   void _onSnapshot(QuerySnapshot<Map<String, dynamic>> snapshot) {
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final to = todayStart.add(const Duration(days: 400));
     var list = snapshot.docs
-        .map((d) => AppointmentModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>))
+        .map(
+          (d) => AppointmentModel.fromFirestore(
+            d as DocumentSnapshot<Map<String, dynamic>>,
+          ),
+        )
         .where((a) => a.status != AppointmentStatus.cancelled)
-        .where((a) => !a.appointmentDate.isBefore(todayStart) && a.appointmentDate.isBefore(to))
         .toList();
-    list.sort((a, b) {
-      int c = a.appointmentDate.compareTo(b.appointmentDate);
-      if (c != 0) return c;
-      return a.startTime.compareTo(b.startTime);
-    });
     if (!mounted) return;
     setState(() {
       _appointments = list;
@@ -510,19 +598,40 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     });
   }
 
+  /// Minutes since midnight for "HH:mm" (for same-day time sort).
+  static int _minutesOfDay(String timeStr) {
+    final parts = timeStr.split(':');
+    if (parts.length < 2) return 0;
+    final h = int.tryParse(parts[0].trim()) ?? 0;
+    final m = int.tryParse(parts[1].trim()) ?? 0;
+    return h * 60 + m;
+  }
+
   /// Date range for current period (start inclusive, end exclusive).
   (DateTime start, DateTime end) _periodRange() {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
     switch (_period) {
       case _DashboardPeriod.today:
+        final today = DateTime(now.year, now.month, now.day);
         return (today, today.add(const Duration(days: 1)));
       case _DashboardPeriod.week:
-        return (today, today.add(const Duration(days: 7)));
+        // Monday 00:00 to next Monday 00:00
+        final weekday = now.weekday; // 1=Mon ... 7=Sun
+        final weekStart = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: weekday - 1));
+        final weekEnd = weekStart.add(const Duration(days: 7));
+        return (weekStart, weekEnd);
       case _DashboardPeriod.month:
-        return (today, today.add(const Duration(days: 31)));
+        final monthStart = DateTime(now.year, now.month, 1);
+        final nextMonthStart = DateTime(now.year, now.month + 1, 1);
+        return (monthStart, nextMonthStart);
       case _DashboardPeriod.year:
-        return (today, today.add(const Duration(days: 366)));
+        final yearStart = DateTime(now.year, 1, 1);
+        final nextYearStart = DateTime(now.year + 1, 1, 1);
+        return (yearStart, nextYearStart);
     }
   }
 
@@ -531,7 +640,11 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     final cache = context.read<DataCacheProvider>();
     final q = _searchController.text.trim().toLowerCase();
     var list = _appointments
-        .where((a) => !a.appointmentDate.isBefore(start) && a.appointmentDate.isBefore(end))
+        .where(
+          (a) =>
+              !a.appointmentDate.isBefore(start) &&
+              a.appointmentDate.isBefore(end),
+        )
         .toList();
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       list = list.where((a) => a.doctorId == _filterDoctorId).toList();
@@ -548,10 +661,15 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
             (patient.phone ?? '').toLowerCase().contains(q);
       }).toList();
     }
+    // Sort by calendar date (newest first), then within same day by start time 00:00 -> 23:59.
     list.sort((a, b) {
-      int c = a.appointmentDate.compareTo(b.appointmentDate);
+      final aDay = DateTime(a.appointmentDate.year, a.appointmentDate.month, a.appointmentDate.day);
+      final bDay = DateTime(b.appointmentDate.year, b.appointmentDate.month, b.appointmentDate.day);
+      final c = bDay.compareTo(aDay);
       if (c != 0) return c;
-      return a.startTime.compareTo(b.startTime);
+      final aMins = _minutesOfDay(a.startTime);
+      final bMins = _minutesOfDay(b.startTime);
+      return aMins.compareTo(bMins);
     });
     return list;
   }
@@ -574,13 +692,20 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
   String _statusLabel(AppointmentStatus s) {
     final l10n = widget.l10n;
     switch (s) {
-      case AppointmentStatus.pending: return l10n.pending;
-      case AppointmentStatus.confirmed: return l10n.confirmed;
-      case AppointmentStatus.completed: return l10n.attended;
-      case AppointmentStatus.cancelled: return l10n.cancelled;
-      case AppointmentStatus.noShow: return l10n.absent;
-      case AppointmentStatus.absentWithCause: return l10n.apologized;
-      case AppointmentStatus.absentWithoutCause: return l10n.absent;
+      case AppointmentStatus.pending:
+        return l10n.pending;
+      case AppointmentStatus.confirmed:
+        return l10n.confirmed;
+      case AppointmentStatus.completed:
+        return l10n.attended;
+      case AppointmentStatus.cancelled:
+        return l10n.cancelled;
+      case AppointmentStatus.noShow:
+        return l10n.absent;
+      case AppointmentStatus.absentWithCause:
+        return l10n.apologized;
+      case AppointmentStatus.absentWithoutCause:
+        return l10n.absent;
     }
   }
 
@@ -601,14 +726,17 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
     final isPatient = user.hasRole(UserRole.patient);
     final isDoctor = user.hasRole(UserRole.doctor);
     final canSeeAppointments = user.canAccessFeature('appointments');
-    if (!isPatient && !isDoctor && !canSeeAppointments) return const SizedBox.shrink();
+    if (!isPatient && !isDoctor && !canSeeAppointments)
+      return const SizedBox.shrink();
 
     final padding = ResponsivePadding.all(context);
     final cache = context.watch<DataCacheProvider>();
     final filtered = _filteredAppointments;
     final count = filtered.length;
 
-    if (!_loading && _period == _DashboardPeriod.today && _lastReportedTodayCount != count) {
+    if (!_loading &&
+        _period == _DashboardPeriod.today &&
+        _lastReportedTodayCount != count) {
       _lastReportedTodayCount = count;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         widget.onTodayCountChanged?.call(count);
@@ -622,9 +750,18 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
               const SizedBox(width: 12),
-              Flexible(child: Text(l10n.todayAppointments, overflow: TextOverflow.ellipsis)),
+              Flexible(
+                child: Text(
+                  l10n.todayAppointments,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -652,9 +789,13 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    context.push(isPatient ? '/my-appointments' : '/appointments');
+                    context.push(
+                      isPatient ? '/my-appointments' : '/appointments',
+                    );
                   },
-                  child: Text(isPatient ? l10n.myAppointments : l10n.appointments),
+                  child: Text(
+                    isPatient ? l10n.myAppointments : l10n.appointments,
+                  ),
                 ),
               ],
             ),
@@ -666,22 +807,26 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                 ChoiceChip(
                   label: Text(l10n.filterToday),
                   selected: _period == _DashboardPeriod.today,
-                  onSelected: (_) => setState(() => _period = _DashboardPeriod.today),
+                  onSelected: (_) =>
+                      setState(() => _period = _DashboardPeriod.today),
                 ),
                 ChoiceChip(
                   label: Text(l10n.filterThisWeek),
                   selected: _period == _DashboardPeriod.week,
-                  onSelected: (_) => setState(() => _period = _DashboardPeriod.week),
+                  onSelected: (_) =>
+                      setState(() => _period = _DashboardPeriod.week),
                 ),
                 ChoiceChip(
                   label: Text(l10n.filterThisMonth),
                   selected: _period == _DashboardPeriod.month,
-                  onSelected: (_) => setState(() => _period = _DashboardPeriod.month),
+                  onSelected: (_) =>
+                      setState(() => _period = _DashboardPeriod.month),
                 ),
                 ChoiceChip(
                   label: Text(l10n.filterThisYear),
                   selected: _period == _DashboardPeriod.year,
-                  onSelected: (_) => setState(() => _period = _DashboardPeriod.year),
+                  onSelected: (_) =>
+                      setState(() => _period = _DashboardPeriod.year),
                 ),
               ],
             ),
@@ -694,14 +839,24 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                   decoration: InputDecoration(
                     labelText: l10n.filterByDoctor,
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   items: [
-                    DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
-                    ...cache.doctors.map((d) => DropdownMenuItem<String?>(
-                      value: d.id,
-                      child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis),
-                    )),
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(l10n.filterAll),
+                    ),
+                    ...cache.doctors.map(
+                      (d) => DropdownMenuItem<String?>(
+                        value: d.id,
+                        child: Text(
+                          cache.userName(d.userId) ?? d.displayName ?? d.id,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ],
                   onChanged: (v) => setState(() => _filterDoctorId = v),
                 ),
@@ -715,7 +870,9 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
                   hintText: l10n.search,
                   isDense: true,
                   prefixIcon: const Icon(Icons.search, size: 20),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -723,15 +880,18 @@ class _DashboardAppointmentsSectionState extends State<_DashboardAppointmentsSec
             if (filtered.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(l10n.noData, style: Theme.of(context).textTheme.bodyMedium),
+                child: Text(
+                  l10n.noData,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               )
             else
               ...filtered.take(15).map((a) {
                 final otherName = isPatient
                     ? _doctorName(a, cache)
                     : isDoctor
-                        ? _patientName(a, cache)
-                        : '${_patientName(a, cache)} • ${_doctorName(a, cache)}';
+                    ? _patientName(a, cache)
+                    : '${_patientName(a, cache)} • ${_doctorName(a, cache)}';
                 final subtitle = [
                   '${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}',
                   if (a.notes != null && a.notes!.trim().isNotEmpty)
