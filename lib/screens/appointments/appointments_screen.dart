@@ -33,19 +33,23 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   bool _loading = true;
   AppointmentStatus? _statusFilter;
   String _searchQuery = '';
+
   /// Date filters: exactly one of these can be set (day = single date, month = year+month, year = year only).
   DateTime? _filterDay;
   int? _filterYear;
   int? _filterMonth; // 1-12 when _filterYear is set
   /// Filter by doctor (appointments for this doctor only). Combines with status, date, and search.
   String? _filterDoctorId;
+
   /// Optional filter by main service.
   String? _filterServiceId;
+
   /// Optional filter by linked package.
   String? _filterPackageId;
   bool _scheduleView = false;
   DateTime _scheduleDate = DateTime.now();
   List<PackageModel> _packages = [];
+
   /// When false, status/date row, service/package/doctor dropdowns, and count chips are hidden; search and list/schedule fill the screen.
   bool _filtersVisible = true;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
@@ -67,7 +71,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   /// True if [start1, end1] and [start2, end2] overlap (any time in common).
-  static bool _timeRangesOverlap(String start1, String end1, String start2, String end2) {
+  static bool _timeRangesOverlap(
+    String start1,
+    String end1,
+    String start2,
+    String end2,
+  ) {
     final s1 = _minutesOfDay(start1), e1 = _minutesOfDay(end1);
     final s2 = _minutesOfDay(start2), e2 = _minutesOfDay(end2);
     return s1 < e2 && s2 < e1;
@@ -86,16 +95,29 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   /// Builds DateTime from appointment date + "HH:mm" startTime for income record so Date shows correct time.
-  static DateTime _dateTimeFromAppointmentDateAndTime(DateTime date, String startTime) {
+  static DateTime _dateTimeFromAppointmentDateAndTime(
+    DateTime date,
+    String startTime,
+  ) {
     final parts = startTime.split(':');
     final h = int.tryParse(parts[0].trim()) ?? 0;
     final m = int.tryParse(parts.length > 1 ? parts[1].trim() : '0') ?? 0;
-    return DateTime(date.year, date.month, date.day, h.clamp(0, 23), m.clamp(0, 59));
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      h.clamp(0, 23),
+      m.clamp(0, 59),
+    );
   }
 
   /// For schedule view: appointments at [date] and [startTime] that occupy the slot (pending/confirmed/completed).
   /// Apologized/absent do not appear in the grid so the new booking in the same room shows.
-  List<AppointmentModel> _appointmentsForSlot(DateTime date, String startTime, List<AppointmentModel> list) {
+  List<AppointmentModel> _appointmentsForSlot(
+    DateTime date,
+    String startTime,
+    List<AppointmentModel> list,
+  ) {
     final slotEnd = _nextSlot(startTime);
     return list.where((a) {
       if (a.appointmentDate.year != date.year ||
@@ -111,7 +133,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   /// Appointment to show in schedule cell: column [cellIndex] (0=room0, 1=room1, 2=room2, 3=extra).
   /// Uses each appointment's roomId so bookings appear under their chosen room.
-  AppointmentModel? _appointmentForCell(int cellIndex, List<AppointmentModel> slotApps, List<RoomModel> rooms) {
+  AppointmentModel? _appointmentForCell(
+    int cellIndex,
+    List<AppointmentModel> slotApps,
+    List<RoomModel> rooms,
+  ) {
     if (slotApps.isEmpty) return null;
     if (cellIndex == 3) {
       try {
@@ -125,10 +151,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       return cellIndex < main.length ? main[cellIndex] : null;
     }
     final roomId = rooms[cellIndex].id;
-    final forRoom = slotApps.where((a) => !a.isExtraSlot && a.roomId == roomId).toList();
+    final forRoom = slotApps
+        .where((a) => !a.isExtraSlot && a.roomId == roomId)
+        .toList();
     if (forRoom.isNotEmpty) return forRoom.first;
     if (cellIndex == 0) {
-      final noRoom = slotApps.where((a) => !a.isExtraSlot && (a.roomId == null || a.roomId!.isEmpty)).toList();
+      final noRoom = slotApps
+          .where(
+            (a) => !a.isExtraSlot && (a.roomId == null || a.roomId!.isEmpty),
+          )
+          .toList();
       if (noRoom.isNotEmpty) return noRoom.first;
     }
     return null;
@@ -155,34 +187,49 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   void _startAppointmentsStream() async {
     final auth = context.read<AuthProvider>().currentUser;
     String? doctorId;
-    if (auth != null && auth.hasRole(UserRole.doctor) && !auth.hasRole(UserRole.admin)) {
+    if (auth != null &&
+        auth.hasRole(UserRole.doctor) &&
+        !auth.hasRole(UserRole.admin)) {
       // If admin granted "See all" or "View all (read-only)", doctor sees full list/schedule; otherwise only their own.
-      final seeOrViewAll = auth.canAccessFeature('appointments_see_all') || auth.canAccessFeature('appointments_view_all');
+      final seeOrViewAll =
+          auth.canAccessFeature('appointments_see_all') ||
+          auth.canAccessFeature('appointments_view_all');
       if (!seeOrViewAll) {
-      final doc = await _firestore.getDoctorByUserId(auth.id);
-      if (doc != null) doctorId = doc.id;
+        final doc = await _firestore.getDoctorByUserId(auth.id);
+        if (doc != null) doctorId = doc.id;
       }
     }
     if (!mounted) return;
     setState(() => _loading = true);
     _subscription?.cancel();
-    _subscription = _firestore.appointmentsStream(doctorId: doctorId).listen(
-      (snapshot) {
-        final from = DateTime.now().subtract(const Duration(days: 30));
-        var list = snapshot.docs
-            .map((d) => AppointmentModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>))
-            .where((a) => a.appointmentDate.isAfter(from.subtract(const Duration(days: 1))))
-            .where((a) => a.status != AppointmentStatus.cancelled)
-            .toList();
-        if (mounted) setState(() {
-            _list = list;
-            _loading = false;
-          });
-      },
-      onError: (e, st) {
-        if (mounted) setState(() => _loading = false);
-      },
-    );
+    _subscription = _firestore
+        .appointmentsStream(doctorId: doctorId)
+        .listen(
+          (snapshot) {
+            final from = DateTime.now().subtract(const Duration(days: 30));
+            var list = snapshot.docs
+                .map(
+                  (d) => AppointmentModel.fromFirestore(
+                    d as DocumentSnapshot<Map<String, dynamic>>,
+                  ),
+                )
+                .where(
+                  (a) => a.appointmentDate.isAfter(
+                    from.subtract(const Duration(days: 1)),
+                  ),
+                )
+                .where((a) => a.status != AppointmentStatus.cancelled)
+                .toList();
+            if (mounted)
+              setState(() {
+                _list = list;
+                _loading = false;
+              });
+          },
+          onError: (e, st) {
+            if (mounted) setState(() => _loading = false);
+          },
+        );
   }
 
   /// True when the user sees all doctors' appointments and can filter by doctor (admin/staff or doctor with see_all/view_all).
@@ -190,20 +237,29 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final auth = context.read<AuthProvider>().currentUser;
     if (auth == null) return false;
     if (auth.hasRole(UserRole.admin)) return true;
-    final seeOrViewAll = auth.canAccessFeature('appointments_see_all') || auth.canAccessFeature('appointments_view_all');
+    final seeOrViewAll =
+        auth.canAccessFeature('appointments_see_all') ||
+        auth.canAccessFeature('appointments_view_all');
     if (auth.hasRole(UserRole.doctor) && !seeOrViewAll) return false;
     return true;
   }
 
   String _statusLabel(AppointmentStatus s, AppLocalizations l10n) {
     switch (s) {
-      case AppointmentStatus.pending: return l10n.pending;
-      case AppointmentStatus.confirmed: return l10n.confirmed;
-      case AppointmentStatus.completed: return l10n.attended;
-      case AppointmentStatus.cancelled: return l10n.cancelled;
-      case AppointmentStatus.noShow: return l10n.absent;
-      case AppointmentStatus.absentWithCause: return l10n.apologized;
-      case AppointmentStatus.absentWithoutCause: return l10n.absent;
+      case AppointmentStatus.pending:
+        return l10n.pending;
+      case AppointmentStatus.confirmed:
+        return l10n.confirmed;
+      case AppointmentStatus.completed:
+        return l10n.attended;
+      case AppointmentStatus.cancelled:
+        return l10n.cancelled;
+      case AppointmentStatus.noShow:
+        return l10n.absent;
+      case AppointmentStatus.absentWithCause:
+        return l10n.apologized;
+      case AppointmentStatus.absentWithoutCause:
+        return l10n.absent;
     }
   }
 
@@ -211,12 +267,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   void _notifyAppointmentStatusChange(AppointmentModel a) {
     NotificationService().rescheduleRemindersForUser(a.patientId);
     _firestore.getDoctorById(a.doctorId).then((doc) {
-      if (doc != null) NotificationService().rescheduleRemindersForUser(doc.userId);
+      if (doc != null)
+        NotificationService().rescheduleRemindersForUser(doc.userId);
     });
   }
 
   /// Update local list immediately so UI refreshes without waiting for stream.
-  void _updateListAfterChange(String appointmentId, {AppointmentStatus? newStatus, AppointmentModel? replacement}) {
+  void _updateListAfterChange(
+    String appointmentId, {
+    AppointmentStatus? newStatus,
+    AppointmentModel? replacement,
+  }) {
     if (replacement != null) {
       final i = _list.indexWhere((x) => x.id == appointmentId);
       if (i >= 0) {
@@ -226,7 +287,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           _list[i] = replacement;
         }
       } else {
-        if (replacement.status != AppointmentStatus.cancelled) _list.insert(0, replacement);
+        if (replacement.status != AppointmentStatus.cancelled)
+          _list.insert(0, replacement);
       }
     } else if (newStatus != null) {
       if (newStatus == AppointmentStatus.cancelled) {
@@ -240,14 +302,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   /// When an appointment is marked completed and it's linked to a package, check if all sessions of that package are done and notify.
-  Future<void> _checkPackageCompleted(AppointmentModel a, AppLocalizations l10n) async {
+  Future<void> _checkPackageCompleted(
+    AppointmentModel a,
+    AppLocalizations l10n,
+  ) async {
     if (a.packageId == null || a.packageId!.isEmpty) return;
     final pkg = await _firestore.getPackageById(a.packageId!);
     if (pkg == null) return;
     final list = await _firestore.getAppointments(patientId: a.patientId);
-    final completedForPackage = list.where((x) => x.packageId == a.packageId && x.status == AppointmentStatus.completed).length;
+    final completedForPackage = list
+        .where(
+          (x) =>
+              x.packageId == a.packageId &&
+              x.status == AppointmentStatus.completed,
+        )
+        .length;
     final totalSessions = pkg.numberOfSessions <= 0 ? 1 : pkg.numberOfSessions;
-    final justCompletedPackage = completedForPackage > 0 && completedForPackage % totalSessions == 0;
+    final justCompletedPackage =
+        completedForPackage > 0 && completedForPackage % totalSessions == 0;
     if (justCompletedPackage && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${pkg.displayName}: ${l10n.packageCompleted}')),
@@ -260,7 +332,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           entityId: pkg.id,
           userId: user.id,
           userEmail: user.email,
-          details: {'patientId': a.patientId, 'packageId': pkg.id, 'sessionsCompleted': completedForPackage},
+          details: {
+            'patientId': a.patientId,
+            'packageId': pkg.id,
+            'sessionsCompleted': completedForPackage,
+          },
         );
       }
     }
@@ -268,10 +344,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   /// Shows session payment dialog. Returns (amount, sessionPaymentStatus) or null if cancelled.
   /// sessionPaymentStatus: 'paid', 'partial_paid', 'prepaid', 'not_paid'. Discount is applied in this dialog.
-  Future<({double amount, String status})?> _showSessionPaymentDialog(BuildContext context, AppointmentModel a, AppLocalizations l10n) async {
+  Future<({double amount, String status})?> _showSessionPaymentDialog(
+    BuildContext context,
+    AppointmentModel a,
+    AppLocalizations l10n,
+  ) async {
     final costAmount = a.costAmount ?? 0.0;
     final discountPercent = a.discountPercent;
-    final baseAmount = costAmount > 0 && discountPercent != null && discountPercent > 0 && discountPercent < 100
+    final baseAmount =
+        costAmount > 0 &&
+            discountPercent != null &&
+            discountPercent > 0 &&
+            discountPercent < 100
         ? costAmount / (1 - discountPercent / 100)
         : costAmount;
     final discountController = TextEditingController(
@@ -288,7 +372,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
 
     String paymentType = 'not_paid';
-    Future<({double amount, String status})?> dialogFuture = showDialog<({double amount, String status})?>(
+    Future<({double amount, String status})?>
+    dialogFuture = showDialog<({double amount, String status})?>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
@@ -302,7 +387,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${l10n.amount}: ${NumberFormat.currency(symbol: '').format(baseAmount)}'),
+                    Text(
+                      '${l10n.amount}: ${NumberFormat.currency(symbol: '').format(baseAmount)}',
+                    ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: discountController,
@@ -312,10 +399,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         suffixText: '%',
                         border: const OutlineInputBorder(),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       onChanged: (_) => setDialogState(() {}),
                     ),
-                    if (amountAfterDiscount != baseAmount || (discountController.text.trim().isNotEmpty && double.tryParse(discountController.text.trim()) != 0)) ...[
+                    if (amountAfterDiscount != baseAmount ||
+                        (discountController.text.trim().isNotEmpty &&
+                            double.tryParse(discountController.text.trim()) !=
+                                0)) ...[
                       const SizedBox(height: 8),
                       Text(
                         '${l10n.amountAfterDiscount}: ${NumberFormat.currency(symbol: '').format(amountAfterDiscount)}',
@@ -344,7 +436,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                             labelText: l10n.amountPaid,
                             border: const OutlineInputBorder(),
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           onChanged: (_) => setDialogState(() {}),
                         ),
                       ),
@@ -371,19 +465,32 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 FilledButton(
                   onPressed: () async {
                     final sessionAmount = getAmountAfterDiscount();
-                    final pctRaw = double.tryParse(discountController.text.trim());
-                    final newDiscountPercent = (pctRaw != null && pctRaw > 0 && pctRaw < 100) ? pctRaw : null;
-                    final statusValue = paymentType == 'partial' ? 'partial_paid' : paymentType;
+                    final pctRaw = double.tryParse(
+                      discountController.text.trim(),
+                    );
+                    final newDiscountPercent =
+                        (pctRaw != null && pctRaw > 0 && pctRaw < 100)
+                        ? pctRaw
+                        : null;
+                    final statusValue = paymentType == 'partial'
+                        ? 'partial_paid'
+                        : paymentType;
                     await _firestore.updateAppointment(a.id, {
                       'costAmount': sessionAmount,
                       'discountPercent': newDiscountPercent,
                       'sessionPaymentStatus': statusValue,
                     });
                     if (paymentType == 'paid') {
-                      Navigator.pop(ctx, (amount: sessionAmount, status: 'paid'));
+                      Navigator.pop(ctx, (
+                        amount: sessionAmount,
+                        status: 'paid',
+                      ));
                     } else if (paymentType == 'partial') {
                       final v = double.tryParse(partialController.text.trim());
-                      Navigator.pop(ctx, (amount: v != null && v > 0 ? v : 0.0, status: 'partial_paid'));
+                      Navigator.pop(ctx, (
+                        amount: v != null && v > 0 ? v : 0.0,
+                        status: 'partial_paid',
+                      ));
                     } else if (paymentType == 'prepaid') {
                       Navigator.pop(ctx, (amount: 0.0, status: 'prepaid'));
                     } else {
@@ -404,7 +511,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     });
   }
 
-  void _logAppointmentAction(BuildContext context, String action, AppointmentModel a, AppointmentStatus newStatus) {
+  void _logAppointmentAction(
+    BuildContext context,
+    String action,
+    AppointmentModel a,
+    AppointmentStatus newStatus,
+  ) {
     final user = context.read<AuthProvider>().currentUser;
     if (user == null) return;
     AuditService.log(
@@ -413,7 +525,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       entityId: a.id,
       userId: user.id,
       userEmail: user.email,
-      details: {'patientId': a.patientId, 'doctorId': a.doctorId, 'status': newStatus.value},
+      details: {
+        'patientId': a.patientId,
+        'doctorId': a.doctorId,
+        'status': newStatus.value,
+      },
     );
   }
 
@@ -426,7 +542,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         byPatient[a.patientId] = a;
       } else {
         final cmp = a.appointmentDate.compareTo(existing.appointmentDate);
-        if (cmp < 0 || (cmp == 0 && _compareTime(a.startTime, existing.startTime) < 0)) {
+        if (cmp < 0 ||
+            (cmp == 0 && _compareTime(a.startTime, existing.startTime) < 0)) {
           byPatient[a.patientId] = a;
         }
       }
@@ -434,8 +551,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     return byPatient.values.map((a) => a.id).toSet();
   }
 
-  Widget _buildScheduleView(BuildContext context, DataCacheProvider cache, AppLocalizations l10n, UserModel? auth, bool canUpdate) {
-    final list = _list.where((a) => a.status != AppointmentStatus.cancelled).toList();
+  Widget _buildScheduleView(
+    BuildContext context,
+    DataCacheProvider cache,
+    AppLocalizations l10n,
+    UserModel? auth,
+    bool canUpdate,
+  ) {
+    final list = _list
+        .where((a) => a.status != AppointmentStatus.cancelled)
+        .toList();
     final firstSessionIds = _firstSessionIdsNewPatient(list);
     final roomHeaders = [
       cache.rooms.length > 0 ? cache.rooms[0].displayName : '1',
@@ -451,10 +576,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left),
-                onPressed: () => setState(() => _scheduleDate = _scheduleDate.subtract(const Duration(days: 1))),
+                onPressed: () => setState(
+                  () => _scheduleDate = _scheduleDate.subtract(
+                    const Duration(days: 1),
+                  ),
+                ),
                 tooltip: l10n.previousDay,
               ),
-              Text(AppDateFormat.mediumDate().format(_scheduleDate), style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                AppDateFormat.mediumDate().format(_scheduleDate),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(width: 12),
               TextButton.icon(
                 icon: const Icon(Icons.calendar_today, size: 18),
@@ -463,7 +595,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   final d = await showDatePicker(
                     context: context,
                     initialDate: _scheduleDate,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    firstDate: DateTime.now().subtract(
+                      const Duration(days: 365),
+                    ),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
                   if (d != null) setState(() => _scheduleDate = d);
@@ -471,7 +605,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
-                onPressed: () => setState(() => _scheduleDate = _scheduleDate.add(const Duration(days: 1))),
+                onPressed: () => setState(
+                  () => _scheduleDate = _scheduleDate.add(
+                    const Duration(days: 1),
+                  ),
+                ),
                 tooltip: l10n.nextDay,
               ),
             ],
@@ -491,7 +629,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 3: const FlexColumnWidth(1),
                 4: const FlexColumnWidth(1),
               };
-              final headerColor = Theme.of(context).colorScheme.surfaceContainerHighest;
+              final headerColor = Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest;
               final dividerColor = Theme.of(context).dividerColor;
               final tableBorder = TableBorder(
                 horizontalInside: BorderSide(color: dividerColor, width: 1),
@@ -509,12 +649,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                       height: rowHeight,
                       decoration: BoxDecoration(
                         color: headerColor,
-                        border: Border(bottom: BorderSide(color: dividerColor, width: 1)),
+                        border: Border(
+                          bottom: BorderSide(color: dividerColor, width: 1),
+                        ),
                       ),
                       child: Table(
                         columnWidths: columnWidths,
                         border: tableBorder,
-                        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                        defaultVerticalAlignment:
+                            TableCellVerticalAlignment.middle,
                         children: [
                           TableRow(
                             children: [
@@ -535,9 +678,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         child: Table(
                           columnWidths: columnWidths,
                           border: tableBorder,
-                          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                          defaultVerticalAlignment:
+                              TableCellVerticalAlignment.middle,
                           children: _scheduleHours.map((hour) {
-                            final slotApps = _appointmentsForSlot(_scheduleDate, hour, list);
+                            final slotApps = _appointmentsForSlot(
+                              _scheduleDate,
+                              hour,
+                              list,
+                            );
                             return TableRow(
                               children: [
                                 TableCell(
@@ -546,7 +694,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                     child: Align(
                                       alignment: Alignment.centerLeft,
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ),
                                         child: Text(hour),
                                       ),
                                     ),
@@ -555,25 +705,77 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                 TableCell(
                                   child: SizedBox(
                                     height: rowHeight,
-                                    child: _slotCell(_appointmentForCell(0, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds),
+                                    child: _slotCell(
+                                      _appointmentForCell(
+                                        0,
+                                        slotApps,
+                                        cache.rooms,
+                                      ),
+                                      hour,
+                                      false,
+                                      cache,
+                                      l10n,
+                                      auth,
+                                      canUpdate,
+                                      firstSessionIds,
+                                    ),
                                   ),
                                 ),
                                 TableCell(
                                   child: SizedBox(
                                     height: rowHeight,
-                                    child: _slotCell(_appointmentForCell(1, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds),
+                                    child: _slotCell(
+                                      _appointmentForCell(
+                                        1,
+                                        slotApps,
+                                        cache.rooms,
+                                      ),
+                                      hour,
+                                      false,
+                                      cache,
+                                      l10n,
+                                      auth,
+                                      canUpdate,
+                                      firstSessionIds,
+                                    ),
                                   ),
                                 ),
                                 TableCell(
                                   child: SizedBox(
                                     height: rowHeight,
-                                    child: _slotCell(_appointmentForCell(2, slotApps, cache.rooms), hour, false, cache, l10n, auth, canUpdate, firstSessionIds),
+                                    child: _slotCell(
+                                      _appointmentForCell(
+                                        2,
+                                        slotApps,
+                                        cache.rooms,
+                                      ),
+                                      hour,
+                                      false,
+                                      cache,
+                                      l10n,
+                                      auth,
+                                      canUpdate,
+                                      firstSessionIds,
+                                    ),
                                   ),
                                 ),
                                 TableCell(
                                   child: SizedBox(
                                     height: rowHeight,
-                                    child: _slotCell(_appointmentForCell(3, slotApps, cache.rooms), hour, true, cache, l10n, auth, canUpdate, firstSessionIds),
+                                    child: _slotCell(
+                                      _appointmentForCell(
+                                        3,
+                                        slotApps,
+                                        cache.rooms,
+                                      ),
+                                      hour,
+                                      true,
+                                      cache,
+                                      l10n,
+                                      auth,
+                                      canUpdate,
+                                      firstSessionIds,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -593,7 +795,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   /// Prev/next day row for list view (same UX as schedule view). Uses [_filterDay]; null means today.
-  Widget _buildListViewModelDateNavigator(BuildContext context, AppLocalizations l10n) {
+  Widget _buildListViewModelDateNavigator(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) {
     final effectiveDate = _filterDay ?? DateTime.now();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -626,11 +831,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 firstDate: DateTime.now().subtract(const Duration(days: 365)),
                 lastDate: DateTime.now().add(const Duration(days: 365)),
               );
-              if (d != null) setState(() {
-                _filterDay = d;
-                _filterMonth = null;
-                _filterYear = null;
-              });
+              if (d != null)
+                setState(() {
+                  _filterDay = d;
+                  _filterMonth = null;
+                  _filterYear = null;
+                });
             },
           ),
           IconButton(
@@ -657,9 +863,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             label,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -671,13 +877,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   static Color? _colorForStatus(AppointmentStatus? status) {
     if (status == null) return null;
     switch (status) {
-      case AppointmentStatus.completed: return const Color(0xFF4CAF50); // green
+      case AppointmentStatus.completed:
+        return const Color(0xFF4CAF50); // green
       case AppointmentStatus.pending:
-      case AppointmentStatus.confirmed: return const Color(0xFF2196F3); // blue (pending)
+      case AppointmentStatus.confirmed:
+        return const Color(0xFF2196F3); // blue (pending)
       case AppointmentStatus.noShow:
-      case AppointmentStatus.absentWithoutCause: return const Color(0xFFF44336); // red
-      case AppointmentStatus.absentWithCause: return const Color(0xFFFF9800); // orange (apologized)
-      case AppointmentStatus.cancelled: return null;
+      case AppointmentStatus.absentWithoutCause:
+        return const Color(0xFFF44336); // red
+      case AppointmentStatus.absentWithCause:
+        return const Color(0xFFFF9800); // orange (apologized)
+      case AppointmentStatus.cancelled:
+        return null;
     }
   }
 
@@ -692,8 +903,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           _legendChip(context, const Color(0xFF2196F3), l10n.pending),
           _legendChip(context, const Color(0xFFF44336), l10n.absent),
           _legendChip(context, const Color(0xFFFF9800), l10n.apologized),
-          _legendChipWithIcon(context, const Color(0xFFE8EAF6), l10n.newPatient, Icons.star),
-          _legendChipWithIcon(context, const Color(0xFFE8EAF6), l10n.starredSessionVip, Icons.star),
+          _legendChipWithIcon(
+            context,
+            const Color(0xFFE8EAF6),
+            l10n.newPatient,
+            Icons.star,
+          ),
+          _legendChipWithIcon(
+            context,
+            const Color(0xFFE8EAF6),
+            l10n.starredSessionVip,
+            Icons.star,
+          ),
         ],
       ),
     );
@@ -710,7 +931,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
           const SizedBox(width: 6),
           Text(label, style: Theme.of(context).textTheme.bodySmall),
         ],
@@ -718,7 +943,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  Widget _legendChipWithIcon(BuildContext context, Color color, String label, IconData icon) {
+  Widget _legendChipWithIcon(
+    BuildContext context,
+    Color color,
+    String label,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -737,18 +967,28 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  Widget _slotCell(AppointmentModel? a, String startTime, bool isExtraSlotColumn, DataCacheProvider cache, AppLocalizations l10n, UserModel? auth, bool canUpdate, Set<String> firstSessionIds) {
-    final label = a != null ? (cache.userName(a.patientId) ?? a.patientId) : '—';
+  Widget _slotCell(
+    AppointmentModel? a,
+    String startTime,
+    bool isExtraSlotColumn,
+    DataCacheProvider cache,
+    AppLocalizations l10n,
+    UserModel? auth,
+    bool canUpdate,
+    Set<String> firstSessionIds,
+  ) {
+    final label = a != null
+        ? (cache.userName(a.patientId) ?? a.patientId)
+        : '—';
     final statusColor = _colorForStatus(a?.status);
     final isFirstSession = a != null && firstSessionIds.contains(a.id);
     final isStarredSession = a?.isStarred == true;
     // For multi-slot appointments, only show the patient name (and star) in the first cell
     // and keep continuation cells colored but without duplicate text.
-    final isContinuation = a != null && _minutesOfDay(startTime) > _minutesOfDay(a.startTime);
+    final isContinuation =
+        a != null && _minutesOfDay(startTime) > _minutesOfDay(a.startTime);
     final showStar = !isContinuation && (isFirstSession || isStarredSession);
-    final displayLabel = a == null
-        ? label
-        : (isContinuation ? '' : label);
+    final displayLabel = a == null ? label : (isContinuation ? '' : label);
     final bgColor = statusColor != null
         ? statusColor.withValues(alpha: 0.4)
         : (showStar ? const Color(0xFFE8EAF6).withValues(alpha: 0.5) : null);
@@ -766,12 +1006,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     rooms: cache.rooms,
                     services: cache.services,
                     packages: _packages,
-                    allowPastDate: auth?.hasRole(UserRole.admin) == true || auth?.hasRole(UserRole.supervisor) == true,
+                    allowPastDate:
+                        auth?.hasRole(UserRole.admin) == true ||
+                        auth?.hasRole(UserRole.supervisor) == true,
                   ),
                 );
                 if (ok == true && mounted) {
                   final updated = await _firestore.getAppointmentById(a.id);
-                  if (updated != null) _updateListAfterChange(a.id, replacement: updated);
+                  if (updated != null)
+                    _updateListAfterChange(a.id, replacement: updated);
                 }
               } else {
                 final ok = await showDialog<bool>(
@@ -787,10 +1030,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     initialStartTime: startTime,
                     initialEndTime: _nextSlot(startTime),
                     initialIsExtraSlot: isExtraSlotColumn,
-                    allowPastDate: auth?.hasRole(UserRole.admin) == true || auth?.hasRole(UserRole.supervisor) == true,
+                    allowPastDate:
+                        auth?.hasRole(UserRole.admin) == true ||
+                        auth?.hasRole(UserRole.supervisor) == true,
                   ),
                 );
-                if (ok == true && mounted) { _subscription?.cancel(); _startAppointmentsStream(); }
+                if (ok == true && mounted) {
+                  _subscription?.cancel();
+                  _startAppointmentsStream();
+                }
               }
             }
           : null,
@@ -798,16 +1046,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         decoration: BoxDecoration(
           color: bgColor,
-          border: statusColor != null ? Border(left: BorderSide(width: 3, color: statusColor)) : null,
+          border: statusColor != null
+              ? Border(left: BorderSide(width: 3, color: statusColor))
+              : null,
         ),
         child: Row(
           children: [
             if (showStar)
               Padding(
                 padding: const EdgeInsets.only(right: 4),
-                child: Icon(Icons.star, size: 16, color: Theme.of(context).colorScheme.primary),
+                child: Icon(
+                  Icons.star,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
-            Expanded(child: Text(displayLabel, overflow: TextOverflow.ellipsis)),
+            Expanded(
+              child: Text(displayLabel, overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
       ),
@@ -817,8 +1073,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   /// Monday 00:00 and Sunday 23:59 for the week containing [date].
   static (DateTime start, DateTime end) _weekRange(DateTime date) {
     final weekday = date.weekday; // 1 = Monday, 7 = Sunday
-    final start = DateTime(date.year, date.month, date.day).subtract(Duration(days: weekday - 1));
-    final end = start.add(const Duration(days: 7)).subtract(const Duration(milliseconds: 1));
+    final start = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: weekday - 1));
+    final end = start
+        .add(const Duration(days: 7))
+        .subtract(const Duration(milliseconds: 1));
     return (start, end);
   }
 
@@ -829,11 +1091,26 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     var out = _list;
     if (_statusFilter != null) {
       if (_statusFilter == AppointmentStatus.noShow) {
-        out = out.where((a) => a.status == AppointmentStatus.noShow || a.status == AppointmentStatus.absentWithCause || a.status == AppointmentStatus.absentWithoutCause).toList();
+        out = out
+            .where(
+              (a) =>
+                  a.status == AppointmentStatus.noShow ||
+                  a.status == AppointmentStatus.absentWithCause ||
+                  a.status == AppointmentStatus.absentWithoutCause,
+            )
+            .toList();
       } else if (_statusFilter == AppointmentStatus.absentWithCause) {
-        out = out.where((a) => a.status == AppointmentStatus.absentWithCause).toList();
+        out = out
+            .where((a) => a.status == AppointmentStatus.absentWithCause)
+            .toList();
       } else if (_statusFilter == AppointmentStatus.absentWithoutCause) {
-        out = out.where((a) => a.status == AppointmentStatus.absentWithoutCause || a.status == AppointmentStatus.noShow).toList();
+        out = out
+            .where(
+              (a) =>
+                  a.status == AppointmentStatus.absentWithoutCause ||
+                  a.status == AppointmentStatus.noShow,
+            )
+            .toList();
       } else {
         out = out.where((a) => a.status == _statusFilter!).toList();
       }
@@ -841,25 +1118,39 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       out = out.where((a) => a.doctorId == _filterDoctorId).toList();
     }
-    if (_filterServiceId != null && _filterServiceId!.isNotEmpty && cache.services.isNotEmpty) {
+    if (_filterServiceId != null &&
+        _filterServiceId!.isNotEmpty &&
+        cache.services.isNotEmpty) {
       final service = cache.services.firstWhere(
         (s) => s.id == _filterServiceId,
         orElse: () => cache.services.first,
       );
       final serviceName = service.displayName.toLowerCase();
-      out = out.where((a) => a.services.any((s) => s.toLowerCase() == serviceName)).toList();
+      out = out
+          .where((a) => a.services.any((s) => s.toLowerCase() == serviceName))
+          .toList();
     }
     if (_filterPackageId != null && _filterPackageId!.isNotEmpty) {
       out = out.where((a) => a.packageId == _filterPackageId).toList();
     }
-    out = out.where((a) => !a.appointmentDate.isBefore(weekStart) && !a.appointmentDate.isAfter(weekEnd)).toList();
+    out = out
+        .where(
+          (a) =>
+              !a.appointmentDate.isBefore(weekStart) &&
+              !a.appointmentDate.isAfter(weekEnd),
+        )
+        .toList();
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       out = out.where((a) {
-        final patientName = (cache.userName(a.patientId) ?? a.patientId).toLowerCase();
-        final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId).toLowerCase();
+        final patientName = (cache.userName(a.patientId) ?? a.patientId)
+            .toLowerCase();
+        final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId)
+            .toLowerCase();
         final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
-        return patientName.contains(q) || doctorName.contains(q) || serviceMatch;
+        return patientName.contains(q) ||
+            doctorName.contains(q) ||
+            serviceMatch;
       }).toList();
     }
     return out;
@@ -870,33 +1161,65 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     var out = _list;
     if (_statusFilter != null) {
       if (_statusFilter == AppointmentStatus.noShow) {
-        out = out.where((a) => a.status == AppointmentStatus.noShow || a.status == AppointmentStatus.absentWithCause || a.status == AppointmentStatus.absentWithoutCause).toList();
+        out = out
+            .where(
+              (a) =>
+                  a.status == AppointmentStatus.noShow ||
+                  a.status == AppointmentStatus.absentWithCause ||
+                  a.status == AppointmentStatus.absentWithoutCause,
+            )
+            .toList();
       } else if (_statusFilter == AppointmentStatus.absentWithCause) {
-        out = out.where((a) => a.status == AppointmentStatus.absentWithCause).toList();
+        out = out
+            .where((a) => a.status == AppointmentStatus.absentWithCause)
+            .toList();
       } else if (_statusFilter == AppointmentStatus.absentWithoutCause) {
-        out = out.where((a) => a.status == AppointmentStatus.absentWithoutCause || a.status == AppointmentStatus.noShow).toList();
+        out = out
+            .where(
+              (a) =>
+                  a.status == AppointmentStatus.absentWithoutCause ||
+                  a.status == AppointmentStatus.noShow,
+            )
+            .toList();
       } else {
         out = out.where((a) => a.status == _statusFilter!).toList();
       }
     }
     if (_filterDay != null) {
       final d = _filterDay!;
-      out = out.where((a) => a.appointmentDate.year == d.year && a.appointmentDate.month == d.month && a.appointmentDate.day == d.day).toList();
+      out = out
+          .where(
+            (a) =>
+                a.appointmentDate.year == d.year &&
+                a.appointmentDate.month == d.month &&
+                a.appointmentDate.day == d.day,
+          )
+          .toList();
     } else if (_filterYear != null && _filterMonth != null) {
-      out = out.where((a) => a.appointmentDate.year == _filterYear && a.appointmentDate.month == _filterMonth).toList();
+      out = out
+          .where(
+            (a) =>
+                a.appointmentDate.year == _filterYear &&
+                a.appointmentDate.month == _filterMonth,
+          )
+          .toList();
     } else if (_filterYear != null) {
       out = out.where((a) => a.appointmentDate.year == _filterYear).toList();
     }
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       out = out.where((a) => a.doctorId == _filterDoctorId).toList();
     }
-    if (_filterServiceId != null && _filterServiceId!.isNotEmpty && cache.services.isNotEmpty) {
+    if (_filterServiceId != null &&
+        _filterServiceId!.isNotEmpty &&
+        cache.services.isNotEmpty) {
       final service = cache.services.firstWhere(
         (s) => s.id == _filterServiceId,
         orElse: () => cache.services.first,
       );
       final serviceName = service.displayName.toLowerCase();
-      out = out.where((a) => a.services.any((s) => s.toLowerCase() == serviceName)).toList();
+      out = out
+          .where((a) => a.services.any((s) => s.toLowerCase() == serviceName))
+          .toList();
     }
     if (_filterPackageId != null && _filterPackageId!.isNotEmpty) {
       out = out.where((a) => a.packageId == _filterPackageId).toList();
@@ -904,10 +1227,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       out = out.where((a) {
-        final patientName = (cache.userName(a.patientId) ?? a.patientId).toLowerCase();
-        final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId).toLowerCase();
+        final patientName = (cache.userName(a.patientId) ?? a.patientId)
+            .toLowerCase();
+        final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId)
+            .toLowerCase();
         final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
-        return patientName.contains(q) || doctorName.contains(q) || serviceMatch;
+        return patientName.contains(q) ||
+            doctorName.contains(q) ||
+            serviceMatch;
       }).toList();
     }
     out.sort((a, b) {
@@ -923,8 +1250,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final aParts = a.split(':');
     final bParts = b.split(':');
     if (aParts.length >= 2 && bParts.length >= 2) {
-      final aMins = (int.tryParse(aParts[0].trim()) ?? 0) * 60 + (int.tryParse(aParts[1].trim()) ?? 0);
-      final bMins = (int.tryParse(bParts[0].trim()) ?? 0) * 60 + (int.tryParse(bParts[1].trim()) ?? 0);
+      final aMins =
+          (int.tryParse(aParts[0].trim()) ?? 0) * 60 +
+          (int.tryParse(aParts[1].trim()) ?? 0);
+      final bMins =
+          (int.tryParse(bParts[0].trim()) ?? 0) * 60 +
+          (int.tryParse(bParts[1].trim()) ?? 0);
       return aMins.compareTo(bMins);
     }
     return a.compareTo(b);
@@ -944,12 +1275,23 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.appointments),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop())
+                context.pop();
+              else
+                context.go('/dashboard');
+            },
+          ),
           actions: [
             IconButton(
-              icon: Icon(_filtersVisible ? Icons.filter_list_off : Icons.filter_list),
+              icon: Icon(
+                _filtersVisible ? Icons.filter_list_off : Icons.filter_list,
+              ),
               tooltip: _filtersVisible ? l10n.hideFilters : l10n.showFilters,
-              onPressed: () => setState(() => _filtersVisible = !_filtersVisible),
+              onPressed: () =>
+                  setState(() => _filtersVisible = !_filtersVisible),
             ),
             const NotificationsButton(),
             if (canUpdate)
@@ -966,10 +1308,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                       rooms: cache.rooms,
                       services: cache.services,
                       packages: _packages,
-                      allowPastDate: auth.hasRole(UserRole.admin) || auth.hasRole(UserRole.supervisor),
+                      allowPastDate:
+                          auth.hasRole(UserRole.admin) ||
+                          auth.hasRole(UserRole.supervisor),
                     ),
                   );
-                  if (ok == true && mounted) { _subscription?.cancel(); _startAppointmentsStream(); }
+                  if (ok == true && mounted) {
+                    _subscription?.cancel();
+                    _startAppointmentsStream();
+                  }
                 },
               ),
           ],
@@ -983,15 +1330,88 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
                   final useWrap = width < Breakpoint.tablet;
-                  final padding = EdgeInsets.symmetric(horizontal: ResponsivePadding.horizontal(context).left, vertical: 8);
+                  final padding = EdgeInsets.symmetric(
+                    horizontal: ResponsivePadding.horizontal(context).left,
+                    vertical: 8,
+                  );
                   final chipsRow = [
-                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.filterAll), selected: _statusFilter == null && _filterDoctorId == null, onSelected: (_) => setState(() { _statusFilter = null; _filterDoctorId = null; }))),
-                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.pending), selected: _statusFilter == AppointmentStatus.pending, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.pending))),
-                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.confirmed), selected: _statusFilter == AppointmentStatus.confirmed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.confirmed))),
-                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.attended), selected: _statusFilter == AppointmentStatus.completed, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.completed))),
-                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.apologized), selected: _statusFilter == AppointmentStatus.absentWithCause, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.absentWithCause))),
-                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.absent), selected: _statusFilter == AppointmentStatus.absentWithoutCause, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.absentWithoutCause))),
-                    Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(label: Text(l10n.absentAll), selected: _statusFilter == AppointmentStatus.noShow, onSelected: (_) => setState(() => _statusFilter = AppointmentStatus.noShow))),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.filterAll),
+                        selected:
+                            _statusFilter == null && _filterDoctorId == null,
+                        onSelected: (_) => setState(() {
+                          _statusFilter = null;
+                          _filterDoctorId = null;
+                        }),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.pending),
+                        selected: _statusFilter == AppointmentStatus.pending,
+                        onSelected: (_) => setState(
+                          () => _statusFilter = AppointmentStatus.pending,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.confirmed),
+                        selected: _statusFilter == AppointmentStatus.confirmed,
+                        onSelected: (_) => setState(
+                          () => _statusFilter = AppointmentStatus.confirmed,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.attended),
+                        selected: _statusFilter == AppointmentStatus.completed,
+                        onSelected: (_) => setState(
+                          () => _statusFilter = AppointmentStatus.completed,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.apologized),
+                        selected:
+                            _statusFilter == AppointmentStatus.absentWithCause,
+                        onSelected: (_) => setState(
+                          () =>
+                              _statusFilter = AppointmentStatus.absentWithCause,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.absent),
+                        selected:
+                            _statusFilter ==
+                            AppointmentStatus.absentWithoutCause,
+                        onSelected: (_) => setState(
+                          () => _statusFilter =
+                              AppointmentStatus.absentWithoutCause,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(l10n.absentAll),
+                        selected: _statusFilter == AppointmentStatus.noShow,
+                        onSelected: (_) => setState(
+                          () => _statusFilter = AppointmentStatus.noShow,
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
@@ -999,9 +1419,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         label: Text(l10n.filterDay),
                         selected: _filterDay != null,
                         onSelected: (_) async {
-                          if (_filterDay != null) { setState(() => _filterDay = null); return; }
-                          final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)));
-                          if (d != null) setState(() { _filterDay = d; _filterMonth = null; _filterYear = null; });
+                          if (_filterDay != null) {
+                            setState(() => _filterDay = null);
+                            return;
+                          }
+                          final d = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                          );
+                          if (d != null)
+                            setState(() {
+                              _filterDay = d;
+                              _filterMonth = null;
+                              _filterYear = null;
+                            });
                         },
                       ),
                     ),
@@ -1011,10 +1446,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         label: Text(l10n.filterMonth),
                         selected: _filterMonth != null && _filterYear != null,
                         onSelected: (_) async {
-                          if (_filterMonth != null && _filterYear != null) { setState(() { _filterMonth = null; _filterYear = null; _filterDay = null; }); return; }
+                          if (_filterMonth != null && _filterYear != null) {
+                            setState(() {
+                              _filterMonth = null;
+                              _filterYear = null;
+                              _filterDay = null;
+                            });
+                            return;
+                          }
                           final now = DateTime.now();
-                          final d = await showDatePicker(context: context, initialDate: now, firstDate: DateTime(2020), lastDate: DateTime(now.year + 1));
-                          if (d != null) setState(() { _filterMonth = d.month; _filterYear = d.year; _filterDay = null; });
+                          final d = await showDatePicker(
+                            context: context,
+                            initialDate: now,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(now.year + 1),
+                          );
+                          if (d != null)
+                            setState(() {
+                              _filterMonth = d.month;
+                              _filterYear = d.year;
+                              _filterDay = null;
+                            });
                         },
                       ),
                     ),
@@ -1024,15 +1476,44 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         label: Text(l10n.filterYear),
                         selected: _filterYear != null && _filterMonth == null,
                         onSelected: (_) async {
-                          if (_filterYear != null && _filterMonth == null) { setState(() { _filterYear = null; _filterDay = null; }); return; }
-                          final y = await showDialog<int>(context: context, builder: (ctx) {
-                            final years = List.generate(6, (i) => DateTime.now().year - 2 + i);
-                            return AlertDialog(
-                              title: Text(l10n.filterYear),
-                              content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: years.map((y) => ListTile(title: Text('$y'), onTap: () => Navigator.pop(ctx, y))).toList())),
-                            );
-                          });
-                          if (y != null) setState(() { _filterYear = y; _filterMonth = null; _filterDay = null; });
+                          if (_filterYear != null && _filterMonth == null) {
+                            setState(() {
+                              _filterYear = null;
+                              _filterDay = null;
+                            });
+                            return;
+                          }
+                          final y = await showDialog<int>(
+                            context: context,
+                            builder: (ctx) {
+                              final years = List.generate(
+                                6,
+                                (i) => DateTime.now().year - 2 + i,
+                              );
+                              return AlertDialog(
+                                title: Text(l10n.filterYear),
+                                content: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: years
+                                        .map(
+                                          (y) => ListTile(
+                                            title: Text('$y'),
+                                            onTap: () => Navigator.pop(ctx, y),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                          if (y != null)
+                            setState(() {
+                              _filterYear = y;
+                              _filterMonth = null;
+                              _filterDay = null;
+                            });
                         },
                       ),
                     ),
@@ -1040,9 +1521,21 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     Padding(
                       padding: const EdgeInsets.only(left: 4),
                       child: SegmentedButton<bool>(
-                        segments: [ButtonSegment(value: false, label: Text(l10n.listView), icon: const Icon(Icons.list)), ButtonSegment(value: true, label: Text(l10n.scheduleView), icon: const Icon(Icons.calendar_view_week))],
+                        segments: [
+                          ButtonSegment(
+                            value: false,
+                            label: Text(l10n.listView),
+                            icon: const Icon(Icons.list),
+                          ),
+                          ButtonSegment(
+                            value: true,
+                            label: Text(l10n.scheduleView),
+                            icon: const Icon(Icons.calendar_view_week),
+                          ),
+                        ],
                         selected: {_scheduleView},
-                        onSelectionChanged: (s) => setState(() => _scheduleView = s.first),
+                        onSelectionChanged: (s) =>
+                            setState(() => _scheduleView = s.first),
                       ),
                     ),
                   ];
@@ -1068,12 +1561,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final w = constraints.maxWidth;
-                  final padding = ResponsivePadding.horizontal(context).left * 2;
+                  final padding =
+                      ResponsivePadding.horizontal(context).left * 2;
                   final count = _showDoctorFilter(context) ? 3 : 2;
                   final available = w - padding - 12.0 * (count - 1);
                   final dropdownWidth = (available / count).clamp(120.0, 260.0);
                   return Padding(
-                    padding: EdgeInsets.fromLTRB(ResponsivePadding.horizontal(context).left, 0, ResponsivePadding.horizontal(context).right, 4),
+                    padding: EdgeInsets.fromLTRB(
+                      ResponsivePadding.horizontal(context).left,
+                      0,
+                      ResponsivePadding.horizontal(context).right,
+                      4,
+                    ),
                     child: Wrap(
                       spacing: 12,
                       runSpacing: 8,
@@ -1086,13 +1585,28 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                             decoration: InputDecoration(
                               labelText: l10n.services,
                               isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
                             items: [
-                              DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
-                              ...cache.services.map((s) => DropdownMenuItem<String?>(value: s.id, child: Text(s.displayName, overflow: TextOverflow.ellipsis))),
+                              DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text(l10n.filterAll),
+                              ),
+                              ...cache.services.map(
+                                (s) => DropdownMenuItem<String?>(
+                                  value: s.id,
+                                  child: Text(
+                                    s.displayName,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
                             ],
-                            onChanged: (v) => setState(() => _filterServiceId = v),
+                            onChanged: (v) =>
+                                setState(() => _filterServiceId = v),
                           ),
                         ),
                         SizedBox(
@@ -1102,13 +1616,28 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                             decoration: InputDecoration(
                               labelText: l10n.packages,
                               isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
                             items: [
-                              DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
-                              ..._packages.map((p) => DropdownMenuItem<String?>(value: p.id, child: Text(p.displayName, overflow: TextOverflow.ellipsis))),
+                              DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text(l10n.filterAll),
+                              ),
+                              ..._packages.map(
+                                (p) => DropdownMenuItem<String?>(
+                                  value: p.id,
+                                  child: Text(
+                                    p.displayName,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
                             ],
-                            onChanged: (v) => setState(() => _filterPackageId = v),
+                            onChanged: (v) =>
+                                setState(() => _filterPackageId = v),
                           ),
                         ),
                         if (_showDoctorFilter(context))
@@ -1119,13 +1648,30 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               decoration: InputDecoration(
                                 labelText: l10n.filterByDoctor,
                                 isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
                               items: [
-                                DropdownMenuItem<String?>(value: null, child: Text(l10n.filterAll)),
-                                ...cache.doctors.map((d) => DropdownMenuItem<String?>(value: d.id, child: Text(cache.userName(d.userId) ?? d.displayName ?? d.id, overflow: TextOverflow.ellipsis))),
+                                DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text(l10n.filterAll),
+                                ),
+                                ...cache.doctors.map(
+                                  (d) => DropdownMenuItem<String?>(
+                                    value: d.id,
+                                    child: Text(
+                                      cache.userName(d.userId) ??
+                                          d.displayName ??
+                                          d.id,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
                               ],
-                              onChanged: (v) => setState(() => _filterDoctorId = v),
+                              onChanged: (v) =>
+                                  setState(() => _filterDoctorId = v),
                             ),
                           ),
                       ],
@@ -1138,18 +1684,45 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 builder: (context) {
                   final filtered = _displayList(cache);
                   final weekList = _displayListForWeek(cache);
-                  final absentWithCauseCount = filtered.where((a) => a.status == AppointmentStatus.absentWithCause).length;
-                  final absentWithoutCauseCount = filtered.where((a) => a.status == AppointmentStatus.absentWithoutCause || a.status == AppointmentStatus.noShow).length;
+                  final absentWithCauseCount = filtered
+                      .where(
+                        (a) => a.status == AppointmentStatus.absentWithCause,
+                      )
+                      .length;
+                  final absentWithoutCauseCount = filtered
+                      .where(
+                        (a) =>
+                            a.status == AppointmentStatus.absentWithoutCause ||
+                            a.status == AppointmentStatus.noShow,
+                      )
+                      .length;
                   return Padding(
-                    padding: EdgeInsets.fromLTRB(ResponsivePadding.horizontal(context).left, 0, ResponsivePadding.horizontal(context).right, 8),
+                    padding: EdgeInsets.fromLTRB(
+                      ResponsivePadding.horizontal(context).left,
+                      0,
+                      ResponsivePadding.horizontal(context).right,
+                      8,
+                    ),
                     child: Wrap(
                       spacing: 12,
                       runSpacing: 6,
                       children: [
-                        _CountChip(label: l10n.sessionsFiltered, count: filtered.length),
-                        _CountChip(label: l10n.apologized, count: absentWithCauseCount),
-                        _CountChip(label: l10n.absent, count: absentWithoutCauseCount),
-                        _CountChip(label: l10n.sessionsThisWeek, count: weekList.length),
+                        _CountChip(
+                          label: l10n.sessionsFiltered,
+                          count: filtered.length,
+                        ),
+                        _CountChip(
+                          label: l10n.apologized,
+                          count: absentWithCauseCount,
+                        ),
+                        _CountChip(
+                          label: l10n.absent,
+                          count: absentWithoutCauseCount,
+                        ),
+                        _CountChip(
+                          label: l10n.sessionsThisWeek,
+                          count: weekList.length,
+                        ),
                       ],
                     ),
                   );
@@ -1157,7 +1730,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               ),
             ],
             Padding(
-              padding: EdgeInsets.fromLTRB(ResponsivePadding.horizontal(context).left, 0, ResponsivePadding.horizontal(context).right, 8),
+              padding: EdgeInsets.fromLTRB(
+                ResponsivePadding.horizontal(context).left,
+                0,
+                ResponsivePadding.horizontal(context).right,
+                8,
+              ),
               child: TextField(
                 onChanged: (v) => setState(() => _searchQuery = v),
                 decoration: InputDecoration(
@@ -1178,166 +1756,430 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _scheduleView
-                      ? _buildScheduleView(context, cache, l10n, auth, canUpdate)
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildListViewModelDateNavigator(context, l10n),
-                            Expanded(
-                              child: _displayList(cache).isEmpty
-                                  ? Center(child: Text(l10n.noData))
-                                  : RefreshIndicator(
-                    onRefresh: () async {
-                      _subscription?.cancel();
-                      _startAppointmentsStream();
-                      await Future.delayed(const Duration(milliseconds: 400));
-                    },
-                            child: Builder(
-                              builder: (context) {
-                                final displayList = _displayList(cache);
-                                final firstSessionIds = _firstSessionIdsNewPatient(_list.where((x) => x.status != AppointmentStatus.cancelled).toList());
-                                return ListView(
-                      padding: responsiveListPadding(context),
-                                  children: [
-                                    _scheduleColorLegend(context, l10n),
-                                    ...List.generate(displayList.length, (i) {
-                                      final a = displayList[i];
-                                      final dateStr = AppDateFormat.shortDate.format(a.appointmentDate);
-                                      final statusColor = _colorForStatus(a.status);
-                                      final bgColor = statusColor?.withValues(alpha: 0.35) ?? Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface;
-                                      final isFirstSession = firstSessionIds.contains(a.id);
-                                      final isStarredSession = a.isStarred;
-                                      final showStar = isFirstSession || isStarredSession;
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                                    color: bgColor,
-                          child: ListTile(
-                                      title: Row(
-                                        children: [
-                                          if (showStar)
-                                            Padding(
-                                              padding: const EdgeInsets.only(right: 6),
-                                              child: Icon(Icons.star, size: 16, color: Theme.of(context).colorScheme.primary),
-                                            ),
-                                          Expanded(
-                                            child: Text('${cache.userName(a.patientId) ?? a.patientId} • ${cache.doctorDisplayName(a.doctorId) ?? a.doctorId}'),
-                                          ),
-                                        ],
-                                      ),
-                                      subtitle: Text(
-                                        [
-                                          '$dateStr ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status, l10n)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}',
-                                          if (a.notes != null && a.notes!.trim().isNotEmpty)
-                                            '${l10n.notes}: ${a.notes!.trim()}',
-                                        ].join('\n'),
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                            trailing: canUpdate
-                                ? PopupMenuButton<String>(
-                                    onSelected: (v) async {
-                                      if (v == 'edit') {
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AppointmentFormDialog(
-                                            existing: a,
-                                            currentUserId: auth.id,
-                                            patients: cache.patients,
-                                            doctors: cache.doctors,
-                                            rooms: cache.rooms,
-                                            services: cache.services,
-                                            packages: _packages,
-                                            allowPastDate: auth.hasRole(UserRole.admin) || auth.hasRole(UserRole.supervisor),
-                                          ),
-                                        );
-                                        if (ok == true && mounted) {
-                                          final updated = await _firestore.getAppointmentById(a.id);
-                                          if (updated != null) _updateListAfterChange(a.id, replacement: updated);
-                                        }
-                                      } else if (v == 'confirmed') {
-                                        await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.confirmed);
-                                        _updateListAfterChange(a.id, newStatus: AppointmentStatus.confirmed);
-                                        _logAppointmentAction(context, 'appointment_confirmed', a, AppointmentStatus.confirmed);
-                                        _notifyAppointmentStatusChange(a);
-                                      } else if (v == 'completed') {
-                                        final result = await _showSessionPaymentDialog(context, a, l10n);
-                                        if (result == null && mounted) return;
-                                        if (result != null && mounted) {
-                                          final sessionDateTime = _dateTimeFromAppointmentDateAndTime(a.appointmentDate, a.startTime);
-                                          final income = IncomeRecordModel(
-                                            id: '',
-                                            amount: result.amount,
-                                            currency: 'EGP',
-                                            source: 'Session',
-                                            doctorId: a.doctorId,
-                                            patientId: a.patientId,
-                                            notes: '${a.servicesDisplay.isNotEmpty ? a.servicesDisplay : 'Session'} • ${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime}',
-                                            recordedByUserId: auth.id,
-                                            incomeDate: sessionDateTime,
-                                            appointmentId: a.id,
-                                            sessionPaymentStatus: result.status,
+                  ? _buildScheduleView(context, cache, l10n, auth, canUpdate)
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildListViewModelDateNavigator(context, l10n),
+                        Expanded(
+                          child: _displayList(cache).isEmpty
+                              ? Center(child: Text(l10n.noData))
+                              : RefreshIndicator(
+                                  onRefresh: () async {
+                                    _subscription?.cancel();
+                                    _startAppointmentsStream();
+                                    await Future.delayed(
+                                      const Duration(milliseconds: 400),
+                                    );
+                                  },
+                                  child: Builder(
+                                    builder: (context) {
+                                      final displayList = _displayList(cache);
+                                      final firstSessionIds =
+                                          _firstSessionIdsNewPatient(
+                                            _list
+                                                .where(
+                                                  (x) =>
+                                                      x.status !=
+                                                      AppointmentStatus
+                                                          .cancelled,
+                                                )
+                                                .toList(),
                                           );
-                                          await _firestore.addIncomeRecord(income);
-                                        }
-                                        if (!mounted) return;
-                                        await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.completed);
-                                        _updateListAfterChange(a.id, newStatus: AppointmentStatus.completed);
-                                        _logAppointmentAction(context, 'appointment_completed', a, AppointmentStatus.completed);
-                                        _notifyAppointmentStatusChange(a);
-                                        _checkPackageCompleted(a, l10n);
-                                      } else if (v == 'absentWithCause') {
-                                        await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.absentWithCause);
-                                        _updateListAfterChange(a.id, newStatus: AppointmentStatus.absentWithCause);
-                                        _logAppointmentAction(context, 'appointment_absent_with_cause', a, AppointmentStatus.absentWithCause);
-                                        _notifyAppointmentStatusChange(a);
-                                      } else if (v == 'absentWithoutCause') {
-                                        await _firestore.updateAppointmentStatus(a.id, AppointmentStatus.absentWithoutCause);
-                                        _updateListAfterChange(a.id, newStatus: AppointmentStatus.absentWithoutCause);
-                                        _logAppointmentAction(context, 'appointment_absent_without_cause', a, AppointmentStatus.absentWithoutCause);
-                                        _notifyAppointmentStatusChange(a);
-                                      } else if (v == 'delete') {
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder: (ctx) => AlertDialog(
-                                            title: Text(l10n.deleteConfirm),
-                                            content: Text(l10n.deleteAppointmentAndIncomeConfirm),
-                                            actions: [
-                                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
-                                              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.delete)),
-                                            ],
-                                          ),
-                                        );
-                                        if (confirm != true || !mounted) return;
-                                        await _firestore.deleteAppointment(a.id);
-                                        _logAppointmentAction(context, 'appointment_deleted', a, a.status);
-                                        if (mounted) setState(() => _list.removeWhere((x) => x.id == a.id));
-                                        _notifyAppointmentStatusChange(a);
-                                      }
+                                      return ListView(
+                                        padding: responsiveListPadding(context),
+                                        children: [
+                                          _scheduleColorLegend(context, l10n),
+                                          ...List.generate(displayList.length, (
+                                            i,
+                                          ) {
+                                            final a = displayList[i];
+                                            final dateStr = AppDateFormat
+                                                .shortDate
+                                                .format(a.appointmentDate);
+                                            final statusColor = _colorForStatus(
+                                              a.status,
+                                            );
+                                            final bgColor =
+                                                statusColor?.withValues(
+                                                  alpha: 0.35,
+                                                ) ??
+                                                Theme.of(
+                                                  context,
+                                                ).cardTheme.color ??
+                                                Theme.of(
+                                                  context,
+                                                ).colorScheme.surface;
+                                            final isFirstSession =
+                                                firstSessionIds.contains(a.id);
+                                            final isStarredSession =
+                                                a.isStarred;
+                                            final showStar =
+                                                isFirstSession ||
+                                                isStarredSession;
+                                            return Card(
+                                              margin: const EdgeInsets.only(
+                                                bottom: 8,
+                                              ),
+                                              color: bgColor,
+                                              child: ListTile(
+                                                title: Row(
+                                                  children: [
+                                                    if (showStar)
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                              right: 6,
+                                                            ),
+                                                        child: Icon(
+                                                          Icons.star,
+                                                          size: 16,
+                                                          color: Theme.of(
+                                                            context,
+                                                          ).colorScheme.primary,
+                                                        ),
+                                                      ),
+                                                    Expanded(
+                                                      child: Text(
+                                                        '${cache.userName(a.patientId) ?? a.patientId} • ${cache.doctorDisplayName(a.doctorId) ?? a.doctorId}',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                subtitle: Text(
+                                                  [
+                                                    '$dateStr ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status, l10n)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}',
+                                                    if (a.notes != null &&
+                                                        a.notes!
+                                                            .trim()
+                                                            .isNotEmpty)
+                                                      '${l10n.notes}: ${a.notes!.trim()}',
+                                                  ].join('\n'),
+                                                  maxLines: 3,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                trailing: canUpdate
+                                                    ? PopupMenuButton<String>(
+                                                        onSelected: (v) async {
+                                                          if (v == 'edit') {
+                                                            final ok = await showDialog<bool>(
+                                                              context: context,
+                                                              builder: (_) => AppointmentFormDialog(
+                                                                existing: a,
+                                                                currentUserId:
+                                                                    auth.id,
+                                                                patients: cache
+                                                                    .patients,
+                                                                doctors: cache
+                                                                    .doctors,
+                                                                rooms:
+                                                                    cache.rooms,
+                                                                services: cache
+                                                                    .services,
+                                                                packages:
+                                                                    _packages,
+                                                                allowPastDate:
+                                                                    auth.hasRole(
+                                                                      UserRole
+                                                                          .admin,
+                                                                    ) ||
+                                                                    auth.hasRole(
+                                                                      UserRole
+                                                                          .supervisor,
+                                                                    ),
+                                                              ),
+                                                            );
+                                                            if (ok == true &&
+                                                                mounted) {
+                                                              final updated =
+                                                                  await _firestore
+                                                                      .getAppointmentById(
+                                                                        a.id,
+                                                                      );
+                                                              if (updated !=
+                                                                  null)
+                                                                _updateListAfterChange(
+                                                                  a.id,
+                                                                  replacement:
+                                                                      updated,
+                                                                );
+                                                            }
+                                                          } else if (v ==
+                                                              'confirmed') {
+                                                            await _firestore
+                                                                .updateAppointmentStatus(
+                                                                  a.id,
+                                                                  AppointmentStatus
+                                                                      .confirmed,
+                                                                );
+                                                            _updateListAfterChange(
+                                                              a.id,
+                                                              newStatus:
+                                                                  AppointmentStatus
+                                                                      .confirmed,
+                                                            );
+                                                            _logAppointmentAction(
+                                                              context,
+                                                              'appointment_confirmed',
+                                                              a,
+                                                              AppointmentStatus
+                                                                  .confirmed,
+                                                            );
+                                                            _notifyAppointmentStatusChange(
+                                                              a,
+                                                            );
+                                                          } else if (v ==
+                                                              'completed') {
+                                                            final result =
+                                                                await _showSessionPaymentDialog(
+                                                                  context,
+                                                                  a,
+                                                                  l10n,
+                                                                );
+                                                            if (result ==
+                                                                    null &&
+                                                                mounted)
+                                                              return;
+                                                            if (result !=
+                                                                    null &&
+                                                                mounted) {
+                                                              final sessionDateTime =
+                                                                  _dateTimeFromAppointmentDateAndTime(
+                                                                    a.appointmentDate,
+                                                                    a.startTime,
+                                                                  );
+                                                              final income = IncomeRecordModel(
+                                                                id: '',
+                                                                amount: result
+                                                                    .amount,
+                                                                currency: 'EGP',
+                                                                source:
+                                                                    'Session',
+                                                                doctorId:
+                                                                    a.doctorId,
+                                                                patientId:
+                                                                    a.patientId,
+                                                                notes:
+                                                                    '${a.servicesDisplay.isNotEmpty ? a.servicesDisplay : 'Session'} • ${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime}',
+                                                                recordedByUserId:
+                                                                    auth.id,
+                                                                incomeDate:
+                                                                    sessionDateTime,
+                                                                appointmentId:
+                                                                    a.id,
+                                                                sessionPaymentStatus:
+                                                                    result
+                                                                        .status,
+                                                              );
+                                                              await _firestore
+                                                                  .addIncomeRecord(
+                                                                    income,
+                                                                  );
+                                                            }
+                                                            if (!mounted)
+                                                              return;
+                                                            await _firestore
+                                                                .updateAppointmentStatus(
+                                                                  a.id,
+                                                                  AppointmentStatus
+                                                                      .completed,
+                                                                );
+                                                            _updateListAfterChange(
+                                                              a.id,
+                                                              newStatus:
+                                                                  AppointmentStatus
+                                                                      .completed,
+                                                            );
+                                                            _logAppointmentAction(
+                                                              context,
+                                                              'appointment_completed',
+                                                              a,
+                                                              AppointmentStatus
+                                                                  .completed,
+                                                            );
+                                                            _notifyAppointmentStatusChange(
+                                                              a,
+                                                            );
+                                                            _checkPackageCompleted(
+                                                              a,
+                                                              l10n,
+                                                            );
+                                                          } else if (v ==
+                                                              'absentWithCause') {
+                                                            await _firestore
+                                                                .updateAppointmentStatus(
+                                                                  a.id,
+                                                                  AppointmentStatus
+                                                                      .absentWithCause,
+                                                                );
+                                                            _updateListAfterChange(
+                                                              a.id,
+                                                              newStatus:
+                                                                  AppointmentStatus
+                                                                      .absentWithCause,
+                                                            );
+                                                            _logAppointmentAction(
+                                                              context,
+                                                              'appointment_absent_with_cause',
+                                                              a,
+                                                              AppointmentStatus
+                                                                  .absentWithCause,
+                                                            );
+                                                            _notifyAppointmentStatusChange(
+                                                              a,
+                                                            );
+                                                          } else if (v ==
+                                                              'absentWithoutCause') {
+                                                            await _firestore
+                                                                .updateAppointmentStatus(
+                                                                  a.id,
+                                                                  AppointmentStatus
+                                                                      .absentWithoutCause,
+                                                                );
+                                                            _updateListAfterChange(
+                                                              a.id,
+                                                              newStatus:
+                                                                  AppointmentStatus
+                                                                      .absentWithoutCause,
+                                                            );
+                                                            _logAppointmentAction(
+                                                              context,
+                                                              'appointment_absent_without_cause',
+                                                              a,
+                                                              AppointmentStatus
+                                                                  .absentWithoutCause,
+                                                            );
+                                                            _notifyAppointmentStatusChange(
+                                                              a,
+                                                            );
+                                                          } else if (v ==
+                                                              'delete') {
+                                                            final confirm = await showDialog<bool>(
+                                                              context: context,
+                                                              builder: (ctx) => AlertDialog(
+                                                                title: Text(
+                                                                  l10n.deleteConfirm,
+                                                                ),
+                                                                content: Text(
+                                                                  l10n.deleteAppointmentAndIncomeConfirm,
+                                                                ),
+                                                                actions: [
+                                                                  TextButton(
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
+                                                                          ctx,
+                                                                          false,
+                                                                        ),
+                                                                    child: Text(
+                                                                      l10n.cancel,
+                                                                    ),
+                                                                  ),
+                                                                  FilledButton(
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
+                                                                          ctx,
+                                                                          true,
+                                                                        ),
+                                                                    child: Text(
+                                                                      l10n.delete,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                            if (confirm !=
+                                                                    true ||
+                                                                !mounted)
+                                                              return;
+                                                            await _firestore
+                                                                .deleteAppointment(
+                                                                  a.id,
+                                                                );
+                                                            _logAppointmentAction(
+                                                              context,
+                                                              'appointment_deleted',
+                                                              a,
+                                                              a.status,
+                                                            );
+                                                            if (mounted)
+                                                              setState(
+                                                                () => _list
+                                                                    .removeWhere(
+                                                                      (x) =>
+                                                                          x.id ==
+                                                                          a.id,
+                                                                    ),
+                                                              );
+                                                            _notifyAppointmentStatusChange(
+                                                              a,
+                                                            );
+                                                          }
+                                                        },
+                                                        itemBuilder: (context) => [
+                                                          PopupMenuItem(
+                                                            value: 'edit',
+                                                            child: Text(
+                                                              l10n.edit,
+                                                            ),
+                                                          ),
+                                                          if (auth
+                                                              .canAccessAdminDashboard)
+                                                            PopupMenuItem(
+                                                              value: 'delete',
+                                                              child: Text(
+                                                                l10n.delete,
+                                                              ),
+                                                            ),
+                                                          if (a.status !=
+                                                                  AppointmentStatus
+                                                                      .completed &&
+                                                              a.status !=
+                                                                  AppointmentStatus
+                                                                      .cancelled) ...[
+                                                            PopupMenuItem(
+                                                              value:
+                                                                  'confirmed',
+                                                              child: Text(
+                                                                l10n.confirmed,
+                                                              ),
+                                                            ),
+                                                            PopupMenuItem(
+                                                              value:
+                                                                  'completed',
+                                                              child: Text(
+                                                                l10n.attended,
+                                                              ),
+                                                            ),
+                                                            PopupMenuItem(
+                                                              value:
+                                                                  'absentWithCause',
+                                                              child: Text(
+                                                                l10n.apologized,
+                                                              ),
+                                                            ),
+                                                            PopupMenuItem(
+                                                              value:
+                                                                  'absentWithoutCause',
+                                                              child: Text(
+                                                                l10n.absent,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ],
+                                                      )
+                                                    : null,
+                                              ),
+                                            );
+                                          }),
+                                        ],
+                                      );
                                     },
-                                    itemBuilder: (context) => [
-                                      PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
-                                      if (auth.canAccessAdminDashboard)
-                                        PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
-                                      if (a.status != AppointmentStatus.completed && a.status != AppointmentStatus.cancelled) ...[
-                                        PopupMenuItem(value: 'confirmed', child: Text(l10n.confirmed)),
-                                        PopupMenuItem(value: 'completed', child: Text(l10n.attended)),
-                                        PopupMenuItem(value: 'absentWithCause', child: Text(l10n.apologized)),
-                                        PopupMenuItem(value: 'absentWithoutCause', child: Text(l10n.absent)),
-                                      ],
-                                    ],
-                                  )
-                                : null,
-                          ),
-                                  );
-                                }),
-                                  ],
-                        );
-                      },
+                                  ),
+                                ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-              ],
-            ),
             ),
           ],
         ),
@@ -1366,7 +2208,12 @@ class _CountChip extends StatelessWidget {
         children: [
           Text(label, style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(width: 6),
-          Text('$count', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            '$count',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );
