@@ -312,9 +312,28 @@ class AppLocalizations {
   String get period9Months => _map['period9Months']!;
   String get periodYear => _map['periodYear']!;
   String get exportPdf => _map['exportPdf']!;
+  String get dynamicReport => _map['dynamicReport']!;
+  String get dynamicReportHint => _map['dynamicReportHint']!;
+  String get dynamicReportExportChartType => _map['dynamicReportExportChartType']!;
+  String get dynamicReportSelectAll => _map['dynamicReportSelectAll']!;
+  String get dynamicReportClear => _map['dynamicReportClear']!;
+  String get dynamicReportGenerate => _map['dynamicReportGenerate']!;
+  String get dynamicReportSelectAtLeastOne => _map['dynamicReportSelectAtLeastOne']!;
+  String get dynamicReportNothingCaptured => _map['dynamicReportNothingCaptured']!;
+  String get dynamicReportNoCharts => _map['dynamicReportNoCharts']!;
+  String get dynamicStatisticsReport => _map['dynamicStatisticsReport']!;
+  String get generatingPdf => _map['generatingPdf']!;
   String get barChart => _map['barChart']!;
   String get lineChart => _map['lineChart']!;
   String get pieChart => _map['pieChart']!;
+  String get appointmentsByStatus => _map['appointmentsByStatus']!;
+  String get incomeNoDoctor => _map['incomeNoDoctor']!;
+  String get chartOtherCategory => _map['chartOtherCategory']!;
+  String get expensesByCategory => _map['expensesByCategory']!;
+  String get uncategorizedExpense => _map['uncategorizedExpense']!;
+  String get appointmentsByService => _map['appointmentsByService']!;
+  String get appointmentsByPackage => _map['appointmentsByPackage']!;
+  String get appointmentNoServices => _map['appointmentNoServices']!;
   String get periodIncome => _map['periodIncome']!;
   String get periodExpense => _map['periodExpense']!;
   String get periodNet => _map['periodNet']!;
@@ -647,9 +666,28 @@ class AppLocalizations {
     'period9Months': '9 Months',
     'periodYear': 'Year',
     'exportPdf': 'Export PDF',
+    'dynamicReport': 'Dynamic report',
+    'dynamicReportHint': 'Choose one or more statistics below. Pick a chart style for the PDF; all selected charts will be exported using that style (your on-screen chart types stay the same after export).',
+    'dynamicReportExportChartType': 'Chart style for PDF export',
+    'dynamicReportSelectAll': 'Select all',
+    'dynamicReportClear': 'Clear',
+    'dynamicReportGenerate': 'Generate combined PDF',
+    'dynamicReportSelectAtLeastOne': 'Select at least one statistic to export.',
+    'dynamicReportNothingCaptured': 'Could not capture the selected charts. Try again after the charts finish loading.',
+    'dynamicReportNoCharts': 'No charts are available for the current period.',
+    'dynamicStatisticsReport': 'Admin statistics report',
+    'generatingPdf': 'Generating PDF…',
     'barChart': 'Bar',
     'lineChart': 'Line',
     'pieChart': 'Pie',
+    'appointmentsByStatus': 'Appointments by status',
+    'incomeNoDoctor': 'No doctor (unassigned)',
+    'chartOtherCategory': 'Other',
+    'expensesByCategory': 'Expenses by category',
+    'uncategorizedExpense': 'Uncategorized',
+    'appointmentsByService': 'Appointments by service',
+    'appointmentsByPackage': 'Appointments by package',
+    'appointmentNoServices': 'No service listed',
     'periodIncome': 'Income (period)',
     'periodExpense': 'Expenses (period)',
     'periodNet': 'Net (period)',
@@ -986,9 +1024,28 @@ class AppLocalizations {
     'period9Months': '٩ أشهر',
     'periodYear': 'سنة',
     'exportPdf': 'تصدير PDF',
+    'dynamicReport': 'تقرير ديناميكي',
+    'dynamicReportHint': 'اختر إحصائية واحدة أو أكثر أدناه. اختر شكل المخطط للتصدير؛ ستُصدَّر كل المخططات المحددة بهذا الشكل (أنواع المخططات على الشاشة تُعاد كما كانت بعد التصدير).',
+    'dynamicReportExportChartType': 'شكل المخطط لتصدير PDF',
+    'dynamicReportSelectAll': 'تحديد الكل',
+    'dynamicReportClear': 'مسح',
+    'dynamicReportGenerate': 'إنشاء PDF مجمّع',
+    'dynamicReportSelectAtLeastOne': 'اختر إحصائية واحدة على الأقل للتصدير.',
+    'dynamicReportNothingCaptured': 'تعذر التقاط المخططات المحددة. أعد المحاولة بعد اكتمال التحميل.',
+    'dynamicReportNoCharts': 'لا توجد مخططات متاحة للفترة الحالية.',
+    'dynamicStatisticsReport': 'تقرير إحصائيات الإدارة',
+    'generatingPdf': 'جاري إنشاء PDF…',
     'barChart': 'أعمدة',
     'lineChart': 'خط',
     'pieChart': 'دائري',
+    'appointmentsByStatus': 'المواعيد حسب الحالة',
+    'incomeNoDoctor': 'بدون طبيب (غير مخصص)',
+    'chartOtherCategory': 'أخرى',
+    'expensesByCategory': 'المصروفات حسب الفئة',
+    'uncategorizedExpense': 'غير مصنف',
+    'appointmentsByService': 'المواعيد حسب الخدمة',
+    'appointmentsByPackage': 'المواعيد حسب الباقة',
+    'appointmentNoServices': 'بدون خدمة مسجلة',
     'periodIncome': 'الإيرادات (الفترة)',
     'periodExpense': 'المصروفات (الفترة)',
     'periodNet': 'الصافي (الفترة)',

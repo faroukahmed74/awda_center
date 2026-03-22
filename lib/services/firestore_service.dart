@@ -796,10 +796,103 @@ class FirestoreService {
       usersByRole[role] = (usersByRole[role] ?? 0) + 1;
     }
 
+    final appointmentsByStatus = <String, int>{for (final s in AppointmentStatus.values) s.value: 0};
+    for (final a in appointments) {
+      final k = a.status.value;
+      appointmentsByStatus[k] = (appointmentsByStatus[k] ?? 0) + 1;
+    }
+
+    final doctors = await getDoctors();
+    final doctorDisplayName = <String, String>{
+      for (final d in doctors)
+        d.id: (d.displayName != null && d.displayName!.trim().isNotEmpty) ? d.displayName!.trim() : d.id,
+    };
+    final incomeByDoctorAmount = <String, double>{};
+    for (final r in incomeList) {
+      final id = (r.doctorId != null && r.doctorId!.trim().isNotEmpty) ? r.doctorId!.trim() : '';
+      final key = id.isEmpty ? '' : id;
+      incomeByDoctorAmount[key] = (incomeByDoctorAmount[key] ?? 0) + r.amount;
+    }
+    final incomeByDoctor = incomeByDoctorAmount.entries
+        .map((e) {
+          final id = e.key;
+          final name = id.isEmpty ? '' : (doctorDisplayName[id] ?? id);
+          return <String, dynamic>{'doctorId': id, 'name': name, 'income': e.value};
+        })
+        .toList()
+      ..sort((a, b) => (b['income'] as double).compareTo(a['income'] as double));
+
+    final expenseByCategoryAmount = <String, double>{};
+    for (final r in expenseList) {
+      final raw = r.category.trim();
+      final key = raw.isEmpty ? '' : raw;
+      expenseByCategoryAmount[key] = (expenseByCategoryAmount[key] ?? 0) + r.amount;
+    }
+    final expensesByCategory = expenseByCategoryAmount.entries
+        .map((e) => <String, dynamic>{'category': e.key, 'amount': e.value})
+        .toList()
+      ..sort((a, b) => (b['amount'] as double).compareTo(a['amount'] as double));
+
+    final expensesByDoctorAmount = <String, double>{};
+    for (final r in expenseList) {
+      final id = (r.paidByDoctorId != null && r.paidByDoctorId!.trim().isNotEmpty) ? r.paidByDoctorId!.trim() : '';
+      expensesByDoctorAmount[id] = (expensesByDoctorAmount[id] ?? 0) + r.amount;
+    }
+    final expensesByDoctor = expensesByDoctorAmount.entries
+        .map((e) {
+          final id = e.key;
+          final name = id.isEmpty ? '' : (doctorDisplayName[id] ?? id);
+          return <String, dynamic>{'doctorId': id, 'name': name, 'expense': e.value};
+        })
+        .toList()
+      ..sort((a, b) => (b['expense'] as double).compareTo(a['expense'] as double));
+
+    final serviceNameCounts = <String, int>{};
+    var appointmentsWithoutService = 0;
+    for (final a in appointments) {
+      if (a.services.isEmpty) {
+        appointmentsWithoutService++;
+      } else {
+        for (final s in a.services) {
+          final t = s.trim();
+          if (t.isEmpty) continue;
+          serviceNameCounts[t] = (serviceNameCounts[t] ?? 0) + 1;
+        }
+      }
+    }
+    final appointmentsByService = serviceNameCounts.entries
+        .map((e) => <String, dynamic>{'name': e.key, 'count': e.value})
+        .toList()
+      ..sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
+    if (appointmentsWithoutService > 0) {
+      appointmentsByService.add(<String, dynamic>{'name': '', 'count': appointmentsWithoutService});
+      appointmentsByService.sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
+    }
+
+    final packageList = await getPackages();
+    final packageDisplayName = <String, String>{for (final p in packageList) p.id: p.displayName};
+    final packageIdCounts = <String, int>{};
+    for (final a in appointments) {
+      final pid = a.packageId;
+      if (pid == null || pid.trim().isEmpty) continue;
+      final k = pid.trim();
+      packageIdCounts[k] = (packageIdCounts[k] ?? 0) + 1;
+    }
+    final appointmentsByPackage = packageIdCounts.entries
+        .map((e) => <String, dynamic>{'packageId': e.key, 'name': packageDisplayName[e.key] ?? e.key, 'count': e.value})
+        .toList()
+      ..sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
+
     return {
       'appointmentsByDay': appointmentsSeries,
       'incomeExpenseByMonth': incomeExpenseSeries,
       'usersByRole': usersByRole,
+      'appointmentsByStatus': appointmentsByStatus,
+      'incomeByDoctor': incomeByDoctor,
+      'expensesByCategory': expensesByCategory,
+      'expensesByDoctor': expensesByDoctor,
+      'appointmentsByService': appointmentsByService,
+      'appointmentsByPackage': appointmentsByPackage,
       'periodTotals': {
         'totalAppointments': totalAppointments,
         'totalIncome': totalIncome,
