@@ -1337,51 +1337,54 @@ class _ResponsivePieWithLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 420;
-        final pie = PieChart(
-          PieChartData(sections: sections, sectionsSpace: 2, centerSpaceRadius: 22),
-          duration: const Duration(milliseconds: 300),
-        );
-        final legend = Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: legendItems
-              .map(
-                (item) => Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(width: 10, height: 10, decoration: BoxDecoration(color: item.color, shape: BoxShape.circle)),
-                    const SizedBox(width: 6),
-                    ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: narrow ? constraints.maxWidth - 16 : constraints.maxWidth * 0.35),
-                      child: Text(item.label, style: theme.textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ),
-                  ],
-                ),
-              )
-              .toList(),
-        );
-        if (narrow) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
+    return ColoredBox(
+      color: theme.colorScheme.surface,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 420;
+          final pie = PieChart(
+            PieChartData(sections: sections, sectionsSpace: 2, centerSpaceRadius: 22),
+            duration: const Duration(milliseconds: 300),
+          );
+          final legend = Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: legendItems
+                .map(
+                  (item) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(width: 10, height: 10, decoration: BoxDecoration(color: item.color, shape: BoxShape.circle)),
+                      const SizedBox(width: 6),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: narrow ? constraints.maxWidth - 16 : constraints.maxWidth * 0.35),
+                        child: Text(item.label, style: theme.textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                )
+                .toList(),
+          );
+          if (narrow) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(height: 200, child: pie),
+                const SizedBox(height: 12),
+                legend,
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(height: 200, child: pie),
-              const SizedBox(height: 12),
-              legend,
+              Expanded(flex: 2, child: SizedBox(height: 220, child: pie)),
+              const SizedBox(width: 12),
+              Expanded(child: legend),
             ],
           );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(flex: 2, child: SizedBox(height: 220, child: pie)),
-            const SizedBox(width: 12),
-            Expanded(child: legend),
-          ],
-        );
-      },
+        },
+      ),
     );
   }
 }

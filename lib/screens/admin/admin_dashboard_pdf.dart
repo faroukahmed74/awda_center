@@ -22,6 +22,15 @@ class AdminDashboardPdf {
   static const _cairoRegular = 'assets/fonts/Cairo-Regular.ttf';
   static const _cairoBold = 'assets/fonts/Cairo-Bold.ttf';
 
+  /// Share sheet anchor for iOS/iPad (was `null` and broke mobile share).
+  static Rect _shareOrigin(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    if (size.width <= 0 || size.height <= 0) {
+      return const Rect.fromLTWH(0, 0, 100, 100);
+    }
+    return Rect.fromLTWH(0, 0, size.width, size.height * 0.5);
+  }
+
   static Future<pw.Font?> _loadFont(String path) async {
     try {
       final data = await rootBundle.load(path);
@@ -39,6 +48,7 @@ class AdminDashboardPdf {
     required String rangeLabel,
     required List<int> imageBytes,
   }) async {
+    final shareOrigin = _shareOrigin(context);
     pw.Font? font = await _loadFont(_cairoRegular);
     pw.Font? fontBold = await _loadFont(_cairoBold);
     font ??= pw.Font.helvetica();
@@ -89,7 +99,7 @@ class AdminDashboardPdf {
 
     final bytes = await doc.save();
     final filename = 'admin_chart_${DateTime.now().millisecondsSinceEpoch}.pdf';
-    await savePdfAndShare(filename, bytes, null);
+    await savePdfAndShare(filename, bytes, shareOrigin);
   }
 
   /// Single PDF with multiple chart images (order preserved). Uses the same fonts as [exportChartPdf].
@@ -102,6 +112,7 @@ class AdminDashboardPdf {
   }) async {
     if (sections.isEmpty) return;
 
+    final shareOrigin = _shareOrigin(context);
     pw.Font? font = await _loadFont(_cairoRegular);
     pw.Font? fontBold = await _loadFont(_cairoBold);
     font ??= pw.Font.helvetica();
@@ -172,6 +183,6 @@ class AdminDashboardPdf {
 
     final bytes = await doc.save();
     final filename = 'admin_statistics_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
-    await savePdfAndShare(filename, bytes, null);
+    await savePdfAndShare(filename, bytes, shareOrigin);
   }
 }
