@@ -17,6 +17,7 @@ import '../../providers/locale_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../router/app_router.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/live_date_time_banner.dart';
 import '../../widgets/notifications_button.dart';
 import '../patients/add_patient_dialog.dart';
 
@@ -31,6 +32,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int? _todayAppointmentsCount;
   String? _lastSyncedLocaleCode;
   String? _lastSyncedUserId;
+
+  void _closeDrawerIfOpen() {
+    final scaffold = Scaffold.maybeOf(context);
+    if (scaffold?.isDrawerOpen ?? false) {
+      Navigator.pop(context);
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -371,6 +379,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             style: Theme.of(context).textTheme.bodyLarge,
                             textAlign: TextAlign.center,
                           ),
+                          const SizedBox(height: 20),
+                          const LiveDateTimeBanner(),
                           if (!user.hasRole(UserRole.patient) ||
                               canAccessRoute(user, '/patients') ||
                               canAccessRoute(user, '/appointments')) ...[
@@ -411,7 +421,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     icon: const Icon(Icons.search, size: 20),
                                     label: Text(l10n.findPatient),
                                     onPressed: () {
-                                      Navigator.pop(context);
+                                      _closeDrawerIfOpen();
                                       context.push('/patients?focus=search');
                                     },
                                   ),
@@ -424,7 +434,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                     label: Text(l10n.bookAppointment),
                                     onPressed: () {
-                                      Navigator.pop(context);
+                                      _closeDrawerIfOpen();
                                       context.push('/appointments');
                                     },
                                   ),
@@ -436,7 +446,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           : l10n.todayAppointments,
                                     ),
                                     onPressed: () {
-                                      Navigator.pop(context);
+                                      _closeDrawerIfOpen();
                                       context.push('/appointments');
                                     },
                                   ),

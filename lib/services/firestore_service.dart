@@ -708,85 +708,181 @@ class FirestoreService {
     };
   }
 
-  /// Range: day, week, month, 3months, 6months, 9months, year. Returns chart series + periodTotals.
-  Future<Map<String, dynamic>> getAdminChartData(String range) async {
+  /// Range: day, week, month, 3months, 6months, 9months, year, custom,
+  /// `thisMonth` (full calendar month to date boundary), `anyMonth` (full chosen month).
+  /// For [range] == `custom`, pass [customRangeStart] and [customRangeEndInclusive] (calendar dates).
+  /// For [range] == `anyMonth`, pass [monthYear] as the first day of that month.
+  Future<Map<String, dynamic>> getAdminChartData(
+    String range, {
+    DateTime? customRangeStart,
+    DateTime? customRangeEndInclusive,
+    DateTime? monthYear,
+  }) async {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
-    DateTime rangeStart;
-    switch (range) {
-      case 'day':
-        rangeStart = todayStart;
-        break;
-      case 'week':
-        rangeStart = todayStart.subtract(const Duration(days: 6));
-        break;
-      case 'month':
-        rangeStart = DateTime(now.year, now.month - 1, 1);
-        break;
-      case '3months':
-        rangeStart = DateTime(now.year, now.month - 2, 1);
-        break;
-      case '6months':
-        rangeStart = DateTime(now.year, now.month - 5, 1);
-        break;
-      case '9months':
-        rangeStart = DateTime(now.year, now.month - 8, 1);
-        break;
-      case 'year':
-        rangeStart = DateTime(now.year - 1, now.month, 1);
-        break;
-      default:
-        rangeStart = todayStart.subtract(const Duration(days: 6));
-    }
-    final rangeEnd = now.add(const Duration(days: 1));
 
-    final appointments = await getAppointments(from: rangeStart, to: rangeEnd);
-    final incomeList = await getIncomeRecords(from: rangeStart, to: rangeEnd);
-    final expenseList = await getExpenseRecords(from: rangeStart, to: rangeEnd);
+    late final DateTime rangeStart;
+    late final DateTime rangeEndExclusive;
+
+    if (range == 'custom') {
+      if (customRangeStart == null || customRangeEndInclusive == null) {
+        throw ArgumentError('custom range requires customRangeStart and customRangeEndInclusive');
+      }
+      rangeStart = DateTime(customRangeStart.year, customRangeStart.month, customRangeStart.day);
+      final endInc = DateTime(
+        customRangeEndInclusive.year,
+        customRangeEndInclusive.month,
+        customRangeEndInclusive.day,
+      );
+      if (endInc.isBefore(rangeStart)) {
+        throw ArgumentError('custom range end before start');
+      }
+      rangeEndExclusive = endInc.add(const Duration(days: 1));
+    } else if (range == 'thisMonth') {
+      rangeStart = DateTime(now.year, now.month, 1);
+      rangeEndExclusive = DateTime(now.year, now.month + 1, 1);
+    } else if (range == 'anyMonth') {
+      if (monthYear == null) {
+        throw ArgumentError('anyMonth requires monthYear (first day of the month)');
+      }
+      final y = monthYear.year;
+      final m = monthYear.month;
+      rangeStart = DateTime(y, m, 1);
+      rangeEndExclusive = DateTime(y, m + 1, 1);
+    } else {
+      switch (range) {
+        case 'day':
+          rangeStart = todayStart;
+          break;
+        case 'week':
+          rangeStart = todayStart.subtract(const Duration(days: 6));
+          break;
+        case 'month':
+          rangeStart = DateTime(now.year, now.month - 1, 1);
+          break;
+        case '3months':
+          rangeStart = DateTime(now.year, now.month - 2, 1);
+          break;
+        case '6months':
+          rangeStart = DateTime(now.year, now.month - 5, 1);
+          break;
+        case '9months':
+          rangeStart = DateTime(now.year, now.month - 8, 1);
+          break;
+        case 'year':
+          rangeStart = DateTime(now.year - 1, now.month, 1);
+          break;
+        default:
+          rangeStart = todayStart.subtract(const Duration(days: 6));
+      }
+      rangeEndExclusive = now.add(const Duration(days: 1));
+    }
+
+    final spanDays = rangeEndExclusive.difference(rangeStart).inDays;
+
+    /// One calendar day bucket (today for preset `day`, or chosen day for custom).
+    final isSingleDay = range == 'day' || (range == 'custom' && spanDays <= 1);
+
+    /// One bucket per calendar day: preset week (7) or custom range up to 31 days.
+    final isDaySeries =
+        range == 'week' || (range == 'custom' && spanDays > 1 && spanDays <= 31);
+
+    final appointments = await getAppointments(from: rangeStart, to: rangeEndExclusive);
+    final incomeList = await getIncomeRecords(from: rangeStart, to: rangeEndExclusive);
+    final expenseList = await getExpenseRecords(from: rangeStart, to: rangeEndExclusive);
 
     final totalAppointments = appointments.length;
     final totalIncome = incomeList.fold<double>(0, (s, r) => s + r.amount);
     final totalExpense = expenseList.fold<double>(0, (s, r) => s + r.amount);
 
-    // Appointments series: by day for day/week, by week or month for longer
+    // Appointments series
     final appointmentsSeries = <Map<String, dynamic>>[];
-    if (range == 'day') {
-      final d = todayStart;
+    if (isSingleDay) {
+      final d = range == 'day' ? todayStart : rangeStart;
       final count = appointments.where((a) {
         final ad = a.appointmentDate;
         return ad.year == d.year && ad.month == d.month && ad.day == d.day;
       }).length;
       appointmentsSeries.add({'date': d, 'label': _formatDay(d), 'count': count});
-    } else if (range == 'week') {
-      for (var i = 0; i < 7; i++) {
-        final d = rangeStart.add(Duration(days: i));
-        final count = appointments.where((a) {
-          final ad = a.appointmentDate;
-          return ad.year == d.year && ad.month == d.month && ad.day == d.day;
-        }).length;
-        appointmentsSeries.add({'date': d, 'label': _formatDay(d), 'count': count});
+    } else if (isDaySeries) {
+      if (range == 'week') {
+        for (var i = 0; i < 7; i++) {
+          final d = rangeStart.add(Duration(days: i));
+          final count = appointments.where((a) {
+            final ad = a.appointmentDate;
+            return ad.year == d.year && ad.month == d.month && ad.day == d.day;
+          }).length;
+          appointmentsSeries.add({'date': d, 'label': _formatDay(d), 'count': count});
+        }
+      } else {
+        for (var d = rangeStart; d.isBefore(rangeEndExclusive); d = d.add(const Duration(days: 1))) {
+          final day = DateTime(d.year, d.month, d.day);
+          final count = appointments.where((a) {
+            final ad = a.appointmentDate;
+            return ad.year == day.year && ad.month == day.month && ad.day == day.day;
+          }).length;
+          appointmentsSeries.add({'date': day, 'label': _formatDay(day), 'count': count});
+        }
       }
     } else {
-      final months = <DateTime>[];
       var d = DateTime(rangeStart.year, rangeStart.month, 1);
-      while (d.isBefore(rangeEnd) || d.isAtSameMomentAs(DateTime(rangeEnd.year, rangeEnd.month, 1))) {
-        months.add(d);
+      while (d.isBefore(rangeEndExclusive)) {
+        final count = appointments.where((a) => a.appointmentDate.year == d.year && a.appointmentDate.month == d.month).length;
+        // Monthly buckets — UI must label as month/year, not as a single calendar day.
+        appointmentsSeries.add({'date': d, 'bucket': 'month', 'count': count});
         d = DateTime(d.year, d.month + 1, 1);
-      }
-      for (final m in months) {
-        final count = appointments.where((a) => a.appointmentDate.year == m.year && a.appointmentDate.month == m.month).length;
-        appointmentsSeries.add({'date': m, 'label': '${m.month}/${m.year}', 'count': count});
       }
     }
 
-    // Income/expense series by month
+    // Income/expense series
     final incomeExpenseSeries = <Map<String, dynamic>>[];
-    var d = DateTime(rangeStart.year, rangeStart.month, 1);
-    while (d.isBefore(rangeEnd) || d.isAtSameMomentAs(DateTime(rangeEnd.year, rangeEnd.month, 1))) {
-      final income = incomeList.where((r) => r.incomeDate.year == d.year && r.incomeDate.month == d.month).fold<double>(0, (s, r) => s + r.amount);
-      final expense = expenseList.where((r) => r.expenseDate.year == d.year && r.expenseDate.month == d.month).fold<double>(0, (s, r) => s + r.amount);
-      incomeExpenseSeries.add({'year': d.year, 'month': d.month, 'label': '${d.month}/${d.year}', 'income': income, 'expense': expense});
-      d = DateTime(d.year, d.month + 1, 1);
+    if (isSingleDay) {
+      final d = range == 'day' ? todayStart : rangeStart;
+      final income = incomeList
+          .where((r) => r.incomeDate.year == d.year && r.incomeDate.month == d.month && r.incomeDate.day == d.day)
+          .fold<double>(0, (s, r) => s + r.amount);
+      final expense = expenseList
+          .where((r) => r.expenseDate.year == d.year && r.expenseDate.month == d.month && r.expenseDate.day == d.day)
+          .fold<double>(0, (s, r) => s + r.amount);
+      incomeExpenseSeries.add({'year': d.year, 'month': d.month, 'label': _formatDay(d), 'income': income, 'expense': expense});
+    } else if (isDaySeries) {
+      if (range == 'week') {
+        for (var i = 0; i < 7; i++) {
+          final d = rangeStart.add(Duration(days: i));
+          final income = incomeList
+              .where((r) => r.incomeDate.year == d.year && r.incomeDate.month == d.month && r.incomeDate.day == d.day)
+              .fold<double>(0, (s, r) => s + r.amount);
+          final expense = expenseList
+              .where((r) => r.expenseDate.year == d.year && r.expenseDate.month == d.month && r.expenseDate.day == d.day)
+              .fold<double>(0, (s, r) => s + r.amount);
+          incomeExpenseSeries.add({'year': d.year, 'month': d.month, 'label': _formatDay(d), 'income': income, 'expense': expense});
+        }
+      } else {
+        for (var d = rangeStart; d.isBefore(rangeEndExclusive); d = d.add(const Duration(days: 1))) {
+          final day = DateTime(d.year, d.month, d.day);
+          final income = incomeList
+              .where((r) => r.incomeDate.year == day.year && r.incomeDate.month == day.month && r.incomeDate.day == day.day)
+              .fold<double>(0, (s, r) => s + r.amount);
+          final expense = expenseList
+              .where((r) => r.expenseDate.year == day.year && r.expenseDate.month == day.month && r.expenseDate.day == day.day)
+              .fold<double>(0, (s, r) => s + r.amount);
+          incomeExpenseSeries.add({'year': day.year, 'month': day.month, 'label': _formatDay(day), 'income': income, 'expense': expense});
+        }
+      }
+    } else {
+      var d = DateTime(rangeStart.year, rangeStart.month, 1);
+      while (d.isBefore(rangeEndExclusive)) {
+        final income = incomeList.where((r) => r.incomeDate.year == d.year && r.incomeDate.month == d.month).fold<double>(0, (s, r) => s + r.amount);
+        final expense = expenseList.where((r) => r.expenseDate.year == d.year && r.expenseDate.month == d.month).fold<double>(0, (s, r) => s + r.amount);
+        incomeExpenseSeries.add({
+          'year': d.year,
+          'month': d.month,
+          'bucket': 'month',
+          'income': income,
+          'expense': expense,
+        });
+        d = DateTime(d.year, d.month + 1, 1);
+      }
     }
 
     final users = await getUsers();
@@ -900,11 +996,13 @@ class FirestoreService {
         'totalNet': totalIncome - totalExpense,
       },
       'rangeStart': rangeStart,
-      'rangeEnd': rangeEnd,
+      'rangeEnd': rangeEndExclusive,
     };
   }
 
   static String _formatDay(DateTime d) {
-    return '${d.day}/${d.month}';
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year}';
   }
 }

@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
+import '../../core/date_format.dart';
 import '../../core/responsive.dart';
 import '../../core/general_error_helper.dart';
 import '../../l10n/app_localizations.dart';
@@ -13,6 +14,7 @@ import '../../models/appointment_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/live_date_time_banner.dart';
 import '../../widgets/notifications_button.dart';
 import 'admin_dashboard_pdf.dart';
 import 'invite_user_dialog.dart';
@@ -54,6 +56,56 @@ const _kAmountChartColors = <Color>[
   Color(0xFF009688),
 ];
 
+FlLine _adminGridHorizontalLine(ThemeData theme) {
+  final a = theme.brightness == Brightness.dark ? 0.48 : 0.32;
+  return FlLine(
+    color: theme.colorScheme.outline.withValues(alpha: a),
+    strokeWidth: 1,
+  );
+}
+
+FlGridData _adminChartGrid(ThemeData theme) => FlGridData(
+      show: true,
+      drawVerticalLine: false,
+      getDrawingHorizontalLine: (value) => _adminGridHorizontalLine(theme),
+    );
+
+/// X-axis label for appointment buckets: weekdays for 7-day view; otherwise server [label] (month/year buckets) or a date.
+String _appointmentBucketAxisLabel(
+  Map<String, dynamic> row,
+  AppLocalizations l10n, {
+  required bool useWeekdayForAxis,
+}) {
+  final d = row['date'];
+  if (useWeekdayForAxis && d is DateTime) {
+    return DateFormat('EEE', l10n.isArabic ? 'ar' : 'en').format(d);
+  }
+  if (row['bucket'] == 'month' && d is DateTime) {
+    return AppDateFormat.monthYear(l10n.isArabic ? 'ar' : 'en').format(DateTime(d.year, d.month, 1));
+  }
+  final raw = row['label'];
+  if (raw is String && raw.isNotEmpty) return raw;
+  if (d is DateTime) {
+    return AppDateFormat.shortDateWithLocale(l10n.isArabic ? 'ar' : 'en').format(d);
+  }
+  return '';
+}
+
+/// Bottom-axis label for income vs expense buckets (uses [label] from API when set).
+String _incomeExpenseBucketLabel(Map<String, dynamic> row, AppLocalizations l10n) {
+  final y = row['year'];
+  final m = row['month'];
+  if (row['bucket'] == 'month' && y is int && m is int) {
+    return AppDateFormat.monthYear(l10n.isArabic ? 'ar' : 'en').format(DateTime(y, m, 1));
+  }
+  final raw = row['label'];
+  if (raw is String && raw.isNotEmpty) return raw;
+  if (y is int && m is int) {
+    return AppDateFormat.shortDateWithLocale(l10n.isArabic ? 'ar' : 'en').format(DateTime(y, m, 1));
+  }
+  return '';
+}
+
 /// Order of sections in the combined dynamic PDF (must match keys in [_chartKeys]).
 const _kDynamicReportOrder = <String>[
   'appointments',
@@ -90,6 +142,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _chartsLoading = true;
   String? _errorMessage;
   String _chartRange = 'week';
+  /// Inclusive calendar dates when [_chartRange] == `custom`.
+  DateTime? _customRangeStart;
+  DateTime? _customRangeEndInclusive;
+  /// First day of month when [_chartRange] == `anyMonth`.
+  DateTime _anyMonthSelection = DateTime(DateTime.now().year, DateTime.now().month, 1);
   final Map<String, String> _chartTypes = {
     'appointments': 'bar',
     'incomeExpense': 'bar',
@@ -147,7 +204,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       });
     }
     try {
-      final chartData = await _firestore.getAdminChartData(_chartRange);
+      final chartData = await _firestore.getAdminChartData(
+        _chartRange,
+        customRangeStart: _chartRange == 'custom' ? _customRangeStart : null,
+        customRangeEndInclusive: _chartRange == 'custom' ? _customRangeEndInclusive : null,
+        monthYear: _chartRange == 'anyMonth' ? _anyMonthSelection : null,
+      );
       if (!mounted) return;
       setState(() {
         _chartData = chartData;
@@ -191,8 +253,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _loadChartDataOnly() async {
+    if (_chartRange == 'custom' && (_customRangeStart == null || _customRangeEndInclusive == null)) {
+      return;
+    }
     try {
-      final chartData = await _firestore.getAdminChartData(_chartRange);
+      final chartData = await _firestore.getAdminChartData(
+        _chartRange,
+        customRangeStart: _chartRange == 'custom' ? _customRangeStart : null,
+        customRangeEndInclusive: _chartRange == 'custom' ? _customRangeEndInclusive : null,
+        monthYear: _chartRange == 'anyMonth' ? _anyMonthSelection : null,
+      );
       if (!mounted) return;
       setState(() {
         _chartData = chartData;
@@ -202,6 +272,58 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (!mounted) return;
       setState(() => _chartsLoading = false);
     }
+  }
+
+  Future<void> _pickAnyMonth() async {
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+    final picked = await showDialog<DateTime>(
+      context: context,
+      builder: (ctx) => _AdminMonthYearPickerDialog(initial: _anyMonthSelection, l10n: l10n, now: now),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _anyMonthSelection = DateTime(picked.year, picked.month, 1);
+      _chartsLoading = true;
+    });
+    await _loadChartDataOnly();
+  }
+
+  Future<void> _pickCustomDateRange() async {
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+    final lastMonthStart = DateTime(now.year, now.month - 1, 1);
+    final lastMonthEnd = DateTime(now.year, now.month, 0);
+    final initial = _customRangeStart != null && _customRangeEndInclusive != null
+        ? DateTimeRange(start: _customRangeStart!, end: _customRangeEndInclusive!)
+        : DateTimeRange(start: lastMonthStart, end: lastMonthEnd);
+
+    // en_GB → dd/MM/yyyy in the picker; Arabic keeps app locale for RTL and regional format.
+    final pickerLocale = l10n.isArabic ? l10n.locale : const Locale('en', 'GB');
+
+    final picked = await showDateRangePicker(
+      context: context,
+      locale: pickerLocale,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 2, 12, 31),
+      initialDateRange: initial,
+      helpText: l10n.chooseDateRange,
+      builder: (context, child) {
+        return Localizations.override(
+          context: context,
+          locale: pickerLocale,
+          child: child!,
+        );
+      },
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _chartRange = 'custom';
+      _customRangeStart = DateTime(picked.start.year, picked.start.month, picked.start.day);
+      _customRangeEndInclusive = DateTime(picked.end.year, picked.end.month, picked.end.day);
+      _chartsLoading = true;
+    });
+    await _loadChartDataOnly();
   }
 
   @override
@@ -286,6 +408,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(l10n.welcome, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        const LiveDateTimeBanner(),
         const SizedBox(height: 20),
         // Stats grid (responsive: 2 / 3 / 4 columns)
         LayoutBuilder(
@@ -375,11 +499,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _periodChip(l10n, 'day', l10n.periodDay),
             _periodChip(l10n, 'week', l10n.periodWeek),
             _periodChip(l10n, 'month', l10n.periodMonth),
+            _periodChip(l10n, 'thisMonth', l10n.periodWholeCurrentMonth),
+            _periodChip(l10n, 'anyMonth', l10n.periodPickMonth),
             _periodChip(l10n, '3months', l10n.period3Months),
             _periodChip(l10n, '6months', l10n.period6Months),
             _periodChip(l10n, '9months', l10n.period9Months),
             _periodChip(l10n, 'year', l10n.periodYear),
+            FilterChip(
+              label: Text(l10n.periodCustomRange),
+              selected: _chartRange == 'custom',
+              onSelected: (_) => _pickCustomDateRange(),
+            ),
           ],
+        ),
+        if (_chartRange == 'custom' && _customRangeStart != null && _customRangeEndInclusive != null) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: _pickCustomDateRange,
+              icon: const Icon(Icons.edit_calendar_outlined, size: 18),
+              label: Text(l10n.chooseDateRange),
+            ),
+          ),
+        ],
+        if (_chartRange == 'anyMonth') ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: _pickAnyMonth,
+              icon: const Icon(Icons.calendar_month_outlined, size: 18),
+              label: Text(AppDateFormat.monthYear(l10n.isArabic ? 'ar' : 'en').format(_anyMonthSelection)),
+            ),
+          ),
+        ],
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            l10n.incomeExpenseChartDataHint,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+          ),
         ),
         const SizedBox(height: 20),
         // Charts section
@@ -461,7 +624,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildChartsSection(BuildContext context, AppLocalizations l10n) {
     final isWide = MediaQuery.sizeOf(context).width >= Breakpoint.tablet;
-    final chartHeight = isWide ? 320.0 : 280.0;
+    final chartHeight = isWide ? 420.0 : 380.0;
     final appointmentsByDay = _chartData!['appointmentsByDay'] as List<dynamic>? ?? [];
     final incomeExpenseByMonth = _chartData!['incomeExpenseByMonth'] as List<dynamic>? ?? [];
     final usersByRole = Map<String, int>.from(_chartData!['usersByRole'] as Map<dynamic, dynamic>? ?? {});
@@ -472,7 +635,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final appointmentsByServiceRaw = _chartData!['appointmentsByService'] as List<dynamic>? ?? [];
     final appointmentsByPackageRaw = _chartData!['appointmentsByPackage'] as List<dynamic>? ?? [];
     final rangeLabel = _chartData!['rangeStart'] != null && _chartData!['rangeEnd'] != null
-        ? '${DateFormat.yMd().format((_chartData!['rangeStart'] as DateTime))} - ${DateFormat.yMd().format((_chartData!['rangeEnd'] as DateTime))}'
+        ? () {
+            final rs = _chartData!['rangeStart'] as DateTime;
+            final re = _chartData!['rangeEnd'] as DateTime;
+            final loc = l10n.isArabic ? 'ar' : 'en';
+            final lastInclusive = re.subtract(const Duration(days: 1));
+            return '${AppDateFormat.shortDateWithLocale(loc).format(rs)} - ${AppDateFormat.shortDateWithLocale(loc).format(lastInclusive)}';
+          }()
         : _chartRange;
 
     final incomeByDoctor = _prepareDoctorIncomeSeries(incomeByDoctorRaw, l10n);
@@ -486,22 +655,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         if (appointmentsByDay.isNotEmpty) ...[
           _ChartCard(
-            title: l10n.appointmentsLast7Days,
+            title: _appointmentsChartTitle(l10n),
             chartKey: _chartKeys['appointments']!,
             chartType: _chartTypes['appointments']!,
             chartTypes: const ['bar', 'line', 'pie'],
             onChartTypeChanged: (t) => setState(() => _chartTypes['appointments'] = t),
-            onExportPdf: () => _exportChartPdf(l10n, 'appointments', l10n.appointmentsLast7Days, rangeLabel),
+            onExportPdf: () => _exportChartPdf(l10n, 'appointments', _appointmentsChartTitle(l10n), rangeLabel),
             child: RepaintBoundary(
               key: _chartKeys['appointments'],
               child: ClipRect(
                 child: SizedBox(
                   height: chartHeight,
                   child: _chartTypes['appointments'] == 'line'
-                      ? _AppointmentsLineChart(data: appointmentsByDay, l10n: l10n)
+                      ? _AppointmentsLineChart(data: appointmentsByDay, l10n: l10n, useWeekdayForAxis: _chartRange == 'week')
                       : _chartTypes['appointments'] == 'pie'
-                          ? _AppointmentsPieChart(data: appointmentsByDay, l10n: l10n)
-                          : _AppointmentsBarChart(data: appointmentsByDay, l10n: l10n),
+                          ? _AppointmentsPieChart(data: appointmentsByDay, l10n: l10n, useWeekdayForAxis: _chartRange == 'week')
+                          : _AppointmentsBarChart(data: appointmentsByDay, l10n: l10n, useWeekdayForAxis: _chartRange == 'week'),
                 ),
               ),
             ),
@@ -510,12 +679,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
         if (incomeExpenseByMonth.isNotEmpty) ...[
           _ChartCard(
-            title: l10n.incomeVsExpense6Months,
+            title: _incomeExpenseChartTitle(l10n),
             chartKey: _chartKeys['incomeExpense']!,
             chartType: _chartTypes['incomeExpense']!,
             chartTypes: const ['bar', 'line', 'pie'],
             onChartTypeChanged: (t) => setState(() => _chartTypes['incomeExpense'] = t),
-            onExportPdf: () => _exportChartPdf(l10n, 'incomeExpense', l10n.incomeVsExpense6Months, rangeLabel),
+            onExportPdf: () => _exportChartPdf(l10n, 'incomeExpense', _incomeExpenseChartTitle(l10n), rangeLabel),
             child: RepaintBoundary(
               key: _chartKeys['incomeExpense'],
               child: ClipRect(
@@ -535,6 +704,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         if (usersByRole.isNotEmpty) ...[
           _ChartCard(
             title: l10n.usersByRole,
+            subtitle: l10n.usersByRolePeriodHint,
             chartKey: _chartKeys['usersByRole']!,
             chartType: _chartTypes['usersByRole']!,
             chartTypes: const ['pie', 'bar', 'line'],
@@ -795,10 +965,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final rs = _chartData!['rangeStart'];
     final re = _chartData!['rangeEnd'];
     if (rs is DateTime && re is DateTime) {
-      return '${DateFormat.yMd().format(rs)} - ${DateFormat.yMd().format(re)}';
+      final loc = AppLocalizations.of(context).isArabic ? 'ar' : 'en';
+      final lastInclusive = re.subtract(const Duration(days: 1));
+      return '${AppDateFormat.shortDateWithLocale(loc).format(rs)} – ${AppDateFormat.shortDateWithLocale(loc).format(lastInclusive)}';
     }
     return _chartRange;
   }
+
+  String _chartPeriodPhrase(AppLocalizations l10n) {
+    if (_chartRange == 'custom' && _customRangeStart != null && _customRangeEndInclusive != null) {
+      final loc = l10n.isArabic ? 'ar' : 'en';
+      return '${AppDateFormat.shortDateWithLocale(loc).format(_customRangeStart!)} – ${AppDateFormat.shortDateWithLocale(loc).format(_customRangeEndInclusive!)}';
+    }
+    if (_chartRange == 'anyMonth') {
+      return AppDateFormat.monthYear(l10n.isArabic ? 'ar' : 'en').format(_anyMonthSelection);
+    }
+    if (_chartRange == 'thisMonth') {
+      return l10n.chartPeriodPhraseThisMonth;
+    }
+    switch (_chartRange) {
+      case 'day':
+        return l10n.chartPeriodPhraseDay;
+      case 'week':
+        return l10n.chartPeriodPhraseWeek;
+      case 'month':
+        return l10n.chartPeriodPhraseMonth;
+      case '3months':
+        return l10n.chartPeriodPhrase3Months;
+      case '6months':
+        return l10n.chartPeriodPhrase6Months;
+      case '9months':
+        return l10n.chartPeriodPhrase9Months;
+      case 'year':
+        return l10n.chartPeriodPhraseYear;
+      default:
+        return l10n.chartPeriodPhraseWeek;
+    }
+  }
+
+  String _appointmentsChartTitle(AppLocalizations l10n) => l10n.appointmentsChartTitle(_chartPeriodPhrase(l10n));
+
+  String _incomeExpenseChartTitle(AppLocalizations l10n) => l10n.incomeExpenseChartTitle(_chartPeriodPhrase(l10n));
 
   /// Same availability rules as [_buildChartsSection] so PDF capture matches visible charts.
   List<_DynamicReportOption> _buildDynamicReportOptions(AppLocalizations l10n) {
@@ -821,8 +1028,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final appointmentsByPackage = _prepareCountSeries(appointmentsByPackageRaw, l10n, emptyNameLabel: '');
 
     return [
-      _DynamicReportOption(id: 'appointments', title: l10n.appointmentsLast7Days, available: appointmentsByDay.isNotEmpty),
-      _DynamicReportOption(id: 'incomeExpense', title: l10n.incomeVsExpense6Months, available: incomeExpenseByMonth.isNotEmpty),
+      _DynamicReportOption(id: 'appointments', title: _appointmentsChartTitle(l10n), available: appointmentsByDay.isNotEmpty),
+      _DynamicReportOption(id: 'incomeExpense', title: _incomeExpenseChartTitle(l10n), available: incomeExpenseByMonth.isNotEmpty),
       _DynamicReportOption(id: 'usersByRole', title: l10n.usersByRole, available: usersByRole.isNotEmpty),
       _DynamicReportOption(id: 'doctorIncome', title: l10n.incomeByDoctor, available: incomeByDoctor.isNotEmpty),
       _DynamicReportOption(id: 'expenseCategory', title: l10n.expensesByCategory, available: expensesByCategory.isNotEmpty),
@@ -1003,7 +1210,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         if (key?.currentContext == null) continue;
         final boundary = key!.currentContext!.findRenderObject() as RenderRepaintBoundary?;
         if (boundary == null) continue;
-        final image = await boundary.toImage(pixelRatio: 2.0);
+        final image = await boundary.toImage(pixelRatio: 3.0);
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         if (byteData == null) continue;
         sections.add(AdminDashboardReportSection(title: opt.title, imageBytes: byteData.buffer.asUint8List()));
@@ -1043,7 +1250,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final boundary = key!.currentContext!.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) return;
     try {
-      final image = await boundary.toImage(pixelRatio: 2.0);
+      final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null || !mounted) return;
       await AdminDashboardPdf.exportChartPdf(
@@ -1085,6 +1292,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
 class _ChartCard extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final GlobalKey chartKey;
   final String chartType;
   final List<String> chartTypes;
@@ -1094,6 +1302,7 @@ class _ChartCard extends StatelessWidget {
 
   const _ChartCard({
     required this.title,
+    this.subtitle,
     required this.chartKey,
     required this.chartType,
     required this.chartTypes,
@@ -1105,6 +1314,7 @@ class _ChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     String chartTypeLabel(String t) {
       switch (t) {
         case 'bar': return l10n.barChart;
@@ -1140,7 +1350,11 @@ class _ChartCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (narrow) ...[
-                  Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(subtitle!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ],
                   const SizedBox(height: 8),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1156,16 +1370,25 @@ class _ChartCard extends StatelessWidget {
                     ],
                   ),
                 ] else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600))),
-                      if (chips != null) ...[chips, const SizedBox(width: 8)],
-                      IconButton(
-                        icon: const Icon(Icons.picture_as_pdf),
-                        tooltip: l10n.exportPdf,
-                        onPressed: onExportPdf,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600))),
+                          if (chips != null) ...[chips, const SizedBox(width: 8)],
+                          IconButton(
+                            icon: const Icon(Icons.picture_as_pdf),
+                            tooltip: l10n.exportPdf,
+                            onPressed: onExportPdf,
+                          ),
+                        ],
                       ),
+                      if (subtitle != null && subtitle!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(subtitle!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      ],
                     ],
                   ),
                 const SizedBox(height: 12),
@@ -1182,21 +1405,23 @@ class _ChartCard extends StatelessWidget {
 class _AppointmentsLineChart extends StatelessWidget {
   final List<dynamic> data;
   final AppLocalizations l10n;
+  /// When true (week filter), X-axis uses weekday; otherwise month/day bucket labels from data.
+  final bool useWeekdayForAxis;
 
-  const _AppointmentsLineChart({required this.data, required this.l10n});
+  const _AppointmentsLineChart({required this.data, required this.l10n, this.useWeekdayForAxis = false});
 
   @override
   Widget build(BuildContext context) {
     if (data.isEmpty) return Center(child: Text(AppLocalizations.of(context).noData));
     final theme = Theme.of(context);
     final spots = data.asMap().entries.map((e) => FlSpot(e.key.toDouble(), (e.value['count'] as num).toDouble())).toList();
-    final maxY = (data.map<double>((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b) + 2).clamp(4.0, 100.0);
-    final shortDate = DateFormat('EEE', l10n.isArabic ? 'ar' : 'en');
+    final maxCount = data.map<double>((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b);
+    final maxY = (maxCount + 2).clamp(4.0, double.infinity);
     return LineChart(
       LineChartData(
         maxY: maxY,
         lineTouchData: LineTouchData(enabled: true),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
@@ -1204,15 +1429,18 @@ class _AppointmentsLineChart extends StatelessWidget {
               showTitles: true,
               getTitlesWidget: (v, meta) {
                 final i = v.toInt();
-                if (i >= 0 && i < data.length && data[i]['date'] is DateTime) {
-                  return Padding(padding: const EdgeInsets.only(top: 8), child: Text(shortDate.format(data[i]['date'] as DateTime), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)));
+                if (i >= 0 && i < data.length) {
+                  final row = Map<String, dynamic>.from(data[i] as Map);
+                  final text = _appointmentBucketAxisLabel(row, l10n, useWeekdayForAxis: useWeekdayForAxis);
+                  if (text.isEmpty) return const SizedBox.shrink();
+                  return Padding(padding: const EdgeInsets.only(top: 8), child: Text(text, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)));
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 28,
+              reservedSize: 34,
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)))),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 34, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)))),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
@@ -1236,18 +1464,16 @@ class _AppointmentsLineChart extends StatelessWidget {
 class _AppointmentsBarChart extends StatelessWidget {
   final List<dynamic> data;
   final AppLocalizations l10n;
+  final bool useWeekdayForAxis;
 
-  const _AppointmentsBarChart({required this.data, required this.l10n});
+  const _AppointmentsBarChart({required this.data, required this.l10n, this.useWeekdayForAxis = false});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme.primary;
-    final maxY = data.isEmpty
-        ? 5.0
-        : (data.map<double>((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b) * 1.25 + 2)
-            .clamp(6.0, 120.0);
-    final shortDate = DateFormat('EEE', l10n.isArabic ? 'ar' : 'en');
+    final maxCount = data.isEmpty ? 0.0 : data.map<double>((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b);
+    final maxY = data.isEmpty ? 5.0 : (maxCount * 1.22 + 2).clamp(6.0, double.infinity);
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -1280,25 +1506,27 @@ class _AppointmentsBarChart extends StatelessWidget {
               getTitlesWidget: (value, meta) {
                 final i = value.toInt();
                 if (i >= 0 && i < data.length) {
-                  final d = data[i]['date'];
-                  if (d is DateTime) return Padding(padding: const EdgeInsets.only(top: 8), child: Text(shortDate.format(d), style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface)));
+                  final row = Map<String, dynamic>.from(data[i] as Map);
+                  final text = _appointmentBucketAxisLabel(row, l10n, useWeekdayForAxis: useWeekdayForAxis);
+                  if (text.isEmpty) return const SizedBox.shrink();
+                  return Padding(padding: const EdgeInsets.only(top: 8), child: Text(text, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface)));
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 28,
+              reservedSize: 34,
             ),
           ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 28,
-              getTitlesWidget: (value, meta) => Text(value.toInt().toString(), style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface)),
+              reservedSize: 34,
+              getTitlesWidget: (value, meta) => Text(value.toInt().toString(), style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface)),
             ),
           ),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         borderData: FlBorderData(show: false),
         barGroups: List.generate(data.length, (i) {
           final count = (data[i]['count'] as num).toDouble();
@@ -1337,13 +1565,19 @@ class _ResponsivePieWithLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final legendStyle = theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurface,
+          fontSize: 13,
+          height: 1.25,
+        ) ??
+        TextStyle(color: theme.colorScheme.onSurface, fontSize: 13, height: 1.25);
     return ColoredBox(
       color: theme.colorScheme.surface,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final narrow = constraints.maxWidth < 420;
           final pie = PieChart(
-            PieChartData(sections: sections, sectionsSpace: 2, centerSpaceRadius: 22),
+            PieChartData(sections: sections, sectionsSpace: 2, centerSpaceRadius: 28),
             duration: const Duration(milliseconds: 300),
           );
           final legend = Wrap(
@@ -1354,11 +1588,11 @@ class _ResponsivePieWithLegend extends StatelessWidget {
                   (item) => Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(width: 10, height: 10, decoration: BoxDecoration(color: item.color, shape: BoxShape.circle)),
+                      Container(width: 12, height: 12, decoration: BoxDecoration(color: item.color, shape: BoxShape.circle)),
                       const SizedBox(width: 6),
                       ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: narrow ? constraints.maxWidth - 16 : constraints.maxWidth * 0.35),
-                        child: Text(item.label, style: theme.textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                        child: Text(item.label, style: legendStyle, maxLines: 3, overflow: TextOverflow.ellipsis),
                       ),
                     ],
                   ),
@@ -1369,7 +1603,7 @@ class _ResponsivePieWithLegend extends StatelessWidget {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(height: 200, child: pie),
+                SizedBox(height: 260, child: pie),
                 const SizedBox(height: 12),
                 legend,
               ],
@@ -1378,7 +1612,7 @@ class _ResponsivePieWithLegend extends StatelessWidget {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(flex: 2, child: SizedBox(height: 220, child: pie)),
+              Expanded(flex: 2, child: SizedBox(height: 300, child: pie)),
               const SizedBox(width: 12),
               Expanded(child: legend),
             ],
@@ -1392,8 +1626,9 @@ class _ResponsivePieWithLegend extends StatelessWidget {
 class _AppointmentsPieChart extends StatelessWidget {
   final List<dynamic> data;
   final AppLocalizations l10n;
+  final bool useWeekdayForAxis;
 
-  const _AppointmentsPieChart({required this.data, required this.l10n});
+  const _AppointmentsPieChart({required this.data, required this.l10n, this.useWeekdayForAxis = false});
 
   static const List<Color> _colors = [
     Color(0xFF2196F3),
@@ -1416,23 +1651,21 @@ class _AppointmentsPieChart extends StatelessWidget {
     if (data.isEmpty) return Center(child: Text(l10n.noData, style: theme.textTheme.bodyMedium));
     final total = data.fold<double>(0, (s, e) => s + (e['count'] as num).toDouble());
     if (total <= 0) return Center(child: Text(l10n.noData, style: theme.textTheme.bodyMedium));
-    final shortDate = DateFormat('MMM d', l10n.isArabic ? 'ar' : 'en');
     final entries = data.asMap().entries.toList();
     final sections = entries.map((me) {
       final i = me.key;
-      final row = me.value;
+      final row = Map<String, dynamic>.from(me.value as Map);
       final count = (row['count'] as num).toDouble();
-      final d = row['date'];
-      final label = d is DateTime ? shortDate.format(d) : '${row['label'] ?? ''}';
+      final label = _appointmentBucketAxisLabel(row, l10n, useWeekdayForAxis: useWeekdayForAxis);
       return MapEntry(
-        label,
+        label.isEmpty ? '$i' : label,
         PieChartSectionData(
           value: count,
           title: count >= 1 ? count.toStringAsFixed(count >= 10 ? 0 : 1) : '',
           color: _colors[i % _colors.length],
-          radius: 52,
+          radius: 58,
           titleStyle: TextStyle(
-            fontSize: 11,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: theme.brightness == Brightness.light ? Colors.white : theme.colorScheme.onSurface,
           ),
@@ -1467,7 +1700,6 @@ class _IncomeExpenseBarChart extends StatelessWidget {
       return a > b ? a : b;
     }).reduce((a, b) => a > b ? a : b);
     final maxY = (maxVal * 1.2).clamp(4.0, double.infinity);
-    final monthFormat = DateFormat('MMM', l10n.isArabic ? 'ar' : 'en');
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -1479,9 +1711,14 @@ class _IncomeExpenseBarChart extends StatelessWidget {
             fitInsideHorizontally: true,
             tooltipPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final value = rod.toY.toInt().toString();
+              if (groupIndex < 0 || groupIndex >= data.length) return null;
+              final row = Map<String, dynamic>.from(data[groupIndex] as Map);
+              final income = (row['income'] as num).toDouble();
+              final expense = (row['expense'] as num).toDouble();
+              final value = rodIndex == 0 ? income : expense;
+              final name = rodIndex == 0 ? l10n.income : l10n.expenses;
               return BarTooltipItem(
-                value,
+                '$name\n${value.toStringAsFixed(0)}',
                 TextStyle(
                   color: theme.brightness == Brightness.light
                       ? theme.colorScheme.onSurface
@@ -1500,26 +1737,27 @@ class _IncomeExpenseBarChart extends StatelessWidget {
               getTitlesWidget: (value, meta) {
                 final i = value.toInt();
                 if (i >= 0 && i < data.length) {
-                  final y = data[i]['year'] as int;
-                  final m = data[i]['month'] as int;
-                  return Padding(padding: const EdgeInsets.only(top: 8), child: Text(monthFormat.format(DateTime(y, m)), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)));
+                  final row = Map<String, dynamic>.from(data[i] as Map);
+                  final text = _incomeExpenseBucketLabel(row, l10n);
+                  if (text.isEmpty) return const SizedBox.shrink();
+                  return Padding(padding: const EdgeInsets.only(top: 8), child: Text(text, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)));
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 28,
+              reservedSize: 34,
             ),
           ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 36,
-              getTitlesWidget: (value, meta) => Text(value.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)),
+              reservedSize: 44,
+              getTitlesWidget: (value, meta) => Text(value.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)),
             ),
           ),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         borderData: FlBorderData(show: false),
         barGroups: List.generate(data.length, (i) {
           final income = (data[i]['income'] as num).toDouble();
@@ -1559,12 +1797,11 @@ class _IncomeExpenseLineChart extends StatelessWidget {
       return a > b ? a : b;
     }).reduce((a, b) => a > b ? a : b);
     final maxY = (maxVal * 1.2).clamp(4.0, double.infinity);
-    final monthFormat = DateFormat('MMM', l10n.isArabic ? 'ar' : 'en');
     return LineChart(
       LineChartData(
         maxY: maxY,
         lineTouchData: LineTouchData(enabled: true),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
@@ -1573,16 +1810,17 @@ class _IncomeExpenseLineChart extends StatelessWidget {
               getTitlesWidget: (v, meta) {
                 final i = v.toInt();
                 if (i >= 0 && i < data.length) {
-                  final y = data[i]['year'] as int;
-                  final m = data[i]['month'] as int;
-                  return Padding(padding: const EdgeInsets.only(top: 8), child: Text(monthFormat.format(DateTime(y, m)), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)));
+                  final row = Map<String, dynamic>.from(data[i] as Map);
+                  final text = _incomeExpenseBucketLabel(row, l10n);
+                  if (text.isEmpty) return const SizedBox.shrink();
+                  return Padding(padding: const EdgeInsets.only(top: 8), child: Text(text, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)));
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 28,
+              reservedSize: 34,
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)))),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 44, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)))),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
@@ -1620,9 +1858,9 @@ class _IncomeExpensePieChart extends StatelessWidget {
           value: totalIncome,
           title: totalIncome >= 1000 ? '${(totalIncome / 1000).toStringAsFixed(1)}k' : totalIncome.toStringAsFixed(0),
           color: incomeColor,
-          radius: 56,
+          radius: 62,
           titleStyle: TextStyle(
-            fontSize: 12,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
             color: theme.brightness == Brightness.light ? Colors.white : theme.colorScheme.onSurface,
           ),
@@ -1636,9 +1874,9 @@ class _IncomeExpensePieChart extends StatelessWidget {
           value: totalExpense,
           title: totalExpense >= 1000 ? '${(totalExpense / 1000).toStringAsFixed(1)}k' : totalExpense.toStringAsFixed(0),
           color: expenseColor,
-          radius: 56,
+          radius: 62,
           titleStyle: TextStyle(
-            fontSize: 12,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
             color: theme.brightness == Brightness.light ? Colors.white : theme.colorScheme.onSurface,
           ),
@@ -1680,8 +1918,7 @@ class _UsersByRoleBarChart extends StatelessWidget {
     }
     final maxY = entries.isEmpty
         ? 4.0
-        : (entries.map<int>((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() * 1.25 + 2)
-            .clamp(6.0, 120.0);
+        : (entries.map<int>((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() * 1.25 + 2).clamp(6.0, double.infinity);
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -1713,17 +1950,17 @@ class _UsersByRoleBarChart extends StatelessWidget {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 final i = value.toInt();
-                if (i >= 0 && i < entries.length) return Padding(padding: const EdgeInsets.only(top: 8), child: Text(roleLabel(entries[i].key), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)));
+                if (i >= 0 && i < entries.length) return Padding(padding: const EdgeInsets.only(top: 8), child: Text(roleLabel(entries[i].key), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)));
                 return const SizedBox.shrink();
               },
-              reservedSize: 32,
+              reservedSize: 38,
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)))),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 34, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)))),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         borderData: FlBorderData(show: false),
         barGroups: entries.asMap().entries.map((e) {
           final i = e.key;
@@ -1770,12 +2007,12 @@ class _UsersByRoleLineChart extends StatelessWidget {
       }
     }
     final spots = entries.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.value.toDouble())).toList();
-    final maxY = (entries.map<int>((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() + 2).clamp(4.0, 120.0);
+    final maxY = (entries.map<int>((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() + 2).clamp(4.0, double.infinity);
     return LineChart(
       LineChartData(
         maxY: maxY,
         lineTouchData: LineTouchData(enabled: true),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
@@ -1786,15 +2023,15 @@ class _UsersByRoleLineChart extends StatelessWidget {
                 if (i >= 0 && i < entries.length) {
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(roleLabel(entries[i].key), style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurface)),
+                    child: Text(roleLabel(entries[i].key), style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface)),
                   );
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 36,
+              reservedSize: 44,
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)))),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 34, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)))),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
@@ -1842,9 +2079,9 @@ class _UsersByRoleChart extends StatelessWidget {
         value: count.toDouble(),
         title: '$count',
         color: _roleColors[index % _roleColors.length],
-        radius: 48,
+        radius: 56,
         titleStyle: TextStyle(
-          fontSize: 12,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
           color: theme.brightness == Brightness.light ? Colors.white : theme.colorScheme.onSurface,
         ),
@@ -1884,7 +2121,7 @@ class _AppointmentStatusBarChart extends StatelessWidget {
     final theme = Theme.of(context);
     final entries = _kAppointmentStatusOrder.map((k) => MapEntry(k, data[k] ?? 0)).where((e) => e.value > 0).toList();
     if (entries.isEmpty) return Center(child: Text(l10n.noData, style: theme.textTheme.bodyMedium));
-    final maxY = (entries.map<int>((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() * 1.25 + 2).clamp(6.0, 120.0);
+    final maxY = (entries.map<int>((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() * 1.25 + 2).clamp(6.0, double.infinity);
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -1918,7 +2155,7 @@ class _AppointmentStatusBarChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       _appointmentStatusValueLabel(entries[i].key, l10n),
-                      style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurface),
+                      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
                       maxLines: 2,
                       textAlign: TextAlign.center,
                     ),
@@ -1926,14 +2163,14 @@ class _AppointmentStatusBarChart extends StatelessWidget {
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 44,
+              reservedSize: 52,
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)))),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 34, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)))),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         borderData: FlBorderData(show: false),
         barGroups: entries.asMap().entries.map((e) {
           final i = e.key;
@@ -1962,12 +2199,12 @@ class _AppointmentStatusLineChart extends StatelessWidget {
     final entries = _kAppointmentStatusOrder.map((k) => MapEntry(k, data[k] ?? 0)).where((e) => e.value > 0).toList();
     if (entries.isEmpty) return Center(child: Text(l10n.noData, style: theme.textTheme.bodyMedium));
     final spots = entries.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.value.toDouble())).toList();
-    final maxY = (entries.map<int>((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() + 2).clamp(4.0, 120.0);
+    final maxY = (entries.map<int>((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() + 2).clamp(4.0, double.infinity);
     return LineChart(
       LineChartData(
         maxY: maxY,
         lineTouchData: LineTouchData(enabled: true),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
@@ -1980,17 +2217,17 @@ class _AppointmentStatusLineChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       _appointmentStatusValueLabel(entries[i].key, l10n),
-                      style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurface),
+                      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
                       maxLines: 2,
                     ),
                   );
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 44,
+              reservedSize: 52,
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)))),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 34, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)))),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
@@ -2029,9 +2266,9 @@ class _AppointmentStatusPieChart extends StatelessWidget {
         value: count.toDouble(),
         title: '$count',
         color: _kAppointmentStatusColors[i % _kAppointmentStatusColors.length],
-        radius: 50,
+        radius: 56,
         titleStyle: TextStyle(
-          fontSize: 11,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
           color: theme.brightness == Brightness.light ? Colors.white : theme.colorScheme.onSurface,
         ),
@@ -2091,19 +2328,19 @@ class _LabeledAmountBarChart extends StatelessWidget {
                   final short = name.length > 10 ? '${name.substring(0, 10)}…' : name;
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: Text(short, style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurface)),
+                    child: Text(short, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface)),
                   );
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 36,
+              reservedSize: 44,
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)))),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 44, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)))),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         borderData: FlBorderData(show: false),
         barGroups: List.generate(data.length, (i) {
           final y = (data[i][amountKey] as num).toDouble();
@@ -2143,7 +2380,7 @@ class _LabeledAmountLineChart extends StatelessWidget {
       LineChartData(
         maxY: maxY,
         lineTouchData: LineTouchData(enabled: true),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: _adminChartGrid(theme),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
@@ -2154,14 +2391,14 @@ class _LabeledAmountLineChart extends StatelessWidget {
                 if (i >= 0 && i < data.length) {
                   final name = (data[i]['name'] as String?) ?? '';
                   final short = name.length > 8 ? '${name.substring(0, 8)}…' : name;
-                  return Padding(padding: const EdgeInsets.only(top: 6), child: Text(short, style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurface)));
+                  return Padding(padding: const EdgeInsets.only(top: 6), child: Text(short, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface)));
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 34,
+              reservedSize: 42,
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface)))),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 44, getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface)))),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
@@ -2203,9 +2440,9 @@ class _LabeledAmountPieChart extends StatelessWidget {
         value: amount,
         title: amount >= 1000 ? '${(amount / 1000).toStringAsFixed(1)}k' : amount.toStringAsFixed(0),
         color: _kAmountChartColors[i % _kAmountChartColors.length],
-        radius: 52,
+        radius: 58,
         titleStyle: TextStyle(
-          fontSize: 10,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
           color: theme.brightness == Brightness.light ? Colors.white : theme.colorScheme.onSurface,
         ),
@@ -2252,6 +2489,68 @@ class _StatCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AdminMonthYearPickerDialog extends StatefulWidget {
+  const _AdminMonthYearPickerDialog({required this.initial, required this.l10n, required this.now});
+
+  final DateTime initial;
+  final AppLocalizations l10n;
+  final DateTime now;
+
+  @override
+  State<_AdminMonthYearPickerDialog> createState() => _AdminMonthYearPickerDialogState();
+}
+
+class _AdminMonthYearPickerDialogState extends State<_AdminMonthYearPickerDialog> {
+  late int _year;
+  late int _month;
+
+  @override
+  void initState() {
+    super.initState();
+    _year = widget.initial.year;
+    _month = widget.initial.month;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.l10n.month),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButton<int>(
+            value: _month,
+            isExpanded: true,
+            items: List.generate(12, (i) => i + 1)
+                .map((m) => DropdownMenuItem(
+                      value: m,
+                      child: Text(AppDateFormat.monthName(widget.l10n.isArabic ? 'ar' : 'en').format(DateTime(2000, m))),
+                    ))
+                .toList(),
+            onChanged: (v) => setState(() => _month = v ?? _month),
+          ),
+          const SizedBox(height: 8),
+          DropdownButton<int>(
+            value: _year,
+            isExpanded: true,
+            items: List.generate(widget.now.year - 2020 + 2, (i) => 2020 + i)
+                .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
+                .toList(),
+            onChanged: (v) => setState(() => _year = v ?? _year),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(widget.l10n.cancel)),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, DateTime(_year, _month, 1)),
+          child: Text(widget.l10n.confirm),
+        ),
+      ],
     );
   }
 }

@@ -245,7 +245,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       );
       final name = _user!.displayName.replaceAll(RegExp(r'[^\w\s\u0600-\u06FF-]'), '').trim();
       final safeName = name.isEmpty ? 'patient' : name.split(RegExp(r'\s+')).first;
-      final filename = 'patient_report_${safeName}_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf';
+      final filename = 'patient_report_${safeName}_${AppDateFormat.fileNameDate.format(DateTime.now())}.pdf';
       await savePdfAndShare(
         filename,
         bytes,

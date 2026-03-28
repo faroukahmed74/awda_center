@@ -301,16 +301,39 @@ class AppLocalizations {
   String get quickAccess => _map['quickAccess']!;
   String get statistics => _map['statistics']!;
   String get appointmentsLast7Days => _map['appointmentsLast7Days']!;
+  /// e.g. "Appointments (last 3 months)" — {period} is a phrase like chartPeriodPhrase3Months.
+  String appointmentsChartTitle(String period) => _map['appointmentsChartTitle']!.replaceAll('{period}', period);
+  /// e.g. "Income vs expenses (last 6 months)"
+  String incomeExpenseChartTitle(String period) => _map['incomeExpenseChartTitle']!.replaceAll('{period}', period);
+  String get chartPeriodPhraseDay => _map['chartPeriodPhraseDay']!;
+  String get chartPeriodPhraseWeek => _map['chartPeriodPhraseWeek']!;
+  String get chartPeriodPhraseMonth => _map['chartPeriodPhraseMonth']!;
+  String get chartPeriodPhrase3Months => _map['chartPeriodPhrase3Months']!;
+  String get chartPeriodPhrase6Months => _map['chartPeriodPhrase6Months']!;
+  String get chartPeriodPhrase9Months => _map['chartPeriodPhrase9Months']!;
+  String get chartPeriodPhraseYear => _map['chartPeriodPhraseYear']!;
   String get incomeVsExpense6Months => _map['incomeVsExpense6Months']!;
   String get usersByRole => _map['usersByRole']!;
+  /// Shown under the users-by-role chart: counts are not scoped to the selected period.
+  String get usersByRolePeriodHint => _map['usersByRolePeriodHint']!;
+  /// Explains pie vs bar/line and how custom range relates to full calendar months (Income & Expenses).
+  String get incomeExpenseChartDataHint => _map['incomeExpenseChartDataHint']!;
   String get filterByPeriod => _map['filterByPeriod']!;
   String get periodDay => _map['periodDay']!;
   String get periodWeek => _map['periodWeek']!;
   String get periodMonth => _map['periodMonth']!;
+  /// Admin charts: full calendar month from the 1st through the last day (current month).
+  String get periodWholeCurrentMonth => _map['periodWholeCurrentMonth']!;
+  /// Admin charts: pick any calendar month (full month).
+  String get periodPickMonth => _map['periodPickMonth']!;
+  /// Chart subtitle phrase for [periodWholeCurrentMonth] filter.
+  String get chartPeriodPhraseThisMonth => _map['chartPeriodPhraseThisMonth']!;
   String get period3Months => _map['period3Months']!;
   String get period6Months => _map['period6Months']!;
   String get period9Months => _map['period9Months']!;
   String get periodYear => _map['periodYear']!;
+  String get periodCustomRange => _map['periodCustomRange']!;
+  String get chooseDateRange => _map['chooseDateRange']!;
   String get exportPdf => _map['exportPdf']!;
   String get dynamicReport => _map['dynamicReport']!;
   String get dynamicReportHint => _map['dynamicReportHint']!;
@@ -655,16 +678,33 @@ class AppLocalizations {
     'quickAccess': 'Quick access',
     'statistics': 'Statistics',
     'appointmentsLast7Days': 'Appointments (last 7 days)',
+    'appointmentsChartTitle': 'Appointments ({period})',
+    'incomeExpenseChartTitle': 'Income vs expenses ({period})',
+    'chartPeriodPhraseDay': 'today',
+    'chartPeriodPhraseWeek': 'last 7 days',
+    'chartPeriodPhraseMonth': 'last month',
+    'chartPeriodPhrase3Months': 'last 3 months',
+    'chartPeriodPhrase6Months': 'last 6 months',
+    'chartPeriodPhrase9Months': 'last 9 months',
+    'chartPeriodPhraseYear': 'last 12 months',
     'incomeVsExpense6Months': 'Income vs expenses (last 6 months)',
     'usersByRole': 'Users by role',
+    'usersByRolePeriodHint': 'Not affected by the period filter (all users).',
+    'incomeExpenseChartDataHint':
+        'Income vs expenses: the pie chart shows totals for the whole selected date range. Bar and line charts show each calendar month that overlaps that range—if the range ends before the last day of a month, that month only includes days inside the range. Income & Expenses often uses a full calendar month; to match one month here, set the custom range from the 1st through the last day of that month (e.g. 01/03–31/03 for all of March).',
     'filterByPeriod': 'Filter by period',
     'periodDay': 'Day',
     'periodWeek': 'Week',
     'periodMonth': 'Month',
+    'periodWholeCurrentMonth': 'This month (full)',
+    'periodPickMonth': 'Choose month…',
+    'chartPeriodPhraseThisMonth': 'current month (full)',
     'period3Months': '3 Months',
     'period6Months': '6 Months',
     'period9Months': '9 Months',
     'periodYear': 'Year',
+    'periodCustomRange': 'Custom range',
+    'chooseDateRange': 'Choose dates',
     'exportPdf': 'Export PDF',
     'dynamicReport': 'Dynamic report',
     'dynamicReportHint': 'Choose one or more statistics below. Pick a chart style for the PDF; all selected charts will be exported using that style (your on-screen chart types stay the same after export).',
@@ -1013,16 +1053,33 @@ class AppLocalizations {
     'quickAccess': 'وصول سريع',
     'statistics': 'إحصائيات',
     'appointmentsLast7Days': 'المواعيد (آخر 7 أيام)',
+    'appointmentsChartTitle': 'المواعيد ({period})',
+    'incomeExpenseChartTitle': 'الإيرادات والمصروفات ({period})',
+    'chartPeriodPhraseDay': 'اليوم',
+    'chartPeriodPhraseWeek': 'آخر 7 أيام',
+    'chartPeriodPhraseMonth': 'الشهر الماضي',
+    'chartPeriodPhrase3Months': 'آخر 3 أشهر',
+    'chartPeriodPhrase6Months': 'آخر 6 أشهر',
+    'chartPeriodPhrase9Months': 'آخر 9 أشهر',
+    'chartPeriodPhraseYear': 'آخر 12 شهرًا',
     'incomeVsExpense6Months': 'الإيرادات والمصروفات (آخر 6 أشهر)',
     'usersByRole': 'المستخدمون حسب الدور',
+    'usersByRolePeriodHint': 'غير مرتبط بفلتر الفترة أعلاه (جميع المستخدمين).',
+    'incomeExpenseChartDataHint':
+        'الإيرادات والمصروفات: مخطط الدائرة يعرض الإجمالي لنطاق التواريخ المحدد بالكامل. المخططات العمودية والخطية تعرض كل شهر ميلادي يتقاطع مع النطاق—إذا انتهى النطاق قبل آخر يوم في الشهر، يُحتسب من ذلك الشهر الأيام داخل النطاق فقط. شاشة الإيرادات والمصروفات غالباً تستخدم شهراً ميلادياً كاملاً؛ لمطابقة شهر كامل هنا اضبط النطاق المخصص من اليوم الأول إلى آخر يوم في ذلك الشهر (مثال: 01/03–31/03 لكامل مارس).',
     'filterByPeriod': 'تصفية حسب الفترة',
     'periodDay': 'يوم',
     'periodWeek': 'أسبوع',
     'periodMonth': 'شهر',
+    'periodWholeCurrentMonth': 'هذا الشهر (كامل)',
+    'periodPickMonth': 'اختر شهراً…',
+    'chartPeriodPhraseThisMonth': 'الشهر الحالي (كامل)',
     'period3Months': '٣ أشهر',
     'period6Months': '٦ أشهر',
     'period9Months': '٩ أشهر',
     'periodYear': 'سنة',
+    'periodCustomRange': 'فترة مخصصة',
+    'chooseDateRange': 'اختر التواريخ',
     'exportPdf': 'تصدير PDF',
     'dynamicReport': 'تقرير ديناميكي',
     'dynamicReportHint': 'اختر إحصائية واحدة أو أكثر أدناه. اختر شكل المخطط للتصدير؛ ستُصدَّر كل المخططات المحددة بهذا الشكل (أنواع المخططات على الشاشة تُعاد كما كانت بعد التصدير).',
