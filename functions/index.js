@@ -180,79 +180,230 @@ exports.migrateStaffCreatedPatient = functions.https.onCall(async (data, context
   return { newUid };
 });
 
-const notificationTitles = {
-  en: { confirmed: 'Appointment confirmed', completed: 'Appointment completed', cancelled: 'Appointment cancelled', no_show: 'Appointment marked no-show', pending: 'New pending appointment' },
-  ar: { confirmed: 'تم تأكيد الموعد', completed: 'تم إكمال الموعد', cancelled: 'تم إلغاء الموعد', no_show: 'تم تسجيل عدم الحضور', pending: 'موعد جديد قيد الانتظار' },
+const notificationTitlesAr = {
+  confirmed: 'تم تأكيد الموعد',
+  completed: 'تم إكمال الموعد',
+  cancelled: 'تم إلغاء الموعد',
+  no_show: 'تم تسجيل عدم الحضور',
+  pending: 'موعد جديد قيد الانتظار',
 };
 
-function getBodyTemplate(locale) {
-  return locale === 'ar' ? 'جلسة في %s الساعة %s' : 'Session on %s at %s';
+/**
+ * Legacy field on users/{uid} plus all tokens in users/{uid}/fcm_tokens/*.
+ * @param {string} uid
+ * @returns {Promise<string[]>}
+ */
+async function getFcmTokensForUser(uid) {
+  if (!uid) return [];
+  const out = new Set();
+  try {
+    const userSnap = await db.collection('users').doc(uid).get();
+    if (userSnap.exists) {
+      const legacy = userSnap.data().fcmToken;
+      if (legacy && typeof legacy === 'string' && legacy.trim()) {
+        out.add(legacy.trim());
+      }
+    }
+    const sub = await db.collection('users').doc(uid).collection('fcm_tokens').get();
+    sub.docs.forEach((d) => {
+      const t = d.data().token;
+      if (t && typeof t === 'string' && t.trim()) out.add(t.trim());
+    });
+  } catch (e) {
+    console.warn('getFcmTokensForUser', uid, e);
+  }
+  return [...out];
 }
 
 /**
- * When a new appointment is created (patient request) with status pending,
- * send FCM to all secretaries and admins so they see pending sessions.
+ * Rich FCM body (Arabic only): date/time, doctor, services, package + session index.
+ * @param {FirebaseFirestore.DocumentData} after
+ * @param {string} appointmentId
+ * @returns {Promise<string>}
  */
-async function sendPendingNotificationToSecretaries(appointmentId, after) {
+async function buildAppointmentBodyAr(after, appointmentId) {
   const appointmentDate = after.appointmentDate;
   const startTime = after.startTime || '';
   const endTime = after.endTime || '';
-  const dateStr = appointmentDate && appointmentDate.toDate
-    ? appointmentDate.toDate().toLocaleDateString()
-    : '';
-  const timeStr = dateStr ? `${startTime}${endTime ? ` - ${endTime}` : ''}` : '';
+  const timeStr = endTime ? `${startTime} - ${endTime}` : startTime;
 
-  const tokensByLocale = { en: [], ar: [] };
-  const usersSnap = await db.collection('users').get();
-  usersSnap.docs.forEach((doc) => {
-    const d = doc.data();
-    const token = d.fcmToken;
-    if (!token) return;
-    const roles = d.roles || [];
-    const permissions = d.permissions || [];
-    const isSecretary = roles.includes('secretary') || roles.includes('admin');
-    const hasAppointments = permissions.includes('appointments') || roles.includes('admin') || roles.includes('secretary');
-    if (isSecretary || hasAppointments) {
-      const locale = (d.locale === 'ar' ? 'ar' : 'en');
-      tokensByLocale[locale].push(token);
+  const dateAr =
+    appointmentDate && appointmentDate.toDate
+      ? appointmentDate.toDate().toLocaleDateString('ar-EG')
+      : '';
+
+  let doctorName = '';
+  if (after.doctorId) {
+    const docSnap = await db.collection('doctors').doc(after.doctorId).get();
+    if (docSnap.exists) {
+      doctorName = String(docSnap.data().displayName || '').trim();
     }
+  }
+
+  const services = Array.isArray(after.services)
+    ? after.services.filter((s) => s && String(s).trim())
+    : [];
+  const servicesStr = services.map((s) => String(s).trim()).join(', ');
+
+  let pkgAr = '';
+  if (after.packageId && after.patientId) {
+    const pkgSnap = await db.collection('packages').doc(after.packageId).get();
+    if (pkgSnap.exists) {
+      const pkg = pkgSnap.data();
+      const nameAr = String(pkg.nameAr || '').trim() || String(pkg.nameEn || '').trim() || after.packageId;
+      const totalSessions = pkg.numberOfSessions && pkg.numberOfSessions > 0 ? pkg.numberOfSessions : 1;
+      let sessionNum = null;
+      try {
+        const apptsSnap = await db.collection('appointments').where('patientId', '==', after.patientId).get();
+        const rows = apptsSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((r) => r.packageId === after.packageId);
+        rows.sort((a, b) => {
+          const ad = a.appointmentDate && a.appointmentDate.toDate ? a.appointmentDate.toDate().getTime() : 0;
+          const bd = b.appointmentDate && b.appointmentDate.toDate ? b.appointmentDate.toDate().getTime() : 0;
+          if (ad !== bd) return ad - bd;
+          return String(a.startTime || '').localeCompare(String(b.startTime || ''));
+        });
+        const idx = rows.findIndex((r) => r.id === appointmentId);
+        if (idx >= 0) sessionNum = idx + 1;
+      } catch (e) {
+        console.warn('buildAppointmentBodyAr session index', e);
+      }
+      if (sessionNum != null) {
+        pkgAr = `الباقة: ${nameAr} (جلسة ${sessionNum} من ${totalSessions})`;
+      } else {
+        pkgAr = `الباقة: ${nameAr}`;
+      }
+    }
+  }
+
+  const linesAr = [];
+  if (dateAr && timeStr) {
+    linesAr.push(`جلسة في ${dateAr} الساعة ${timeStr}`);
+  }
+  if (doctorName) {
+    linesAr.push(`الطبيب: ${doctorName}`);
+  }
+  if (servicesStr) {
+    linesAr.push(`الخدمات: ${servicesStr}`);
+  }
+  if (pkgAr) linesAr.push(pkgAr);
+
+  const fallbackAr = 'افتح التطبيق للتفاصيل.';
+  return linesAr.length ? linesAr.join('\n') : fallbackAr;
+}
+
+const APPOINTMENTS_WEB_URL = 'https://awdacenter-eb0a8.web.app/#/appointments';
+
+/**
+ * @param {string} title
+ * @param {string} body
+ * @param {string[]} tokens
+ * @param {Record<string, string>} data
+ */
+async function sendMulticastAr(title, body, tokens, data) {
+  const unique = [...new Set((tokens || []).filter((t) => t && typeof t === 'string'))];
+  if (unique.length === 0) return;
+  const dataOut = { title: String(title), body: String(body) };
+  Object.keys(data || {}).forEach((k) => {
+    const v = data[k];
+    dataOut[k] = v == null ? '' : String(v);
   });
-
-  const titleEn = notificationTitles.en.pending;
-  const titleAr = notificationTitles.ar.pending;
-  const bodyEn = dateStr ? `Session on ${dateStr} at ${timeStr}` : 'A patient requested a new appointment.';
-  const bodyAr = dateStr ? `جلسة في ${dateStr} الساعة ${timeStr}` : 'طلب مريض موعداً جديداً.';
-
-  const data = { type: 'appointment_pending', appointmentId, status: 'pending' };
-
-  const baseUrl = 'https://awdacenter-eb0a8.web.app';
-  for (const locale of ['en', 'ar']) {
-    const tokens = [...new Set(tokensByLocale[locale])];
-    if (tokens.length === 0) continue;
-    const title = locale === 'ar' ? titleAr : titleEn;
-    const body = locale === 'ar' ? bodyAr : bodyEn;
+  for (let i = 0; i < unique.length; i += 500) {
+    const chunk = unique.slice(i, i + 500);
     const message = {
       notification: { title, body },
-      data,
-      tokens,
+      data: dataOut,
+      tokens: chunk,
       android: { priority: 'high' },
       apns: { payload: { aps: { sound: 'default' } } },
       webpush: {
         notification: { title, body, icon: '/icons/Icon-192.png' },
-        fcmOptions: { link: baseUrl + '/#/appointments' },
+        fcmOptions: { link: APPOINTMENTS_WEB_URL },
       },
     };
     try {
-      await messaging.sendEachForMulticast(message);
+      const res = await messaging.sendEachForMulticast(message);
+      if (res.failureCount > 0) {
+        console.warn('FCM multicast partial failure:', res.failureCount);
+      }
     } catch (err) {
-      console.error('FCM pending secretaries error:', err);
+      console.error('FCM multicast error:', err);
     }
   }
 }
 
 /**
+ * When an appointment is created, notify the patient and assigned doctor (FCM).
+ * Pending: patient sees "request received"; doctor sees "new request". Otherwise "booked".
+ */
+async function sendAppointmentBookedToPatientAndDoctor(appointmentId, after) {
+  const status = after && after.status;
+  if (status === 'cancelled') return;
+
+  const patientId = after.patientId;
+  const doctorId = after.doctorId;
+
+  const isPending = status === 'pending';
+  const titlePatientAr = isPending ? 'تم إرسال طلب الموعد' : 'تم حجز الموعد';
+  const titleDoctorAr = isPending ? 'طلب موعد جديد' : 'موعد جديد';
+
+  const bodyAr = await buildAppointmentBodyAr(after, appointmentId);
+
+  const data = {
+    type: 'appointment_booked',
+    appointmentId,
+    status: status || '',
+  };
+
+  if (patientId) {
+    const tokens = await getFcmTokensForUser(patientId);
+    await sendMulticastAr(titlePatientAr, bodyAr, tokens, data);
+  }
+
+  if (doctorId) {
+    const doctorSnap = await db.collection('doctors').doc(doctorId).get();
+    if (doctorSnap.exists) {
+      const userId = doctorSnap.data().userId;
+      if (userId && userId !== patientId) {
+        const tokens = await getFcmTokensForUser(userId);
+        await sendMulticastAr(titleDoctorAr, bodyAr, tokens, data);
+      }
+    }
+  }
+}
+
+async function sendPendingNotificationToSecretaries(appointmentId, after) {
+  const bodyAr = await buildAppointmentBodyAr(after, appointmentId);
+
+  let assignedDoctorUserId = null;
+  if (after.doctorId) {
+    const ds = await db.collection('doctors').doc(after.doctorId).get();
+    if (ds.exists) assignedDoctorUserId = ds.data().userId || null;
+  }
+
+  const allTokens = [];
+  const usersSnap = await db.collection('users').get();
+  for (const doc of usersSnap.docs) {
+    if (assignedDoctorUserId && doc.id === assignedDoctorUserId) continue;
+    const d = doc.data();
+    const roles = d.roles || [];
+    const permissions = d.permissions || [];
+    const isSecretary = roles.includes('secretary') || roles.includes('admin');
+    const hasAppointments = permissions.includes('appointments') || roles.includes('admin') || roles.includes('secretary');
+    if (!isSecretary && !hasAppointments) continue;
+    const tokens = await getFcmTokensForUser(doc.id);
+    allTokens.push(...tokens);
+  }
+
+  const titleAr = notificationTitlesAr.pending;
+  const data = { type: 'appointment_pending', appointmentId, status: 'pending' };
+  await sendMulticastAr(titleAr, bodyAr, allTokens, data);
+}
+
+/**
  * When an appointment's status is updated to confirmed, completed, or cancelled,
- * send FCM to the patient, the doctor, and all secretaries (localized in EN/AR).
+ * send FCM to the patient, the doctor, and all secretaries (Arabic only).
  */
 exports.onAppointmentStatusChange = functions.firestore
   .document('appointments/{appointmentId}')
@@ -270,90 +421,47 @@ exports.onAppointmentStatusChange = functions.firestore
 
     const patientId = after.patientId;
     const doctorId = after.doctorId;
-    const appointmentDate = after.appointmentDate;
-    const startTime = after.startTime || '';
-    const endTime = after.endTime || '';
 
-    const dateStr = appointmentDate && appointmentDate.toDate
-      ? appointmentDate.toDate().toLocaleDateString()
-      : '';
-    const timeStr = dateStr ? `${startTime}${endTime ? ` - ${endTime}` : ''}` : '';
+    const allTokens = [];
 
-    const tokensByLocale = { en: [], ar: [] };
-
-    async function addToken(uid) {
-      if (!uid) return;
-      const userSnap = await db.collection('users').doc(uid).get();
-      if (!userSnap.exists) return;
-      const d = userSnap.data();
-      const token = d.fcmToken;
-      if (!token) return;
-      const locale = (d.locale === 'ar' ? 'ar' : 'en');
-      tokensByLocale[locale].push(token);
+    if (patientId) {
+      allTokens.push(...(await getFcmTokensForUser(patientId)));
     }
-
-    if (patientId) await addToken(patientId);
 
     if (doctorId) {
       const doctorSnap = await db.collection('doctors').doc(doctorId).get();
       if (doctorSnap.exists) {
         const userId = doctorSnap.data().userId;
-        if (userId) await addToken(userId);
+        if (userId) {
+          allTokens.push(...(await getFcmTokensForUser(userId)));
+        }
       }
     }
 
     const usersSnap = await db.collection('users').get();
-    const added = new Set([patientId, doctorId].filter(Boolean));
-    usersSnap.docs.forEach((doc) => {
+    const added = new Set([patientId].filter(Boolean));
+    if (doctorId) {
+      const ds = await db.collection('doctors').doc(doctorId).get();
+      if (ds.exists && ds.data().userId) added.add(ds.data().userId);
+    }
+    for (const doc of usersSnap.docs) {
       const uid = doc.id;
-      if (added.has(uid)) return;
+      if (added.has(uid)) continue;
       const d = doc.data();
-      const token = d.fcmToken;
-      if (!token) return;
       const roles = d.roles || [];
       const permissions = d.permissions || [];
       const isSecretary = roles.includes('secretary') || roles.includes('admin');
       const hasAppointments = permissions.includes('appointments') || roles.includes('admin') || roles.includes('secretary');
-      if (isSecretary || hasAppointments) {
-        added.add(uid);
-        const locale = (d.locale === 'ar' ? 'ar' : 'en');
-        tokensByLocale[locale].push(token);
-      }
-    });
+      if (!isSecretary && !hasAppointments) continue;
+      added.add(uid);
+      allTokens.push(...(await getFcmTokensForUser(uid)));
+    }
 
-    const titleEn = notificationTitles.en[newStatus] || 'Appointment update';
-    const titleAr = notificationTitles.ar[newStatus] || 'تحديث الموعد';
-    const bodyEn = dateStr ? getBodyTemplate('en').replace('%s', dateStr).replace('%s', timeStr) : 'Your appointment status was updated.';
-    const bodyAr = dateStr ? getBodyTemplate('ar').replace('%s', dateStr).replace('%s', timeStr) : 'تم تحديث حالة موعدك.';
+    const titleAr = notificationTitlesAr[newStatus] || 'تحديث الموعد';
+    const bodyAr = await buildAppointmentBodyAr(after, appointmentId);
 
     const data = { type: 'appointment_status', appointmentId, status: newStatus };
-
-    const baseUrl = 'https://awdacenter-eb0a8.web.app';
-    for (const locale of ['en', 'ar']) {
-      const tokens = [...new Set(tokensByLocale[locale])];
-      if (tokens.length === 0) continue;
-      const title = locale === 'ar' ? titleAr : titleEn;
-      const body = locale === 'ar' ? bodyAr : bodyEn;
-      const message = {
-        notification: { title, body },
-        data,
-        tokens,
-        android: { priority: 'high' },
-        apns: { payload: { aps: { sound: 'default' } } },
-        webpush: {
-          notification: { title, body, icon: '/icons/Icon-192.png' },
-          fcmOptions: { link: baseUrl + '/#/appointments' },
-        },
-      };
-      try {
-        const res = await messaging.sendEachForMulticast(message);
-        if (res.failureCount > 0) {
-          console.warn(`FCM ${locale} some failed:`, res.responses.filter((r) => !r.success).length);
-        }
-      } catch (err) {
-        console.error(`FCM send ${locale} error:`, err);
-      }
-    }
+    await sendMulticastAr(titleAr, bodyAr, allTokens, data);
   });
 
 /**
@@ -365,6 +473,10 @@ exports.onAppointmentCreated = functions.firestore
   .onCreate(async (snap, context) => {
     const after = snap.data();
     const status = after && after.status;
-    if (status !== 'pending') return;
-    await sendPendingNotificationToSecretaries(context.params.appointmentId, after);
+    if (status === 'pending') {
+      await sendPendingNotificationToSecretaries(context.params.appointmentId, after);
+    }
+    if (status !== 'cancelled') {
+      await sendAppointmentBookedToPatientAndDoctor(context.params.appointmentId, after);
+    }
   });

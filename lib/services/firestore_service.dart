@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../models/doctor_model.dart';
 import '../models/room_model.dart';
@@ -44,11 +45,34 @@ class FirestoreService {
     return UserModel.fromFirestore(doc);
   }
 
-  Future<void> updateUserFcmToken(String uid, String? token) async {
-    await _firestore.collection('users').doc(uid).set({
-      'fcmToken': token,
-      'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+  static const _kFcmInstallationId = 'fcm_installation_id_v1';
+
+  /// Stable id per app install; used as `users/{uid}/fcm_tokens/{id}` document id.
+  Future<String> getOrCreateFcmInstallationId() async {
+    final prefs = await SharedPreferences.getInstance();
+    var id = prefs.getString(_kFcmInstallationId);
+    if (id == null || id.isEmpty) {
+      id = DateTime.now().microsecondsSinceEpoch.toString();
+      await prefs.setString(_kFcmInstallationId, id);
+    }
+    return id;
+  }
+
+  /// Registers this device's FCM token. Other devices keep their own docs under [fcm_tokens].
+  Future<void> registerFcmToken(String uid, String token, String installationId) async {
+    if (uid.isEmpty || token.isEmpty || installationId.isEmpty) return;
+    await _firestore.collection('users').doc(uid).collection('fcm_tokens').doc(installationId).set({
+      'token': token,
+      'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  /// Removes this install's token (e.g. logout). Other devices unaffected.
+  Future<void> removeFcmTokenForDevice(String uid, String installationId) async {
+    if (uid.isEmpty || installationId.isEmpty) return;
+    try {
+      await _firestore.collection('users').doc(uid).collection('fcm_tokens').doc(installationId).delete();
+    } catch (_) {}
   }
 
   /// Update preferred locale for notifications ('en' or 'ar'). Call from app when locale is known.

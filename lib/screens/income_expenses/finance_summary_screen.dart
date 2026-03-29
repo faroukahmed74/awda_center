@@ -913,6 +913,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 final idx = e.key;
                 final r = e.value;
                 return DataRow(
+                  key: ValueKey('doc_row_${r.doctorId}'),
                   cells: [
                     DataCell(Row(
                       mainAxisSize: MainAxisSize.min,
@@ -932,24 +933,36 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                       ],
                     )),
                     DataCell(Text(r.doctorName)),
-                    DataCell(_editableCell(nf.format(r.income), (v) {
-                      final x = double.tryParse(v);
-                      if (x == null) return;
-                      _updateDoctorRow(r.doctorId, income: x);
-                    })),
+                    DataCell(_editableCell(
+                      nf.format(r.income),
+                      (v) {
+                        final x = double.tryParse(v);
+                        if (x == null) return;
+                        _updateDoctorRow(r.doctorId, income: x);
+                      },
+                      fieldKey: ValueKey('fin_income_${r.doctorId}'),
+                    )),
                     DataCell(Text(nf.format(r.c30))),
                     DataCell(Text(nf.format(r.bonus))),
                     DataCell(Text('${r.commissionPercent} (${nf.format(r.percentVal)})')),
-                    DataCell(_editableCell(nf.format(r.consumables), (v) {
-                      final x = double.tryParse(v.replaceAll(',', ''));
-                      if (x == null) return;
-                      _updateDoctorRow(r.doctorId, consumables: x);
-                    })),
-                    DataCell(_editableCell(nf.format(r.media), (v) {
-                      final x = double.tryParse(v.replaceAll(',', ''));
-                      if (x == null) return;
-                      _updateDoctorRow(r.doctorId, media: x);
-                    })),
+                    DataCell(_editableCell(
+                      nf.format(r.consumables),
+                      (v) {
+                        final x = double.tryParse(v.replaceAll(',', ''));
+                        if (x == null) return;
+                        _updateDoctorRow(r.doctorId, consumables: x);
+                      },
+                      fieldKey: ValueKey('fin_consumables_${r.doctorId}'),
+                    )),
+                    DataCell(_editableCell(
+                      nf.format(r.media),
+                      (v) {
+                        final x = double.tryParse(v.replaceAll(',', ''));
+                        if (x == null) return;
+                        _updateDoctorRow(r.doctorId, media: x);
+                      },
+                      fieldKey: ValueKey('fin_media_${r.doctorId}'),
+                    )),
                   ],
                 );
               }),
@@ -971,10 +984,14 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
               const DataCell(Text('NET')),
               DataCell(Text(nf.format(_net), style: const TextStyle(fontWeight: FontWeight.bold))),
               DataCell(Text(l10n.rentGuard)),
-              DataCell(_editableCell(nf.format(_rentGuard), (v) {
-                final x = double.tryParse(v.replaceAll(',', ''));
-                if (x != null) setState(() { _rentGuard = x; _recalcFromRows(); });
-              })),
+              DataCell(_editableCell(
+                nf.format(_rentGuard),
+                (v) {
+                  final x = double.tryParse(v.replaceAll(',', ''));
+                  if (x != null) setState(() { _rentGuard = x; _recalcFromRows(); });
+                },
+                fieldKey: const ValueKey('fin_rent_guard'),
+              )),
               DataCell(Text(_doctorRows.isNotEmpty ? _doctorRows[0].doctorName : '')),
               DataCell(Text(_doctorRows.isNotEmpty ? nf.format(_doctorRows[0].c30 + _doctorRows[0].percentVal) : '')),
               const DataCell(Text('')),
@@ -1006,10 +1023,14 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
               )),
               DataCell(Text(nf.format(_mang))),
               DataCell(Text(l10n.receptionist)),
-              DataCell(_editableCell(nf.format(_receptionist), (v) {
-                final x = double.tryParse(v.replaceAll(',', ''));
-                if (x != null) setState(() { _receptionist = x; _recalcFromRows(); });
-              })),
+              DataCell(_editableCell(
+                nf.format(_receptionist),
+                (v) {
+                  final x = double.tryParse(v.replaceAll(',', ''));
+                  if (x != null) setState(() { _receptionist = x; _recalcFromRows(); });
+                },
+                fieldKey: const ValueKey('fin_receptionist'),
+              )),
               DataCell(Text(_doctorRows.length > 1 ? _doctorRows[1].doctorName : '')),
               DataCell(Text(_doctorRows.length > 1 ? nf.format(_doctorRows[1].c30 + _doctorRows[1].percentVal) : '')),
               const DataCell(Text('')),
@@ -1055,10 +1076,17 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     );
   }
 
-  Widget _editableCell(String value, void Function(String) onChanged) {
+  /// [fieldKey] must be stable per logical field (e.g. doctorId) so reordering rows does not
+  /// reuse [TextFormField] state at the wrong index.
+  Widget _editableCell(
+    String value,
+    void Function(String) onChanged, {
+    Key? fieldKey,
+  }) {
     return SizedBox(
       width: 90,
       child: TextFormField(
+        key: fieldKey,
         initialValue: value,
         keyboardType: TextInputType.number,
         decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),

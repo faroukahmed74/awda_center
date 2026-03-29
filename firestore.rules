@@ -49,6 +49,11 @@ service cloud.firestore {
         || hasPermission('patients')
       );
       allow update, delete: if isAuth() && (request.auth.uid == userId || isAdmin());
+
+      // FCM tokens per device (user reads/writes only own docs; Admin SDK bypasses rules for sends)
+      match /fcm_tokens/{tokenId} {
+        allow read, create, update, delete: if isAuth() && request.auth.uid == userId;
+      }
     }
 
     // doctors: read by authenticated; admin or self (userId) can create; admin or doctor can update own

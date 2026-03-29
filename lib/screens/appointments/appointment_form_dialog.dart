@@ -242,6 +242,15 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         'isStarred': _isStarred,
         'packageId': _selectedPackageId,
       });
+      if (_patientId != null) {
+        NotificationService().rescheduleRemindersForUser(_patientId);
+      }
+      if (_doctorId != null) {
+        final doctorDoc = await fs.getDoctorById(_doctorId!);
+        if (doctorDoc != null) {
+          NotificationService().rescheduleRemindersForUser(doctorDoc.userId);
+        }
+      }
     } else {
       final currentUser = context.read<AuthProvider>().currentUser;
       final isPatient = currentUser?.hasRole(UserRole.patient) ?? true;

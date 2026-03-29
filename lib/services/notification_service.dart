@@ -8,17 +8,14 @@ import 'notification_service_stub.dart' if (dart.library.html) 'notification_ser
 import '../models/appointment_model.dart';
 import '../models/user_model.dart';
 
-/// Localized notification strings by locale ('en' or 'ar'). Used when no BuildContext.
-Map<String, String> _notificationStrings(String locale) {
-  final isAr = locale == 'ar';
+/// Arabic-only strings for scheduled local notifications (aligned with server push language).
+Map<String, String> _notificationStringsAr() {
   return {
-    'reminderTitle': isAr ? 'تذكير موعد' : 'Appointment reminder',
-    'reminderBody': isAr ? 'جلسة في {date} الساعة {time}' : 'Session on {date} at {time}',
-    'confirmed': isAr ? 'تم تأكيد الموعد' : 'Appointment confirmed',
-    'completed': isAr ? 'تم إكمال الموعد' : 'Appointment completed',
-    'cancelled': isAr ? 'تم إلغاء الموعد' : 'Appointment cancelled',
-    'noShow': isAr ? 'تم تسجيل عدم الحضور' : 'Appointment marked no-show',
-    'todoTitle': isAr ? 'تذكير مهمة' : 'To-do reminder',
+    'reminderTitle': 'تذكير موعد',
+    'reminderBody': 'جلسة في {date} الساعة {time}',
+    'reminderToday': 'موعدك اليوم الساعة {time}',
+    'reminderOneHour': 'الموعد خلال ساعة ({time})',
+    'todoTitle': 'تذكير مهمة',
   };
 }
 
@@ -51,9 +48,10 @@ class NotificationService {
     _fcm.onTokenRefresh.listen((String newToken) async {
       if (newToken.isEmpty) return;
       try {
-        final uid = await _currentUserIdForTokenRefresh();
+        final uid = _currentUserIdForTokenRefresh();
         if (uid != null && uid.isNotEmpty) {
-          await _firestore.updateUserFcmToken(uid, newToken);
+          final installationId = await _firestore.getOrCreateFcmInstallationId();
+          await _firestore.registerFcmToken(uid, newToken, installationId);
         }
       } catch (e, st) {
         if (kDebugMode) debugPrint('NotificationService onTokenRefresh error: $e\n$st');
@@ -61,11 +59,10 @@ class NotificationService {
     });
   }
 
-  /// Returns current user id if available (from Auth is not accessible here; we use a simple approach).
-  Future<String?> _currentUserIdForTokenRefresh() async {
+  /// Current user id when token refreshes (sync API).
+  String? _currentUserIdForTokenRefresh() {
     try {
-      final user = await FirebaseAuth.instance.currentUser;
-      return user?.uid;
+      return FirebaseAuth.instance.currentUser?.uid;
     } catch (_) {
       return null;
     }
@@ -157,7 +154,8 @@ class NotificationService {
         token = await _fcm.getToken();
       }
       if (token != null && token.isNotEmpty) {
-        await _firestore.updateUserFcmToken(uid, token);
+        final installationId = await _firestore.getOrCreateFcmInstallationId();
+        await _firestore.registerFcmToken(uid, token, installationId);
       }
       if (!kIsWeb) await _scheduleRemindersForUser(uid);
     } catch (e, st) {
@@ -165,10 +163,11 @@ class NotificationService {
     }
   }
 
-  /// Clear FCM token on logout (optional).
+  /// Removes this device's FCM token on logout (other devices keep receiving pushes).
   Future<void> clearToken(String uid) async {
     try {
-      await _firestore.updateUserFcmToken(uid, null);
+      final installationId = await _firestore.getOrCreateFcmInstallationId();
+      await _firestore.removeFcmTokenForDevice(uid, installationId);
     } catch (_) {}
   }
 
@@ -184,28 +183,20 @@ class NotificationService {
 
     // Patient: my appointments in next 7 days → remind day before or morning of
     if (user.hasRole(UserRole.patient)) {
-      final strings = _notificationStrings(user.locale ?? 'en');
-      final dateTimeTemplate = strings['reminderBody']!;
+      final strings = _notificationStringsAr();
       final appointments = await _firestore.getAppointments(
         patientId: uid,
         from: dayStart,
-        to: dayStart.add(const Duration(days: 8)),
+        to: dayStart.add(const Duration(days: 32)),
       );
       for (final a in appointments) {
         if (a.status != AppointmentStatus.cancelled) {
-          final reminderAt = _reminderTimeForAppointment(a);
-          if (reminderAt.isAfter(now)) {
-            final dateStr = '${a.appointmentDate.day}/${a.appointmentDate.month}';
-            final body = dateTimeTemplate
-                .replaceAll('{date}', dateStr)
-                .replaceAll('{time}', a.startTime);
-            await _scheduleLocal(
-              id: a.id.hashCode.abs() % 100000,
-              title: strings['reminderTitle']!,
-              body: body,
-              scheduledDate: reminderAt,
-            );
-          }
+          await _scheduleAppointmentReminders(
+            a,
+            strings,
+            now,
+            viewerIsPatient: true,
+          );
         }
       }
     }
@@ -214,28 +205,21 @@ class NotificationService {
     if (user.hasRole(UserRole.doctor)) {
       final doc = await _firestore.getDoctorByUserId(uid);
       if (doc != null) {
-        final strings = _notificationStrings(user.locale ?? 'en');
-        final dateTimeTemplate = strings['reminderBody']!;
+        final strings = _notificationStringsAr();
         final appointments = await _firestore.getAppointments(
           doctorId: doc.id,
           from: dayStart,
-          to: dayStart.add(const Duration(days: 8)),
+          to: dayStart.add(const Duration(days: 32)),
         );
         for (final a in appointments) {
           if (a.status != AppointmentStatus.cancelled) {
-            final reminderAt = _reminderTimeForAppointment(a);
-            if (reminderAt.isAfter(now)) {
-              final dateStr = '${a.appointmentDate.day}/${a.appointmentDate.month}';
-              final body = dateTimeTemplate
-                  .replaceAll('{date}', dateStr)
-                  .replaceAll('{time}', a.startTime);
-              await _scheduleLocal(
-                id: ('doc_${a.id}').hashCode.abs() % 100000 + 50000,
-                title: strings['reminderTitle']!,
-                body: body,
-                scheduledDate: reminderAt,
-              );
-            }
+            await _scheduleAppointmentReminders(
+              a,
+              strings,
+              now,
+              idPrefix: 'doc_',
+              viewerIsPatient: false,
+            );
           }
         }
       }
@@ -244,7 +228,7 @@ class NotificationService {
     // Admin/staff: todos with reminder in future
     if (user.canAccessFeature('admin_todos')) {
       final todos = await _firestore.getAdminTodos(includeCompleted: false);
-      final strings = _notificationStrings(user.locale ?? 'en');
+      final strings = _notificationStringsAr();
       for (final t in todos) {
         if (t.reminderAt != null && t.reminderAt!.isAfter(now)) {
           await _scheduleLocal(
@@ -258,17 +242,106 @@ class NotificationService {
     }
   }
 
-  DateTime _reminderTimeForAppointment(AppointmentModel a) {
-    final appointmentDay = DateTime(a.appointmentDate.year, a.appointmentDate.month, a.appointmentDate.day);
-    final now = DateTime.now();
-    final tomorrow = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
-    if (appointmentDay.isAtSameMomentAs(DateTime(now.year, now.month, now.day))) {
-      return appointmentDay.add(const Duration(hours: 7)); // 7 AM same day
+  /// Parses [a.startTime] (HH:mm) on the appointment calendar day in local time.
+  DateTime? _appointmentStartLocal(AppointmentModel a) {
+    final parts = a.startTime.split(':');
+    if (parts.length < 2) return null;
+    final h = int.tryParse(parts[0].trim()) ?? 0;
+    final m = int.tryParse(parts[1].trim()) ?? 0;
+    return DateTime(a.appointmentDate.year, a.appointmentDate.month, a.appointmentDate.day, h, m);
+  }
+
+  int _reminderNotificationId(String appointmentId, String kind, {String idPrefix = ''}) {
+    return ('$idPrefix${appointmentId}_$kind').hashCode & 0x7FFFFFFF;
+  }
+
+  /// Extra lines aligned with Cloud Function FCM bodies (Arabic): doctor (for patients), services, package + session.
+  Future<String> _enrichAppointmentReminderBody({
+    required AppointmentModel a,
+    required String baseBody,
+    required bool viewerIsPatient,
+  }) async {
+    final parts = <String>[baseBody];
+    try {
+      if (viewerIsPatient && a.doctorId.isNotEmpty) {
+        final doc = await _firestore.getDoctorById(a.doctorId);
+        final dn = doc?.displayName?.trim();
+        if (dn != null && dn.isNotEmpty) {
+          parts.add('الطبيب: $dn');
+        }
+      }
+      if (a.hasServices) {
+        parts.add('الخدمات: ${a.servicesDisplay}');
+      }
+      if (a.packageId != null && a.packageId!.isNotEmpty && a.patientId.isNotEmpty) {
+        final pkg = await _firestore.getPackageById(a.packageId!);
+        if (pkg != null) {
+          final name = (pkg.nameAr?.trim().isNotEmpty ?? false) ? pkg.nameAr! : (pkg.nameEn ?? pkg.id);
+          final total = pkg.numberOfSessions > 0 ? pkg.numberOfSessions : 1;
+          final all = await _firestore.getAppointments(patientId: a.patientId);
+          final samePkg = all.where((x) => x.packageId == a.packageId).toList();
+          samePkg.sort((x, y) {
+            final c = x.appointmentDate.compareTo(y.appointmentDate);
+            if (c != 0) return c;
+            return x.startTime.compareTo(y.startTime);
+          });
+          final idx = samePkg.indexWhere((x) => x.id == a.id);
+          if (idx >= 0) {
+            final n = idx + 1;
+            parts.add('الباقة: $name (جلسة $n من $total)');
+          } else {
+            parts.add('الباقة: $name');
+          }
+        }
+      }
+    } catch (_) {}
+    return parts.join('\n');
+  }
+
+  /// Same day at 08:00 (morning of appointment) and 1 hour before start — when still in the future.
+  Future<void> _scheduleAppointmentReminders(
+    AppointmentModel a,
+    Map<String, String> strings,
+    DateTime now, {
+    String idPrefix = '',
+    bool viewerIsPatient = false,
+  }) async {
+    final start = _appointmentStartLocal(a);
+    if (start == null) return;
+
+    // 1) One hour before session
+    final oneHourBefore = start.subtract(const Duration(hours: 1));
+    if (oneHourBefore.isAfter(now)) {
+      final base = strings['reminderOneHour']!.replaceAll('{time}', a.startTime);
+      final body = await _enrichAppointmentReminderBody(
+        a: a,
+        baseBody: base,
+        viewerIsPatient: viewerIsPatient,
+      );
+      await _scheduleLocal(
+        id: _reminderNotificationId(a.id, '1h', idPrefix: idPrefix),
+        title: strings['reminderTitle']!,
+        body: body,
+        scheduledDate: oneHourBefore,
+      );
     }
-    if (appointmentDay.isAfter(now)) {
-      return tomorrow.add(const Duration(hours: 18)); // 6 PM day before
+
+    // 2) Morning of appointment day (08:00), only if before session time
+    final dayOf = DateTime(a.appointmentDate.year, a.appointmentDate.month, a.appointmentDate.day, 8, 0);
+    if (dayOf.isBefore(start) && dayOf.isAfter(now)) {
+      final base = strings['reminderToday']!.replaceAll('{time}', a.startTime);
+      final body = await _enrichAppointmentReminderBody(
+        a: a,
+        baseBody: base,
+        viewerIsPatient: viewerIsPatient,
+      );
+      await _scheduleLocal(
+        id: _reminderNotificationId(a.id, 'day', idPrefix: idPrefix),
+        title: strings['reminderTitle']!,
+        body: body,
+        scheduledDate: dayOf,
+      );
     }
-    return now.add(const Duration(minutes: 1));
   }
 
   Future<void> _scheduleLocal({
