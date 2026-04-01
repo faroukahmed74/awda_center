@@ -63,6 +63,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
   double _net = 0;
   double _mang = 0;
   double _basket = 0;
+  double _basketSupport = 0;
   double _profitForEach = 0;
   bool _loading = true;
   bool _saving = false;
@@ -73,6 +74,8 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
   List<ExpenseRecordModel> _lastExpenseList = [];
   StreamSubscription? _incomeSub;
   StreamSubscription? _expenseSub;
+  static const String _basketSupportIncomeSource = 'Basket Support';
+  static const String _basketSupportExpenseCategory = 'Basket Support';
 
   @override
   void initState() {
@@ -175,7 +178,13 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       }
 
       final incomeByDoctor = <String, double>{};
+      double basketSupportIncome = 0;
       for (final r in incomeList) {
+        if (r.source.trim().toLowerCase() ==
+            _basketSupportIncomeSource.toLowerCase()) {
+          basketSupportIncome += r.amount;
+          continue;
+        }
         final id = r.doctorId ?? '';
         incomeByDoctor[id] = (incomeByDoctor[id] ?? 0) + r.amount;
       }
@@ -183,10 +192,15 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       final mediaByDoctor = <String, double>{};
       double rentTotal = 0;
       double salaryTotal = 0;
+      double basketSupportExpense = 0;
       // Map expense category to summary cells: Supplies + Other → Consumables (per doctor);
       // Salary → Receptionist; Media → Media (per doctor); Rent → Rent+Guard
       for (final r in expenseList) {
         final cat = (r.category).toLowerCase().trim();
+        if (cat == _basketSupportExpenseCategory.toLowerCase()) {
+          basketSupportExpense += r.amount;
+          continue;
+        }
         final id = r.paidByDoctorId ?? '';
         if (cat == 'rent') {
           rentTotal += r.amount;
@@ -243,7 +257,8 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       _totalMedia = rows.fold<double>(0, (s, r) => s + r.media);
       _net = _totalIncome - _totalC30 - _rentGuard - _receptionist - _totalConsumables - _totalMedia - _totalPercent;
       _mang = _net * _mangRate;
-      _basket = _net * _basketRate;
+      _basketSupport = basketSupportIncome + basketSupportExpense;
+      _basket = (_net * _basketRate) + _basketSupport;
       _profitForEach = rows.isEmpty ? 0 : (_net - _mang - _basket) / rows.length;
 
       if (mounted) {
@@ -330,14 +345,25 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         .where((r) => !r.expenseDate.isBefore(monthStart) && !r.expenseDate.isAfter(monthEnd))
         .toList();
     final incomeByDoctor = <String, double>{};
+    double basketSupportIncome = 0;
     for (final r in incomeList) {
+      if (r.source.trim().toLowerCase() ==
+          _basketSupportIncomeSource.toLowerCase()) {
+        basketSupportIncome += r.amount;
+        continue;
+      }
       final id = r.doctorId ?? '';
       incomeByDoctor[id] = (incomeByDoctor[id] ?? 0) + r.amount;
     }
     final consumablesByDoctor = <String, double>{};
     final mediaByDoctor = <String, double>{};
+    double basketSupportExpense = 0;
     for (final r in expenseList) {
       final cat = (r.category).toLowerCase().trim();
+      if (cat == _basketSupportExpenseCategory.toLowerCase()) {
+        basketSupportExpense += r.amount;
+        continue;
+      }
       final id = r.paidByDoctorId ?? '';
       if (cat == 'media') {
         mediaByDoctor[id] = (mediaByDoctor[id] ?? 0) + r.amount;
@@ -376,7 +402,8 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     _totalMedia = rows.fold<double>(0, (s, r) => s + r.media);
     _net = _totalIncome - _totalC30 - _rentGuard - _receptionist - _totalConsumables - _totalMedia - _totalPercent;
     _mang = _net * _mangRate;
-    _basket = _net * _basketRate;
+    _basketSupport = basketSupportIncome + basketSupportExpense;
+    _basket = (_net * _basketRate) + _basketSupport;
     _profitForEach = rows.isEmpty ? 0 : (_net - _mang - _basket) / rows.length;
     if (mounted) setState(() => _doctorRows = rows);
   }
@@ -883,6 +910,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     final nf = NumberFormat.currency(symbol: '', decimalDigits: 0);
     final padding = ResponsivePadding.all(context);
     final minWidth = MediaQuery.sizeOf(context).width - padding.left - padding.right;
+    final rateFieldWidth = Breakpoint.isMobile(context) ? 68.0 : 88.0;
     return LayoutBuilder(
       builder: (_, constraints) {
         final tableMinWidth = constraints.maxWidth > 0 ? constraints.maxWidth : minWidth;
@@ -1005,7 +1033,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 children: [
                   const Text('MANG '),
                   SizedBox(
-                    width: 56,
+                    width: rateFieldWidth,
                     child: TextFormField(
                       key: ValueKey('mang_$_mangRate'),
                       initialValue: _mangRate.toString(),
@@ -1044,7 +1072,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 children: [
                   const Text('BASKET '),
                   SizedBox(
-                    width: 56,
+                    width: rateFieldWidth,
                     child: TextFormField(
                       key: ValueKey('basket_$_basketRate'),
                       initialValue: _basketRate.toString(),
@@ -1065,6 +1093,18 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
               DataCell(Text(nf.format(_profitForEach), style: const TextStyle(fontWeight: FontWeight.bold))),
               DataCell(Text(_doctorRows.length > 2 ? _doctorRows[2].doctorName : '')),
               DataCell(Text(_doctorRows.length > 2 ? nf.format(_doctorRows[2].c30 + _doctorRows[2].percentVal) : '')),
+              const DataCell(Text('')),
+            ],
+          ),
+          DataRow(
+            cells: [
+              const DataCell(Text('')),
+              const DataCell(Text('Basket support')),
+              DataCell(Text(nf.format(_basketSupport))),
+              const DataCell(Text('')),
+              const DataCell(Text('')),
+              DataCell(Text(_doctorRows.length > 3 ? _doctorRows[3].doctorName : '')),
+              DataCell(Text(_doctorRows.length > 3 ? nf.format(_doctorRows[3].c30 + _doctorRows[3].percentVal) : '')),
               const DataCell(Text('')),
             ],
           ),
@@ -1155,11 +1195,115 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         rows: _slices.asMap().entries.map((e) {
           final idx = e.key;
           final s = e.value;
-          final range = s.max == null ? 'above ${(s.min / 1000).toStringAsFixed(0)} k' : '${(s.min / 1000).toStringAsFixed(0)} k - ${(s.max! / 1000).toStringAsFixed(0)} k';
           return DataRow(
             cells: [
               DataCell(Text('${idx + 1}')),
-              DataCell(Text(range)),
+              DataCell(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 72,
+                      child: TextFormField(
+                        key: ValueKey('slice_min_$idx'),
+                        initialValue: (s.min / 1000).toStringAsFixed(0),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                          labelText: 'Min k',
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                        ),
+                        onChanged: (v) {
+                          final x = double.tryParse(v);
+                          if (x == null || x < 0) return;
+                          setState(() {
+                            final prev = _slices[idx];
+                            _slices = [
+                              for (var i = 0; i < _slices.length; i++)
+                                i == idx
+                                    ? (
+                                        min: x * 1000,
+                                        max: prev.max,
+                                        percent: prev.percent,
+                                        rate: prev.rate,
+                                      )
+                                    : _slices[i],
+                            ];
+                            _recalcPercentFromSlices();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 84,
+                      child: TextFormField(
+                        key: ValueKey('slice_max_$idx'),
+                        initialValue: s.max == null
+                            ? ''
+                            : (s.max! / 1000).toStringAsFixed(0),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                          labelText: 'Max k',
+                          hintText: 'open',
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                        ),
+                        onChanged: (v) {
+                          final trimmed = v.trim();
+                          if (trimmed.isEmpty) {
+                            setState(() {
+                              final prev = _slices[idx];
+                              _slices = [
+                                for (var i = 0; i < _slices.length; i++)
+                                  i == idx
+                                      ? (
+                                          min: prev.min,
+                                          max: null,
+                                          percent: prev.percent,
+                                          rate: prev.rate,
+                                        )
+                                      : _slices[i],
+                              ];
+                              _recalcPercentFromSlices();
+                            });
+                            return;
+                          }
+                          final x = double.tryParse(trimmed);
+                          if (x == null || x < 0) return;
+                          setState(() {
+                            final prev = _slices[idx];
+                            _slices = [
+                              for (var i = 0; i < _slices.length; i++)
+                                i == idx
+                                    ? (
+                                        min: prev.min,
+                                        max: x * 1000,
+                                        percent: prev.percent,
+                                        rate: prev.rate,
+                                      )
+                                    : _slices[i],
+                            ];
+                            _recalcPercentFromSlices();
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               DataCell(SizedBox(
                 width: 80,
                 child: TextFormField(

@@ -14,6 +14,7 @@ import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
+import '../../core/finance_summary_metrics.dart';
 
 class IncomeExpensesScreen extends StatefulWidget {
   const IncomeExpensesScreen({super.key});
@@ -33,8 +34,11 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   int? _filterMonth;
   String? _filterDoctorId;
   String? _filterPatientId;
+  String? _filterExpenseCategory;
   String _searchQuery = '';
   String _typeFilter = 'both';
+  String? _cachedBasketMetricsKey;
+  Future<FinanceSummaryMetricsResult>? _cachedBasketMetricsFuture;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _incomeSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _expenseSub;
 
@@ -124,6 +128,10 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       out = out.where((r) => r.paidByDoctorId == _filterDoctorId).toList();
     }
+    if (_filterExpenseCategory != null &&
+        _filterExpenseCategory!.isNotEmpty) {
+      out = out.where((r) => r.category == _filterExpenseCategory).toList();
+    }
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       out = out.where((r) {
@@ -158,6 +166,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
       _filterMonth = null;
       _filterDoctorId = null;
       _filterPatientId = null;
+      _filterExpenseCategory = null;
       _typeFilter = 'both';
     });
   }
@@ -203,12 +212,115 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   }
 
   @override
-  @override
   void initState() {
     super.initState();
     // Default to current day; user can switch to Month/Year filter for other ranges
     _filterDay = DateTime.now();
     _listen();
+  }
+
+  /// Aligns with [FinanceSummaryScreen] month / year ranges (full calendar period, all doctors).
+  ({
+    int year,
+    int rangeStartMonth,
+    int rangeEndMonth,
+    int configMonth,
+    int monthsInRange,
+  }) _financeSummaryBasketPeriod() {
+    if (_filterDay != null) {
+      final y = _filterDay!.year;
+      final m = _filterDay!.month;
+      return (
+        year: y,
+        rangeStartMonth: m,
+        rangeEndMonth: m,
+        configMonth: m,
+        monthsInRange: 1,
+      );
+    }
+    if (_filterYear != null && _filterMonth != null) {
+      final y = _filterYear!;
+      final m = _filterMonth!;
+      return (
+        year: y,
+        rangeStartMonth: m,
+        rangeEndMonth: m,
+        configMonth: m,
+        monthsInRange: 1,
+      );
+    }
+    if (_filterYear != null) {
+      final y = _filterYear!;
+      return (
+        year: y,
+        rangeStartMonth: 1,
+        rangeEndMonth: 12,
+        configMonth: 1,
+        monthsInRange: 12,
+      );
+    }
+    final n = DateTime.now();
+    return (
+      year: n.year,
+      rangeStartMonth: n.month,
+      rangeEndMonth: n.month,
+      configMonth: n.month,
+      monthsInRange: 1,
+    );
+  }
+
+  String _basketMetricsCacheKey() {
+    final p = _financeSummaryBasketPeriod();
+    return '${p.year}-${p.rangeStartMonth}-${p.rangeEndMonth}-${p.monthsInRange}-${_income.length}-${_expense.length}';
+  }
+
+  Future<FinanceSummaryMetricsResult> _resolveBasketMetricsFuture() {
+    final k = _basketMetricsCacheKey();
+    if (k != _cachedBasketMetricsKey) {
+      _cachedBasketMetricsKey = k;
+      _cachedBasketMetricsFuture = _loadFinanceSummaryBasketMetrics();
+    }
+    return _cachedBasketMetricsFuture!;
+  }
+
+  Future<FinanceSummaryMetricsResult> _loadFinanceSummaryBasketMetrics() async {
+    final p = _financeSummaryBasketPeriod();
+    final monthStart = DateTime(p.year, p.rangeStartMonth, 1);
+    final monthEnd = DateTime(p.year, p.rangeEndMonth + 1, 0, 23, 59, 59);
+    final doctors = List.of(context.read<DataCacheProvider>().doctors);
+    final incomeInRange = _income.where((r) {
+      final d = r.incomeDate;
+      return !d.isBefore(monthStart) && !d.isAfter(monthEnd);
+    }).toList();
+    final expenseInRange = _expense.where((r) {
+      final d = r.expenseDate;
+      return !d.isBefore(monthStart) && !d.isAfter(monthEnd);
+    }).toList();
+    try {
+      final cfg = await _firestore.getFinanceSummaryConfig(p.year, p.configMonth);
+      if (!mounted) {
+        return const FinanceSummaryMetricsResult(
+          net: 0,
+          basket: 0,
+          basketSupport: 0,
+          basketRate: 0.30,
+        );
+      }
+      return computeFinanceSummaryMetrics(
+        doctors: doctors,
+        config: cfg,
+        incomeList: incomeInRange,
+        expenseList: expenseInRange,
+        monthsInRange: p.monthsInRange,
+      );
+    } catch (_) {
+      return const FinanceSummaryMetricsResult(
+        net: 0,
+        basket: 0,
+        basketSupport: 0,
+        basketRate: 0.30,
+      );
+    }
   }
 
   @override
@@ -345,6 +457,10 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     final uid = context.read<AuthProvider>().currentUser?.id;
     final cache = context.watch<DataCacheProvider>();
     final isRtl = l10n.isArabic;
+    final isMobile = Breakpoint.isMobile(context);
+    final doctorFilterWidth = isMobile ? 150.0 : 180.0;
+    final patientFilterWidth = isMobile ? 140.0 : 160.0;
+    final categoryFilterWidth = isMobile ? 150.0 : 170.0;
 
     final filteredIncome = _filteredIncome;
     final filteredExpense = _filteredExpense;
@@ -434,6 +550,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                   _filterMonth == null &&
                                   _filterDoctorId == null &&
                                   _filterPatientId == null &&
+                                  _filterExpenseCategory == null &&
                                   _typeFilter == 'both',
                               onSelected: (_) => _clearAllFilters(),
                             ),
@@ -575,7 +692,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
-                              width: 180,
+                              width: doctorFilterWidth,
                               child: DropdownButtonFormField<String?>(
                                 value: _filterDoctorId,
                                 decoration: InputDecoration(
@@ -609,7 +726,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
-                              width: 160,
+                              width: patientFilterWidth,
                               child: DropdownButtonFormField<String?>(
                                 value: _filterPatientId,
                                 decoration: InputDecoration(
@@ -638,6 +755,38 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                 ],
                                 onChanged: (v) =>
                                     setState(() => _filterPatientId = v),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: categoryFilterWidth,
+                              child: DropdownButtonFormField<String?>(
+                                value: _filterExpenseCategory,
+                                decoration: InputDecoration(
+                                  labelText: l10n.category,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                items: [
+                                  DropdownMenuItem<String?>(
+                                    value: null,
+                                    child: Text(l10n.filterAll),
+                                  ),
+                                  ..._expenseCategories.map(
+                                    (c) => DropdownMenuItem<String?>(
+                                      value: c,
+                                      child: Text(
+                                        c,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (v) =>
+                                    setState(() => _filterExpenseCategory = v),
                               ),
                             ),
                           ],
@@ -669,101 +818,67 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                           ),
                         ),
                       ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Card(
-                              color: Theme.of(
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final w = constraints.maxWidth;
+                          final crossAxisCount = w < 700 ? 1 : (w < 1100 ? 2 : 4);
+                          return GridView.count(
+                            crossAxisCount: crossAxisCount,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: w < 700 ? 3.8 : 2.8,
+                            children: [
+                              _summaryCard(
                                 context,
-                              ).colorScheme.primaryContainer,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      l10n.totalIncome,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleSmall,
-                                    ),
-                                    Text(
-                                      NumberFormat.currency(
-                                        symbol: '',
-                                      ).format(totalIncome),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.headlineSmall,
-                                    ),
-                                  ],
-                                ),
+                                title: l10n.totalIncome,
+                                value: NumberFormat.currency(symbol: '').format(totalIncome),
+                                color: Theme.of(context).colorScheme.primaryContainer,
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Card(
-                              color: net >= 0
-                                  ? const Color(0xFFC8E6C9)
-                                  : const Color(0xFFFFCDD2),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      l10n.netProfit,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleSmall,
-                                    ),
-                                    Text(
-                                      NumberFormat.currency(
-                                        symbol: '',
-                                      ).format(net),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineSmall
-                                          ?.copyWith(
-                                            color: net >= 0
-                                                ? const Color(0xFF2E7D32)
-                                                : const Color(0xFFC62828),
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Card(
-                              color: Theme.of(
+                              _summaryCard(
                                 context,
-                              ).colorScheme.tertiaryContainer,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      l10n.totalExpenses,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleSmall,
-                                    ),
-                                    Text(
-                                      NumberFormat.currency(
-                                        symbol: '',
-                                      ).format(totalExpense),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.headlineSmall,
-                                    ),
-                                  ],
+                                title: l10n.netProfit,
+                                value: NumberFormat.currency(symbol: '').format(net),
+                                color: net >= 0 ? const Color(0xFFC8E6C9) : const Color(0xFFFFCDD2),
+                                valueStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: net >= 0 ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
+                              _summaryCard(
+                                context,
+                                title: l10n.totalExpenses,
+                                value: NumberFormat.currency(symbol: '').format(totalExpense),
+                                color: Theme.of(context).colorScheme.tertiaryContainer,
+                              ),
+                              FutureBuilder<FinanceSummaryMetricsResult>(
+                                future: _resolveBasketMetricsFuture(),
+                                builder: (context, snapshot) {
+                                  final rate =
+                                      snapshot.data?.basketRate ?? 0.30;
+                                  final basketVal = snapshot.data?.basket ?? 0;
+                                  final loading =
+                                      snapshot.connectionState ==
+                                      ConnectionState.waiting;
+                                  return _summaryCard(
+                                    context,
+                                    title:
+                                        'Basket (${(rate * 100).toStringAsFixed(0)}%)',
+                                    value: loading
+                                        ? '…'
+                                        : NumberFormat.currency(
+                                            symbol: '',
+                                          ).format(basketVal),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .secondaryContainer,
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       if (showIncome && filteredIncome.isNotEmpty) ...[
                         const SizedBox(height: 16),
@@ -1137,6 +1252,37 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   }
 
   /// For salary expenses with recipient, show "Salary – Name"; otherwise category.
+  Widget _summaryCard(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required Color color,
+    TextStyle? valueStyle,
+  }) {
+    return Card(
+      color: color,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall,
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              value,
+              style: valueStyle ?? Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// For salary expenses with recipient, show "Salary – Name"; otherwise category.
   static String _expenseTitle(ExpenseRecordModel r) {
     if (r.category == 'Salary' &&
         r.recipientName != null &&
@@ -1407,6 +1553,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     'Rent',
     'Supplies',
     'Media',
+    'Basket Support',
     'Other',
   ];
 
