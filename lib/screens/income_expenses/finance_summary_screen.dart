@@ -1005,7 +1005,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 children: [
                   const Text('MANG '),
                   SizedBox(
-                    width: 56,
+                    width: 90,
                     child: TextFormField(
                       key: ValueKey('mang_$_mangRate'),
                       initialValue: _mangRate.toString(),
@@ -1044,7 +1044,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                 children: [
                   const Text('BASKET '),
                   SizedBox(
-                    width: 56,
+                    width: 90,
                     child: TextFormField(
                       key: ValueKey('basket_$_basketRate'),
                       initialValue: _basketRate.toString(),

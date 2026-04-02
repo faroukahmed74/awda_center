@@ -216,7 +216,7 @@ async function getFcmTokensForUser(uid) {
 }
 
 /**
- * Rich FCM body (Arabic only): date/time, doctor, services, package + session index.
+ * Rich FCM body (Arabic only): date/time, patient, doctor, services, package + session index.
  * @param {FirebaseFirestore.DocumentData} after
  * @param {string} appointmentId
  * @returns {Promise<string>}
@@ -231,6 +231,19 @@ async function buildAppointmentBodyAr(after, appointmentId) {
     appointmentDate && appointmentDate.toDate
       ? appointmentDate.toDate().toLocaleDateString('ar-EG')
       : '';
+
+  let patientName = '';
+  if (after.patientId) {
+    try {
+      const userSnap = await db.collection('users').doc(after.patientId).get();
+      if (userSnap.exists) {
+        const u = userSnap.data();
+        patientName = String(u.fullNameAr || u.fullNameEn || u.email || '').trim();
+      }
+    } catch (e) {
+      console.warn('buildAppointmentBodyAr patient', e);
+    }
+  }
 
   let doctorName = '';
   if (after.doctorId) {
@@ -280,6 +293,9 @@ async function buildAppointmentBodyAr(after, appointmentId) {
   const linesAr = [];
   if (dateAr && timeStr) {
     linesAr.push(`جلسة في ${dateAr} الساعة ${timeStr}`);
+  }
+  if (patientName) {
+    linesAr.push(`المريض: ${patientName}`);
   }
   if (doctorName) {
     linesAr.push(`الطبيب: ${doctorName}`);

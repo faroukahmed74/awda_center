@@ -195,7 +195,6 @@ class NotificationService {
             a,
             strings,
             now,
-            viewerIsPatient: true,
           );
         }
       }
@@ -218,7 +217,6 @@ class NotificationService {
               strings,
               now,
               idPrefix: 'doc_',
-              viewerIsPatient: false,
             );
           }
         }
@@ -255,15 +253,21 @@ class NotificationService {
     return ('$idPrefix${appointmentId}_$kind').hashCode & 0x7FFFFFFF;
   }
 
-  /// Extra lines aligned with Cloud Function FCM bodies (Arabic): doctor (for patients), services, package + session.
+  /// Extra lines aligned with Cloud Function FCM bodies (Arabic): patient & doctor names, services, package + session.
   Future<String> _enrichAppointmentReminderBody({
     required AppointmentModel a,
     required String baseBody,
-    required bool viewerIsPatient,
   }) async {
     final parts = <String>[baseBody];
     try {
-      if (viewerIsPatient && a.doctorId.isNotEmpty) {
+      if (a.patientId.isNotEmpty) {
+        final u = await _firestore.getUser(a.patientId);
+        final pn = u?.displayName.trim();
+        if (pn != null && pn.isNotEmpty) {
+          parts.add('المريض: $pn');
+        }
+      }
+      if (a.doctorId.isNotEmpty) {
         final doc = await _firestore.getDoctorById(a.doctorId);
         final dn = doc?.displayName?.trim();
         if (dn != null && dn.isNotEmpty) {
@@ -304,7 +308,6 @@ class NotificationService {
     Map<String, String> strings,
     DateTime now, {
     String idPrefix = '',
-    bool viewerIsPatient = false,
   }) async {
     final start = _appointmentStartLocal(a);
     if (start == null) return;
@@ -316,7 +319,6 @@ class NotificationService {
       final body = await _enrichAppointmentReminderBody(
         a: a,
         baseBody: base,
-        viewerIsPatient: viewerIsPatient,
       );
       await _scheduleLocal(
         id: _reminderNotificationId(a.id, '1h', idPrefix: idPrefix),
@@ -333,7 +335,6 @@ class NotificationService {
       final body = await _enrichAppointmentReminderBody(
         a: a,
         baseBody: base,
-        viewerIsPatient: viewerIsPatient,
       );
       await _scheduleLocal(
         id: _reminderNotificationId(a.id, 'day', idPrefix: idPrefix),

@@ -2,7 +2,7 @@
 
 A Flutter app for a physical therapy clinic: appointments, patient profiles, sessions, income/expenses, finance summary, and multi-role users. Single codebase for **Web**, **Android**, **iOS**, and **Windows**. Backend: **Firebase** (Auth, Firestore, Storage, Messaging).
 
-**Version 1.0.11** — Appointments **schedule view**: previous/next day arrows for quick date navigation; **fixed header row** (Time, rooms, Extra slot) that stays visible when scrolling; **responsive full-width schedule** on all platforms (web, tablet, phone). Finance summary PDF with Arabic/English and Arabic letter shaping; PDF and Excel reports; light/dark mode and full localization.
+**Version 1.0.17** — **Notifications:** local appointment reminders and **FCM push bodies** include **patient name** and **doctor name** (Arabic labels: المريض / الطبيب), plus services and package session info where applicable. Deploy **Cloud Functions** when you change server-side notification text. **Finance summary:** wider inputs for MANG and BASKET rate fields. Earlier: appointments **schedule view** (day arrows, fixed header, responsive table); finance PDF (Arabic/English, reshaper); PDF/Excel reports; light/dark mode and full localization.
 
 ---
 
@@ -55,8 +55,8 @@ Role-based dashboards and navigation. Admins can grant **per-feature privileges*
 - Layout adapts to phone, tablet, and desktop (constrained width on large screens, responsive padding, two-column admin dashboard on desktop). Notifications panel and list tiles scale for all screen sizes.
 
 ### Notifications
-- **Push:** Firebase Cloud Messaging for push notifications; web push supported (VAPID).
-- **Local:** Appointment reminders for patient and doctor; rescheduled when appointments are created or updated.
+- **Push:** Firebase Cloud Messaging for push notifications; web push supported (VAPID). Push bodies list **date/time**, **patient name**, **doctor name**, services, and package session line when relevant (see Cloud Function `buildAppointmentBodyAr` in `functions/index.js`).
+- **Local:** Appointment reminders for patient and doctor (Android/iOS); **patient and doctor names** in the reminder text; rescheduled when appointments are created or updated. After changing reminder copy in the app, ship a new **mobile build**; after changing FCM text on the server, run **`firebase deploy --only functions`**.
 - **In-app:** Notifications icon in the app bar on all main screens. Opens a responsive panel (dialog on tablet/desktop, bottom sheet on phone) with role-based items: upcoming appointments (patient/doctor/staff), appointment status changes (admins), recent audit log (admins), open admin todos. Tapping an item navigates to the related screen. Full title/subtitle and time shown without truncation.
 
 ### Appointments: room and time rules
