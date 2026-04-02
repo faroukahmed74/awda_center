@@ -14,7 +14,6 @@ import '../../services/firestore_service.dart';
 import '../../widgets/notifications_button.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
-import '../../core/finance_summary_metrics.dart';
 
 class IncomeExpensesScreen extends StatefulWidget {
   const IncomeExpensesScreen({super.key});
@@ -34,13 +33,13 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   int? _filterMonth;
   String? _filterDoctorId;
   String? _filterPatientId;
+  String? _filterIncomeCategory;
   String? _filterExpenseCategory;
   String _searchQuery = '';
   String _typeFilter = 'both';
-  String? _cachedBasketMetricsKey;
-  Future<FinanceSummaryMetricsResult>? _cachedBasketMetricsFuture;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _incomeSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _expenseSub;
+  static const List<String> _incomeCategories = ['Deficit', 'Other', 'Session'];
 
   List<IncomeRecordModel> get _filteredIncome {
     final cache = context.read<DataCacheProvider>();
@@ -71,6 +70,10 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     }
     if (_filterPatientId != null && _filterPatientId!.isNotEmpty) {
       out = out.where((r) => r.patientId == _filterPatientId).toList();
+    }
+    if (_filterIncomeCategory != null &&
+        _filterIncomeCategory!.isNotEmpty) {
+      out = out.where((r) => r.source == _filterIncomeCategory).toList();
     }
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
@@ -166,9 +169,20 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
       _filterMonth = null;
       _filterDoctorId = null;
       _filterPatientId = null;
+      _filterIncomeCategory = null;
       _filterExpenseCategory = null;
       _typeFilter = 'both';
     });
+  }
+
+  List<String> _incomeSourceFilterOptions() {
+    final out = <String>{..._incomeCategories};
+    for (final r in _income) {
+      final s = r.source.trim();
+      if (s.isNotEmpty) out.add(s);
+    }
+    final list = out.toList()..sort();
+    return list;
   }
 
   /// Per-doctor totals from [income] for the "Income by doctor" breakdown.
@@ -212,115 +226,12 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   }
 
   @override
+  @override
   void initState() {
     super.initState();
     // Default to current day; user can switch to Month/Year filter for other ranges
     _filterDay = DateTime.now();
     _listen();
-  }
-
-  /// Aligns with [FinanceSummaryScreen] month / year ranges (full calendar period, all doctors).
-  ({
-    int year,
-    int rangeStartMonth,
-    int rangeEndMonth,
-    int configMonth,
-    int monthsInRange,
-  }) _financeSummaryBasketPeriod() {
-    if (_filterDay != null) {
-      final y = _filterDay!.year;
-      final m = _filterDay!.month;
-      return (
-        year: y,
-        rangeStartMonth: m,
-        rangeEndMonth: m,
-        configMonth: m,
-        monthsInRange: 1,
-      );
-    }
-    if (_filterYear != null && _filterMonth != null) {
-      final y = _filterYear!;
-      final m = _filterMonth!;
-      return (
-        year: y,
-        rangeStartMonth: m,
-        rangeEndMonth: m,
-        configMonth: m,
-        monthsInRange: 1,
-      );
-    }
-    if (_filterYear != null) {
-      final y = _filterYear!;
-      return (
-        year: y,
-        rangeStartMonth: 1,
-        rangeEndMonth: 12,
-        configMonth: 1,
-        monthsInRange: 12,
-      );
-    }
-    final n = DateTime.now();
-    return (
-      year: n.year,
-      rangeStartMonth: n.month,
-      rangeEndMonth: n.month,
-      configMonth: n.month,
-      monthsInRange: 1,
-    );
-  }
-
-  String _basketMetricsCacheKey() {
-    final p = _financeSummaryBasketPeriod();
-    return '${p.year}-${p.rangeStartMonth}-${p.rangeEndMonth}-${p.monthsInRange}-${_income.length}-${_expense.length}';
-  }
-
-  Future<FinanceSummaryMetricsResult> _resolveBasketMetricsFuture() {
-    final k = _basketMetricsCacheKey();
-    if (k != _cachedBasketMetricsKey) {
-      _cachedBasketMetricsKey = k;
-      _cachedBasketMetricsFuture = _loadFinanceSummaryBasketMetrics();
-    }
-    return _cachedBasketMetricsFuture!;
-  }
-
-  Future<FinanceSummaryMetricsResult> _loadFinanceSummaryBasketMetrics() async {
-    final p = _financeSummaryBasketPeriod();
-    final monthStart = DateTime(p.year, p.rangeStartMonth, 1);
-    final monthEnd = DateTime(p.year, p.rangeEndMonth + 1, 0, 23, 59, 59);
-    final doctors = List.of(context.read<DataCacheProvider>().doctors);
-    final incomeInRange = _income.where((r) {
-      final d = r.incomeDate;
-      return !d.isBefore(monthStart) && !d.isAfter(monthEnd);
-    }).toList();
-    final expenseInRange = _expense.where((r) {
-      final d = r.expenseDate;
-      return !d.isBefore(monthStart) && !d.isAfter(monthEnd);
-    }).toList();
-    try {
-      final cfg = await _firestore.getFinanceSummaryConfig(p.year, p.configMonth);
-      if (!mounted) {
-        return const FinanceSummaryMetricsResult(
-          net: 0,
-          basket: 0,
-          basketSupport: 0,
-          basketRate: 0.30,
-        );
-      }
-      return computeFinanceSummaryMetrics(
-        doctors: doctors,
-        config: cfg,
-        incomeList: incomeInRange,
-        expenseList: expenseInRange,
-        monthsInRange: p.monthsInRange,
-      );
-    } catch (_) {
-      return const FinanceSummaryMetricsResult(
-        net: 0,
-        basket: 0,
-        basketSupport: 0,
-        basketRate: 0.30,
-      );
-    }
   }
 
   @override
@@ -456,11 +367,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     final l10n = AppLocalizations.of(context);
     final uid = context.read<AuthProvider>().currentUser?.id;
     final cache = context.watch<DataCacheProvider>();
+    final incomeCategoryOptions = _incomeSourceFilterOptions();
     final isRtl = l10n.isArabic;
-    final isMobile = Breakpoint.isMobile(context);
-    final doctorFilterWidth = isMobile ? 150.0 : 180.0;
-    final patientFilterWidth = isMobile ? 140.0 : 160.0;
-    final categoryFilterWidth = isMobile ? 150.0 : 170.0;
 
     final filteredIncome = _filteredIncome;
     final filteredExpense = _filteredExpense;
@@ -536,261 +444,286 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                   ),
                                 ),
                               ),
-                            if (context
-                                    .watch<AuthProvider>()
-                                    .currentUser
-                                    ?.canAccessFinanceSummary ==
-                                true)
-                              const SizedBox(width: 12),
-                            FilterChip(
-                              label: Text(l10n.filterAll),
-                              selected:
-                                  _filterDay == null &&
-                                  _filterYear == null &&
-                                  _filterMonth == null &&
-                                  _filterDoctorId == null &&
-                                  _filterPatientId == null &&
-                                  _filterExpenseCategory == null &&
-                                  _typeFilter == 'both',
-                              onSelected: (_) => _clearAllFilters(),
-                            ),
-                            const SizedBox(width: 8),
-                            FilterChip(
-                              label: const Text('Both'),
-                              selected: _typeFilter == 'both',
-                              onSelected: (_) =>
-                                  setState(() => _typeFilter = 'both'),
-                            ),
-                            const SizedBox(width: 8),
-                            FilterChip(
-                              label: Text(l10n.income),
-                              selected: _typeFilter == 'income',
-                              onSelected: (_) =>
-                                  setState(() => _typeFilter = 'income'),
-                            ),
-                            const SizedBox(width: 8),
-                            FilterChip(
-                              label: Text(l10n.expenses),
-                              selected: _typeFilter == 'expense',
-                              onSelected: (_) =>
-                                  setState(() => _typeFilter = 'expense'),
-                            ),
-                            const SizedBox(width: 8),
-                            FilterChip(
-                              label: Text(
-                                _filterDay != null
-                                    ? '${l10n.filterDay}: ${AppDateFormat.shortDate.format(_filterDay!)}'
-                                    : l10n.filterDay,
-                              ),
-                              selected: _filterDay != null,
-                              onSelected: (_) async {
-                                if (_filterDay != null) {
-                                  setState(() => _filterDay = null);
-                                  return;
-                                }
-                                final d = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime.now().add(
-                                    const Duration(days: 365),
-                                  ),
-                                );
-                                if (d != null)
-                                  setState(() {
-                                    _filterDay = d;
-                                    _filterMonth = null;
-                                    _filterYear = null;
-                                  });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            FilterChip(
-                              label: Text(
-                                _filterMonth != null && _filterYear != null
-                                    ? '${l10n.filterMonth}: ${AppDateFormat.monthYear(l10n.isArabic ? 'ar' : 'en').format(DateTime(_filterYear!, _filterMonth!))}'
-                                    : l10n.filterMonth,
-                              ),
-                              selected:
-                                  _filterMonth != null && _filterYear != null,
-                              onSelected: (_) async {
-                                if (_filterMonth != null &&
-                                    _filterYear != null) {
-                                  setState(() {
-                                    _filterMonth = null;
-                                    _filterYear = null;
-                                    _filterDay = null;
-                                  });
-                                  return;
-                                }
-                                final now = DateTime.now();
-                                final d = await showDatePicker(
-                                  context: context,
-                                  initialDate: now,
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(now.year + 1),
-                                );
-                                if (d != null)
-                                  setState(() {
-                                    _filterMonth = d.month;
-                                    _filterYear = d.year;
-                                    _filterDay = null;
-                                  });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            FilterChip(
-                              label: Text(
-                                _filterYear != null && _filterMonth == null
-                                    ? '${l10n.filterYear}: $_filterYear'
-                                    : l10n.filterYear,
-                              ),
-                              selected:
-                                  _filterYear != null && _filterMonth == null,
-                              onSelected: (_) async {
-                                if (_filterYear != null &&
-                                    _filterMonth == null) {
-                                  setState(() {
-                                    _filterYear = null;
-                                    _filterDay = null;
-                                  });
-                                  return;
-                                }
-                                final y = await showDialog<int>(
-                                  context: context,
-                                  builder: (ctx) {
-                                    final years = List.generate(
-                                      6,
-                                      (i) => DateTime.now().year - 2 + i,
-                                    );
-                                    return AlertDialog(
-                                      title: Text(l10n.filterYear),
-                                      content: SingleChildScrollView(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: years
-                                              .map(
-                                                (y) => ListTile(
-                                                  title: Text('$y'),
-                                                  onTap: () =>
-                                                      Navigator.pop(ctx, y),
-                                                ),
-                                              )
-                                              .toList(),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                                if (y != null)
-                                  setState(() {
-                                    _filterYear = y;
-                                    _filterMonth = null;
-                                    _filterDay = null;
-                                  });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: doctorFilterWidth,
-                              child: DropdownButtonFormField<String?>(
-                                value: _filterDoctorId,
-                                decoration: InputDecoration(
-                                  labelText: l10n.filterByDoctor,
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                ),
-                                items: [
-                                  DropdownMenuItem<String?>(
-                                    value: null,
-                                    child: Text(l10n.filterAll),
-                                  ),
-                                  ...cache.doctors.map(
-                                    (d) => DropdownMenuItem<String?>(
-                                      value: d.id,
-                                      child: Text(
-                                        cache.userName(d.userId) ??
-                                            d.displayName ??
-                                            d.id,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                onChanged: (v) =>
-                                    setState(() => _filterDoctorId = v),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: patientFilterWidth,
-                              child: DropdownButtonFormField<String?>(
-                                value: _filterPatientId,
-                                decoration: InputDecoration(
-                                  labelText: l10n.patient,
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                ),
-                                items: [
-                                  DropdownMenuItem<String?>(
-                                    value: null,
-                                    child: Text(l10n.filterAll),
-                                  ),
-                                  ...cache.patients.map((p) {
-                                    final label = p.displayName;
-                                    return DropdownMenuItem<String?>(
-                                      value: p.id,
-                                      child: Text(
-                                        label,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  }),
-                                ],
-                                onChanged: (v) =>
-                                    setState(() => _filterPatientId = v),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: categoryFilterWidth,
-                              child: DropdownButtonFormField<String?>(
-                                value: _filterExpenseCategory,
-                                decoration: InputDecoration(
-                                  labelText: l10n.category,
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                ),
-                                items: [
-                                  DropdownMenuItem<String?>(
-                                    value: null,
-                                    child: Text(l10n.filterAll),
-                                  ),
-                                  ..._expenseCategories.map(
-                                    (c) => DropdownMenuItem<String?>(
-                                      value: c,
-                                      child: Text(
-                                        c,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                onChanged: (v) =>
-                                    setState(() => _filterExpenseCategory = v),
-                              ),
-                            ),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          FilterChip(
+                            label: Text(l10n.filterAll),
+                            selected:
+                                _filterDay == null &&
+                                _filterYear == null &&
+                                _filterMonth == null &&
+                                _filterDoctorId == null &&
+                                _filterPatientId == null &&
+                                _filterIncomeCategory == null &&
+                                _filterExpenseCategory == null &&
+                                _typeFilter == 'both',
+                            onSelected: (_) => _clearAllFilters(),
+                          ),
+                          FilterChip(
+                            label: const Text('Both'),
+                            selected: _typeFilter == 'both',
+                            onSelected: (_) =>
+                                setState(() => _typeFilter = 'both'),
+                          ),
+                          FilterChip(
+                            label: Text(l10n.income),
+                            selected: _typeFilter == 'income',
+                            onSelected: (_) =>
+                                setState(() => _typeFilter = 'income'),
+                          ),
+                          FilterChip(
+                            label: Text(l10n.expenses),
+                            selected: _typeFilter == 'expense',
+                            onSelected: (_) =>
+                                setState(() => _typeFilter = 'expense'),
+                          ),
+                          FilterChip(
+                            label: Text(
+                              _filterDay != null
+                                  ? '${l10n.filterDay}: ${AppDateFormat.shortDate.format(_filterDay!)}'
+                                  : l10n.filterDay,
+                            ),
+                            selected: _filterDay != null,
+                            onSelected: (_) async {
+                              if (_filterDay != null) {
+                                setState(() => _filterDay = null);
+                                return;
+                              }
+                              final d = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 365),
+                                ),
+                              );
+                              if (d != null)
+                                setState(() {
+                                  _filterDay = d;
+                                  _filterMonth = null;
+                                  _filterYear = null;
+                                });
+                            },
+                          ),
+                          FilterChip(
+                            label: Text(
+                              _filterMonth != null && _filterYear != null
+                                  ? '${l10n.filterMonth}: ${AppDateFormat.monthYear(l10n.isArabic ? 'ar' : 'en').format(DateTime(_filterYear!, _filterMonth!))}'
+                                  : l10n.filterMonth,
+                            ),
+                            selected:
+                                _filterMonth != null && _filterYear != null,
+                            onSelected: (_) async {
+                              if (_filterMonth != null &&
+                                  _filterYear != null) {
+                                setState(() {
+                                  _filterMonth = null;
+                                  _filterYear = null;
+                                  _filterDay = null;
+                                });
+                                return;
+                              }
+                              final now = DateTime.now();
+                              final d = await showDatePicker(
+                                context: context,
+                                initialDate: now,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(now.year + 1),
+                              );
+                              if (d != null)
+                                setState(() {
+                                  _filterMonth = d.month;
+                                  _filterYear = d.year;
+                                  _filterDay = null;
+                                });
+                            },
+                          ),
+                          FilterChip(
+                            label: Text(
+                              _filterYear != null && _filterMonth == null
+                                  ? '${l10n.filterYear}: $_filterYear'
+                                  : l10n.filterYear,
+                            ),
+                            selected:
+                                _filterYear != null && _filterMonth == null,
+                            onSelected: (_) async {
+                              if (_filterYear != null &&
+                                  _filterMonth == null) {
+                                setState(() {
+                                  _filterYear = null;
+                                  _filterDay = null;
+                                });
+                                return;
+                              }
+                              final y = await showDialog<int>(
+                                context: context,
+                                builder: (ctx) {
+                                  final years = List.generate(
+                                    6,
+                                    (i) => DateTime.now().year - 2 + i,
+                                  );
+                                  return AlertDialog(
+                                    title: Text(l10n.filterYear),
+                                    content: SingleChildScrollView(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: years
+                                            .map(
+                                              (y) => ListTile(
+                                                title: Text('$y'),
+                                                onTap: () =>
+                                                    Navigator.pop(ctx, y),
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                              if (y != null)
+                                setState(() {
+                                  _filterYear = y;
+                                  _filterMonth = null;
+                                  _filterDay = null;
+                                });
+                            },
+                          ),
+                          SizedBox(
+                            width: 180,
+                            child: DropdownButtonFormField<String?>(
+                              value: _filterDoctorId,
+                              decoration: InputDecoration(
+                                labelText: l10n.filterByDoctor,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              items: [
+                                DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text(l10n.filterAll),
+                                ),
+                                ...cache.doctors.map(
+                                  (d) => DropdownMenuItem<String?>(
+                                    value: d.id,
+                                    child: Text(
+                                      cache.userName(d.userId) ??
+                                          d.displayName ??
+                                          d.id,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (v) =>
+                                  setState(() => _filterDoctorId = v),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 160,
+                            child: DropdownButtonFormField<String?>(
+                              value: _filterPatientId,
+                              decoration: InputDecoration(
+                                labelText: l10n.patient,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              items: [
+                                DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text(l10n.filterAll),
+                                ),
+                                ...cache.patients.map((p) {
+                                  final label = p.displayName;
+                                  return DropdownMenuItem<String?>(
+                                    value: p.id,
+                                    child: Text(
+                                      label,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }),
+                              ],
+                              onChanged: (v) =>
+                                  setState(() => _filterPatientId = v),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 170,
+                            child: DropdownButtonFormField<String?>(
+                              value: _filterIncomeCategory,
+                              decoration: InputDecoration(
+                                labelText: l10n.source,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              items: [
+                                DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text(l10n.filterAll),
+                                ),
+                                ...incomeCategoryOptions.map(
+                                  (c) => DropdownMenuItem<String?>(
+                                    value: c,
+                                    child: Text(
+                                      c,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (v) =>
+                                  setState(() => _filterIncomeCategory = v),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 170,
+                            child: DropdownButtonFormField<String?>(
+                              value: _filterExpenseCategory,
+                              decoration: InputDecoration(
+                                labelText: l10n.category,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              items: [
+                                DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text(l10n.filterAll),
+                                ),
+                                ..._expenseCategories.map(
+                                  (c) => DropdownMenuItem<String?>(
+                                    value: c,
+                                    child: Text(
+                                      c,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (v) =>
+                                  setState(() => _filterExpenseCategory = v),
+                            ),
+                          ),
+                        ],
                       ),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -818,67 +751,101 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                           ),
                         ),
                       ),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final w = constraints.maxWidth;
-                          final crossAxisCount = w < 700 ? 1 : (w < 1100 ? 2 : 4);
-                          return GridView.count(
-                            crossAxisCount: crossAxisCount,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: w < 700 ? 3.8 : 2.8,
-                            children: [
-                              _summaryCard(
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Card(
+                              color: Theme.of(
                                 context,
-                                title: l10n.totalIncome,
-                                value: NumberFormat.currency(symbol: '').format(totalIncome),
-                                color: Theme.of(context).colorScheme.primaryContainer,
-                              ),
-                              _summaryCard(
-                                context,
-                                title: l10n.netProfit,
-                                value: NumberFormat.currency(symbol: '').format(net),
-                                color: net >= 0 ? const Color(0xFFC8E6C9) : const Color(0xFFFFCDD2),
-                                valueStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: net >= 0 ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
-                                  fontWeight: FontWeight.bold,
+                              ).colorScheme.primaryContainer,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      l10n.totalIncome,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleSmall,
+                                    ),
+                                    Text(
+                                      NumberFormat.currency(
+                                        symbol: '',
+                                      ).format(totalIncome),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.headlineSmall,
+                                    ),
+                                  ],
                                 ),
                               ),
-                              _summaryCard(
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Card(
+                              color: net >= 0
+                                  ? const Color(0xFFC8E6C9)
+                                  : const Color(0xFFFFCDD2),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      l10n.netProfit,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleSmall,
+                                    ),
+                                    Text(
+                                      NumberFormat.currency(
+                                        symbol: '',
+                                      ).format(net),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall
+                                          ?.copyWith(
+                                            color: net >= 0
+                                                ? const Color(0xFF2E7D32)
+                                                : const Color(0xFFC62828),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Card(
+                              color: Theme.of(
                                 context,
-                                title: l10n.totalExpenses,
-                                value: NumberFormat.currency(symbol: '').format(totalExpense),
-                                color: Theme.of(context).colorScheme.tertiaryContainer,
+                              ).colorScheme.tertiaryContainer,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      l10n.totalExpenses,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleSmall,
+                                    ),
+                                    Text(
+                                      NumberFormat.currency(
+                                        symbol: '',
+                                      ).format(totalExpense),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.headlineSmall,
+                                    ),
+                                  ],
+                                ),
                               ),
-                              FutureBuilder<FinanceSummaryMetricsResult>(
-                                future: _resolveBasketMetricsFuture(),
-                                builder: (context, snapshot) {
-                                  final rate =
-                                      snapshot.data?.basketRate ?? 0.30;
-                                  final basketVal = snapshot.data?.basket ?? 0;
-                                  final loading =
-                                      snapshot.connectionState ==
-                                      ConnectionState.waiting;
-                                  return _summaryCard(
-                                    context,
-                                    title:
-                                        'Basket (${(rate * 100).toStringAsFixed(0)}%)',
-                                    value: loading
-                                        ? '…'
-                                        : NumberFormat.currency(
-                                            symbol: '',
-                                          ).format(basketVal),
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .secondaryContainer,
-                                  );
-                                },
-                              ),
-                            ],
-                          );
-                        },
+                            ),
+                          ),
+                        ],
                       ),
                       if (showIncome && filteredIncome.isNotEmpty) ...[
                         const SizedBox(height: 16),
@@ -1252,37 +1219,6 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   }
 
   /// For salary expenses with recipient, show "Salary – Name"; otherwise category.
-  Widget _summaryCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required Color color,
-    TextStyle? valueStyle,
-  }) {
-    return Card(
-      color: color,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall,
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              value,
-              style: valueStyle ?? Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// For salary expenses with recipient, show "Salary – Name"; otherwise category.
   static String _expenseTitle(ExpenseRecordModel r) {
     if (r.category == 'Salary' &&
         r.recipientName != null &&
@@ -1298,7 +1234,9 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     AppLocalizations l10n,
   ) async {
     final amountController = TextEditingController();
-    final sourceController = TextEditingController();
+    final sourceController = TextEditingController(text: _incomeCategories[0]);
+    final notesController = TextEditingController();
+    String selectedIncomeCategory = _incomeCategories[0];
     DateTime selectedDate = DateTime.now();
 
     if (!context.mounted) return;
@@ -1317,9 +1255,23 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   decoration: InputDecoration(labelText: l10n.amount),
                 ),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: sourceController,
+                DropdownButtonFormField<String>(
+                  value: selectedIncomeCategory,
                   decoration: InputDecoration(labelText: l10n.source),
+                  items: _incomeCategories
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (v) {
+                    selectedIncomeCategory = v ?? _incomeCategories[0];
+                    sourceController.text = selectedIncomeCategory;
+                    setState(() {});
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: notesController,
+                  decoration: InputDecoration(labelText: l10n.notes),
+                  maxLines: 3,
                 ),
                 const SizedBox(height: 8),
                 ListTile(
@@ -1354,6 +1306,9 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                     id: '',
                     amount: amount,
                     source: sourceController.text.trim(),
+                    notes: notesController.text.trim().isEmpty
+                        ? null
+                        : notesController.text.trim(),
                     recordedByUserId: uid,
                     incomeDate: selectedDate,
                   ),
@@ -1368,6 +1323,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                     details: {
                       'amount': amount,
                       'source': sourceController.text.trim(),
+                      'notes': notesController.text.trim(),
                     },
                   );
                 if (ctx.mounted) Navigator.pop(ctx);
@@ -1395,6 +1351,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
   ) async {
     final amountController = TextEditingController(text: r.amount.toString());
     final sourceController = TextEditingController(text: r.source);
+    String selectedIncomeCategory = r.source;
     final notesController = TextEditingController(text: r.notes ?? '');
     final currencyController = TextEditingController(text: r.currency);
     DateTime selectedDate = r.incomeDate;
@@ -1405,21 +1362,36 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l10n.edit),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+        builder: (ctx, setDialogState) {
+          final sourceOptions = <String>{
+            ..._incomeCategories,
+            if (selectedIncomeCategory.trim().isNotEmpty) selectedIncomeCategory,
+          }.toList()
+            ..sort();
+          return AlertDialog(
+            title: Text(l10n.edit),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(labelText: l10n.amount),
                 ),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: sourceController,
+                DropdownButtonFormField<String>(
+                  value: sourceOptions.contains(selectedIncomeCategory)
+                      ? selectedIncomeCategory
+                      : sourceOptions.first,
                   decoration: InputDecoration(labelText: l10n.source),
+                  items: sourceOptions
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (v) => setDialogState(() {
+                    selectedIncomeCategory = v ?? sourceOptions.first;
+                    sourceController.text = selectedIncomeCategory;
+                  }),
                 ),
                 const SizedBox(height: 8),
                 TextField(
@@ -1506,7 +1478,8 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
               child: Text(l10n.save),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }
@@ -1553,7 +1526,6 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     'Rent',
     'Supplies',
     'Media',
-    'Basket Support',
     'Other',
   ];
 
