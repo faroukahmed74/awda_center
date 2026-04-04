@@ -9,7 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 import 'patient_book_appointment_dialog.dart';
@@ -148,7 +148,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
             },
           ),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(
               icon: const Icon(Icons.add),
               tooltip: l10n.bookAppointment,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/app_logo.dart';
 import '../../core/responsive.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/package_model.dart';
 import '../../models/service_model.dart';
@@ -72,6 +73,7 @@ class _PriceQuoteScreenState extends State<PriceQuoteScreen> {
               Text(l10n.priceQuote),
             ],
           ),
+          actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())

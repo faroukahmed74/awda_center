@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -25,8 +26,16 @@ void main() async {
   runApp(const AwdaApp());
 }
 
-class AwdaApp extends StatelessWidget {
+class AwdaApp extends StatefulWidget {
   const AwdaApp({super.key});
+
+  @override
+  State<AwdaApp> createState() => _AwdaAppState();
+}
+
+class _AwdaAppState extends State<AwdaApp> {
+  /// Single [GoRouter] instance — recreating it on locale/theme change was resetting the current route to dashboard.
+  GoRouter? _router;
 
   @override
   Widget build(BuildContext context) {
@@ -37,8 +46,11 @@ class AwdaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
-      child: Consumer3<AuthProvider, LocaleProvider, ThemeProvider>(
-        builder: (context, auth, locale, theme, _) {
+      child: Builder(
+        builder: (context) {
+          _router ??= createAppRouter(context);
+          final locale = context.watch<LocaleProvider>();
+          final theme = context.watch<ThemeProvider>();
           return MaterialApp.router(
             title: 'Awda Center',
             debugShowCheckedModeBanner: false,
@@ -53,7 +65,7 @@ class AwdaApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            routerConfig: createAppRouter(context),
+            routerConfig: _router!,
             builder: (context, child) {
               final isRtl = locale.locale.languageCode == 'ar';
               return Directionality(

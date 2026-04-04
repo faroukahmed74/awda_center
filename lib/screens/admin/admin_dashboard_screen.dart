@@ -15,7 +15,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/live_date_time_banner.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import 'admin_dashboard_pdf.dart';
 import 'invite_user_dialog.dart';
 import 'migrate_staff_patients_dialog.dart';
@@ -351,7 +351,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               }
             },
           ),
-          actions: const [NotificationsButton()],
+          actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
         ),
         body: RefreshIndicator(
           onRefresh: _loadAll,

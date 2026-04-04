@@ -6,7 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/center_requirement_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 
 /// Center requirements / to-buy list. Admin (or users with requirements permission) can CRUD.
 class RequirementsScreen extends StatefulWidget {
@@ -114,7 +114,7 @@ class _RequirementsScreenState extends State<RequirementsScreen> {
           title: Text(l10n.requirements),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(
               icon: const Icon(Icons.add),
               tooltip: l10n.addRequirement,

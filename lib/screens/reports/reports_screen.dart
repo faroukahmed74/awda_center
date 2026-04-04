@@ -14,7 +14,7 @@ import '../../models/appointment_model.dart';
 import '../../models/income_expense_models.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 
@@ -1211,7 +1211,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             },
           ),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             PopupMenuButton<String>(
               icon: const Icon(Icons.upload),
               tooltip: l10n.export,

@@ -15,6 +15,7 @@ import '../../providers/data_cache_provider.dart';
 import '../../core/patient_date_utils.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../appointments/appointment_form_dialog.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
@@ -360,6 +361,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
           title: Text(l10n.patientDetail),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/patients'); }),
           actions: [
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true) ...[
               IconButton(
                 icon: const Icon(Icons.picture_as_pdf_outlined),

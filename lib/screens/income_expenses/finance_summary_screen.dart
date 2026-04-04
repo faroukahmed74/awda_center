@@ -14,7 +14,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/data_cache_provider.dart';
 import '../../models/income_expense_models.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../reports/report_pdf_share.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
@@ -44,14 +44,14 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
   double _basketRate = 0.30;
   /// 30% target factor: c30 = income * _percent30. Editable.
   double _percent30 = 0.30;
-  Map<String, double> _doctorPercent = {}; // legacy; % column now uses slice rate
-  /// Commission slices: income range (min, max) → display percent and rate (right column). % = BONUS * rate.
+  Map<String, double> _doctorPercent = {}; // legacy; % column uses slice commission %
+  /// Commission slices: income range (min, max) → Commission % and Rate (kept in sync). Doctor % = BONUS × (Commission/100) = BONUS × Rate.
   List<({double min, double? max, double percent, double rate})> _slices = [
     (min: 10000, max: 19000, percent: 25, rate: 0.25),
-    (min: 21000, max: 29000, percent: 35, rate: 0.05),
-    (min: 30000, max: 39000, percent: 45, rate: 0.15),
-    (min: 40000, max: 49000, percent: 55, rate: 0.25),
-    (min: 50000, max: null, percent: 60, rate: 0.35),
+    (min: 21000, max: 29000, percent: 35, rate: 0.35),
+    (min: 30000, max: 39000, percent: 45, rate: 0.45),
+    (min: 40000, max: 49000, percent: 55, rate: 0.55),
+    (min: 50000, max: null, percent: 60, rate: 0.60),
   ];
   List<_DoctorRow> _doctorRows = [];
   double _totalIncome = 0;
@@ -165,11 +165,15 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         _slices = sl.map<({double min, double? max, double percent, double rate})>((s) {
           final m = s is Map ? s : {};
           final pct = (m['percent'] as num?)?.toDouble() ?? 0;
+          final storedRate = (m['rate'] as num?)?.toDouble();
+          // Commission % drives math; rate = percent/100. If percent missing, legacy: use stored rate.
+          final rate = pct > 0 ? pct / 100.0 : (storedRate ?? 0);
+          final percent = pct > 0 ? pct : ((storedRate ?? 0) * 100).clamp(0.0, 100.0);
           return (
             min: (m['min'] as num?)?.toDouble() ?? 0,
             max: (m['max'] as num?)?.toDouble(),
-            percent: pct,
-            rate: (m['rate'] as num?)?.toDouble() ?? (pct / 100),
+            percent: percent,
+            rate: rate,
           );
         }).toList();
       }
@@ -407,13 +411,21 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     }
   }
 
-  /// Commission rate (right column of commission table) for a given income. Used for % = BONUS * rate.
+  /// Multiplier for bonus: Commission % / 100 (same as Rate). Legacy: if percent is 0, use [rate] only.
   double _commissionRateForIncome(double income) {
     for (final s in _slices) {
       if (income < s.min) continue;
-      if (s.max == null || income <= s.max!) return s.rate;
+      if (s.max == null || income <= s.max!) {
+        if (s.percent > 0) return s.percent / 100.0;
+        return s.rate;
+      }
     }
-    return _slices.isNotEmpty ? _slices.last.rate : 0.25;
+    if (_slices.isNotEmpty) {
+      final last = _slices.last;
+      if (last.percent > 0) return last.percent / 100.0;
+      return last.rate;
+    }
+    return 0.25;
   }
 
   /// Sort rows by _doctorOrder; update _doctorOrder to current order for saving.
@@ -692,7 +704,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
               else context.go('/income-expenses');
             },
           ),
-          actions: const [NotificationsButton()],
+          actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -1281,9 +1293,10 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                     if (x == null || x < 0 || x > 100) return;
                     setState(() {
                       final prev = _slices[idx];
+                      final rate = x / 100.0;
                       _slices = [
                         for (var i = 0; i < _slices.length; i++)
-                          i == idx ? (min: prev.min, max: prev.max, percent: x, rate: prev.rate) : _slices[i],
+                          i == idx ? (min: prev.min, max: prev.max, percent: x, rate: rate) : _slices[i],
                       ];
                       _recalcPercentFromSlices();
                     });
@@ -1302,9 +1315,10 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
                     if (x == null || x < 0 || x > 1) return;
                     setState(() {
                       final prev = _slices[idx];
+                      final pct = (x * 100).clamp(0.0, 100.0);
                       _slices = [
                         for (var i = 0; i < _slices.length; i++)
-                          i == idx ? (min: prev.min, max: prev.max, percent: prev.percent, rate: x) : _slices[i],
+                          i == idx ? (min: prev.min, max: prev.max, percent: pct, rate: x) : _slices[i],
                       ];
                       _recalcPercentFromSlices();
                     });

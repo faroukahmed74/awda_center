@@ -4,7 +4,7 @@ import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/service_model.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 
 /// Admin: Services CRUD. Services appear in the appointment form dropdown.
 class ServicesScreen extends StatefulWidget {
@@ -148,7 +148,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
           title: Text(l10n.services),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(icon: const Icon(Icons.add), tooltip: l10n.addService, onPressed: () => _showForm(context, l10n)),
           ],
         ),

@@ -7,6 +7,7 @@ import '../../models/doctor_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/main_app_bar_actions.dart';
 
 class MyDoctorProfileScreen extends StatefulWidget {
   const MyDoctorProfileScreen({super.key});
@@ -111,6 +112,7 @@ class _MyDoctorProfileScreenState extends State<MyDoctorProfileScreen> {
           title: Text(l10n.myDoctorProfile),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             if (_doctor != null)
               TextButton(
                 onPressed: _saving ? null : _save,

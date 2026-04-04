@@ -5,7 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/package_model.dart';
 import '../../models/service_model.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 
 /// Admin: Packages CRUD. A package has specific services, number of sessions, and a fixed amount.
 class PackagesScreen extends StatefulWidget {
@@ -219,7 +219,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
           title: Text(l10n.packages),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(icon: const Icon(Icons.add), tooltip: l10n.addPackage, onPressed: () => _showForm(context, l10n)),
           ],
         ),

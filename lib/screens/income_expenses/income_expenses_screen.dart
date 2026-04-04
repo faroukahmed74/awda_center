@@ -11,7 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/data_cache_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 
@@ -397,7 +397,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
             },
           ),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () => _showAddIncome(context, uid, l10n),

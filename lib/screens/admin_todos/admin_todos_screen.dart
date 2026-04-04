@@ -6,7 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/admin_todo_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../../services/notification_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
@@ -143,7 +143,7 @@ class _AdminTodosScreenState extends State<AdminTodosScreen> {
           title: Text(l10n.toDoList),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(
               icon: Icon(_showCompleted ? Icons.filter_list_off : Icons.done_all),
               tooltip: _showCompleted ? 'Hide completed' : 'Show completed',

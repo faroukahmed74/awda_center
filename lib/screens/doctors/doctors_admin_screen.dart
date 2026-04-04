@@ -5,7 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/doctor_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import 'add_doctor_dialog.dart';
 
 /// Admin: List doctors, add (link user with doctor role), edit.
@@ -172,7 +172,7 @@ class _DoctorsAdminScreenState extends State<DoctorsAdminScreen> {
           title: Text(l10n.manageDoctors),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(icon: const Icon(Icons.add), tooltip: l10n.addDoctor, onPressed: () => _onAddDoctorPressed(context, l10n)),
           ],
         ),

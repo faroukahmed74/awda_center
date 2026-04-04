@@ -14,10 +14,10 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_cache_provider.dart';
 import '../../providers/locale_provider.dart';
-import '../../providers/theme_provider.dart';
 import '../../router/app_router.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/live_date_time_banner.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../../widgets/notifications_button.dart';
 import '../patients/add_patient_dialog.dart';
 
@@ -98,20 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }
                 },
               ),
-            IconButton(
-              icon: const Icon(Icons.language),
-              tooltip: l10n.isArabic ? 'English' : 'العربية',
-              onPressed: () => context.read<LocaleProvider>().toggleLocale(),
-            ),
-            IconButton(
-              icon: Icon(
-                context.watch<ThemeProvider>().isDark
-                    ? Icons.light_mode
-                    : Icons.dark_mode,
-              ),
-              tooltip: 'Theme',
-              onPressed: () => context.read<ThemeProvider>().toggleDarkLight(),
-            ),
+            ...MainAppBarActions.languageAndTheme(context),
             IconButton(
               icon: const Icon(Icons.logout),
               tooltip: l10n.logout,

@@ -768,7 +768,7 @@ class AppLocalizations {
   };
 
   static const Map<String, String> _ar = {
-    'appTitle': 'مركز عودة',
+    'appTitle': 'مركز عَودة',
     'login': 'تسجيل الدخول',
     'signInWithGoogle': 'تسجيل الدخول بـ Google',
     'orContinueWithEmail': 'أو متابعة بالبريد الإلكتروني',

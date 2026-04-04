@@ -10,7 +10,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../admin/invite_user_dialog.dart';
 import 'edit_user_privileges_dialog.dart';
 
@@ -96,7 +96,7 @@ class _UsersScreenState extends State<UsersScreen> {
           title: Text(l10n.users),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             if (auth.currentUser?.canAccessAdminDashboard ?? false)
               IconButton(
                 icon: const Icon(Icons.person_add),

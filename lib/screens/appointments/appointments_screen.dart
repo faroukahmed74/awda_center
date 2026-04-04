@@ -15,7 +15,7 @@ import '../../models/income_expense_models.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 import 'appointment_form_dialog.dart';
@@ -1291,6 +1291,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             },
           ),
           actions: [
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(
               icon: Icon(
                 _filtersVisible ? Icons.filter_list_off : Icons.filter_list,
@@ -1299,7 +1300,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               onPressed: () =>
                   setState(() => _filtersVisible = !_filtersVisible),
             ),
-            const NotificationsButton(),
             if (canUpdate)
               IconButton(
                 icon: const Icon(Icons.add),

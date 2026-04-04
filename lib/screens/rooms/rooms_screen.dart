@@ -4,7 +4,7 @@ import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/room_model.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 
 /// Admin: Rooms CRUD.
 class RoomsScreen extends StatefulWidget {
@@ -124,7 +124,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
           title: Text(l10n.rooms),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
           actions: [
-            const NotificationsButton(),
+            ...MainAppBarActions.notificationsLanguageTheme(context),
             IconButton(icon: const Icon(Icons.add), tooltip: l10n.addRoom, onPressed: () => _showForm(context, l10n)),
           ],
         ),

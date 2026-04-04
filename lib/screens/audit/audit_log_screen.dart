@@ -5,7 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/audit_log_model.dart';
 import '../../models/appointment_model.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../../core/date_format.dart';
 
 class AuditLogScreen extends StatefulWidget {
@@ -209,7 +209,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
         appBar: AppBar(
           title: Text(l10n.auditLog),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/dashboard'); }),
-          actions: const [NotificationsButton()],
+          actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())

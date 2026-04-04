@@ -11,6 +11,7 @@ import '../../models/session_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../../core/date_format.dart';
 import '../patients/patient_document_dialog.dart';
 import '../patients/document_viewer.dart';
@@ -173,6 +174,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         appBar: AppBar(
           title: Text(l10n.profile),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/patients'); }),
+          actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())

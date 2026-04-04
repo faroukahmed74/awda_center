@@ -13,6 +13,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/data_cache_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import '../appointments/appointment_form_dialog.dart';
 import 'session_edit_dialog.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -161,6 +162,7 @@ class _PatientSessionsPackagesAdminScreenState extends State<PatientSessionsPack
           icon: const Icon(Icons.arrow_back),
           onPressed: () { if (context.canPop()) context.pop(); else context.go('/patients/${widget.patientId}'); },
         ),
+        actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

@@ -37,6 +37,8 @@ GoRouter createAppRouter(BuildContext context) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/login',
+    // Re-run redirect on login/logout only — not when locale/theme rebuilds the app.
+    refreshListenable: authProvider,
     redirect: (context, state) {
       final isLoggedIn = authProvider.currentUser != null;
       final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register' || state.matchedLocation == '/forgot-password';

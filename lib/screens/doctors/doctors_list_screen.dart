@@ -5,6 +5,7 @@ import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/doctor_model.dart';
 import '../../providers/data_cache_provider.dart';
+import '../../widgets/main_app_bar_actions.dart';
 
 const List<String> _dayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -70,6 +71,7 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
               }
             },
           ),
+          actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
         ),
         body: Column(
           children: [

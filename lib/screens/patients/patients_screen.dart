@@ -6,7 +6,7 @@ import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_cache_provider.dart';
-import '../../widgets/notifications_button.dart';
+import '../../widgets/main_app_bar_actions.dart';
 import 'add_patient_dialog.dart';
 
 class PatientsScreen extends StatefulWidget {
@@ -77,7 +77,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
               }
             },
           ),
-          actions: const [NotificationsButton()],
+          actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
         ),
         floatingActionButton: !kIsWeb && context.watch<AuthProvider>().currentUser?.canAccessPatients == true
             ? FloatingActionButton.extended(
