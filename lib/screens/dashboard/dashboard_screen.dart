@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -81,7 +80,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           actions: [
             const NotificationsButton(),
-            if (!kIsWeb && !user.hasRole(UserRole.patient))
+            if (!user.hasRole(UserRole.patient))
               IconButton(
                 icon: const Icon(Icons.person_add),
                 tooltip: l10n.addNewPatient,
@@ -377,7 +376,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               runSpacing: 8,
                               alignment: WrapAlignment.center,
                               children: [
-                                if (!kIsWeb && !user.hasRole(UserRole.patient))
+                                if (!user.hasRole(UserRole.patient))
                                   FilledButton.tonalIcon(
                                     icon: const Icon(
                                       Icons.person_add,

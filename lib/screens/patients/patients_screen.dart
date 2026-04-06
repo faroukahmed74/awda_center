@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -79,7 +78,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
           ),
           actions: [...MainAppBarActions.notificationsLanguageTheme(context)],
         ),
-        floatingActionButton: !kIsWeb && context.watch<AuthProvider>().currentUser?.canAccessPatients == true
+        floatingActionButton: context.watch<AuthProvider>().currentUser?.canAccessPatients == true
             ? FloatingActionButton.extended(
                 onPressed: () async {
                   final patientId = await showDialog<String>(
