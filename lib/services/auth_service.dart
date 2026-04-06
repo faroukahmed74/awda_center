@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
+import 'firebase_callable_http.dart';
 import 'firestore_service.dart';
 
 class AuthService {
@@ -219,8 +219,7 @@ class AuthService {
   /// Admin: delete user from Firebase Auth (via callable) then delete Firestore user document.
   /// So the user cannot sign in again after deletion.
   Future<void> deleteUserDocument(String uid) async {
-    final callable = FirebaseFunctions.instance.httpsCallable('deleteAuthUser');
-    await callable.call({'uid': uid});
+    await callHttpsCallableHttp('deleteAuthUser', {'uid': uid});
     await _firestore.collection('users').doc(uid).delete();
   }
 }

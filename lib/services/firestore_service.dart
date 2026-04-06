@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'firebase_callable_http.dart';
 import '../models/user_model.dart';
 import '../models/doctor_model.dart';
 import '../models/room_model.dart';
@@ -394,11 +395,9 @@ class FirestoreService {
 
   /// Migrates one staff-created patient to Auth login. Returns new uid. Throws on failure.
   Future<Map<String, dynamic>> migrateStaffCreatedPatient(String oldUserId) async {
-    final callable = FirebaseFunctions.instance.httpsCallable('migrateStaffCreatedPatient');
-    final result = await callable.call({'oldUserId': oldUserId});
-    final data = result.data;
-    if (data == null) throw Exception('migrateStaffCreatedPatient did not return data');
-    return Map<String, dynamic>.from(data as Map);
+    final data = await callHttpsCallableHttp('migrateStaffCreatedPatient', {'oldUserId': oldUserId});
+    if (data.isEmpty) throw Exception('migrateStaffCreatedPatient did not return data');
+    return data;
   }
 
   /// Creates a patient user with Firebase Auth (email + password). Used by staff when adding a patient.
@@ -417,13 +416,15 @@ class FirestoreService {
     final emailTrimmed = (email ?? '').trim();
     if (emailTrimmed.isEmpty) throw Exception('Email is required to create a patient');
     final pwd = (password != null && password.length >= 6) ? password : _randomTempPassword();
-    final callable = FirebaseFunctions.instance.httpsCallable('createPatientWithEmail');
-    final result = await callable.call({'email': emailTrimmed, 'password': pwd});
-    final data = result.data as Map?;
-    if (data == null || data['uid'] == null) {
+    final data = await callHttpsCallableHttp('createPatientWithEmail', {
+      'email': emailTrimmed,
+      'password': pwd,
+    });
+    final uidRaw = data['uid'];
+    final uid = uidRaw?.toString();
+    if (uid == null || uid.isEmpty) {
       throw Exception('createPatientWithEmail did not return uid');
     }
-    final uid = data['uid'] as String;
 
     await _firestore.collection('users').doc(uid).set({
       'email': emailTrimmed,
@@ -440,7 +441,7 @@ class FirestoreService {
       'userId': uid,
       'dateOfBirth': dateOfBirth?.trim(),
       'age': age,
-      'gender': gender?.trim(),
+      'gender': (gender != null && gender.trim().isNotEmpty) ? gender.trim() : null,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
     return (uid: uid, password: pwd);

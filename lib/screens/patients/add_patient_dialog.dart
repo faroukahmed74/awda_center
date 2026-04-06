@@ -27,7 +27,8 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
   final _phoneController = TextEditingController();
   final _ageController = TextEditingController();
   DateTime? _dateOfBirth;
-  String? _gender; // 'male' | 'female' | null
+  /// Empty string = not selected (avoid nullable [DropdownMenuItem] values — can crash on some devices).
+  String _genderValue = '';
   bool _obscurePassword = true;
   bool _loading = false;
   String? _error;
@@ -51,6 +52,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
       setState(() => _error = 'Enter at least one name (Arabic or English).');
       return;
     }
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _loading = true;
       _error = null;
@@ -59,6 +61,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
       final ageStr = _ageController.text.trim();
       final ageVal = ageStr.isEmpty ? null : int.tryParse(ageStr);
       final age = ageVal != null && ageVal >= 0 && ageVal <= 150 ? ageVal : null;
+      final currentUserId = context.read<AuthProvider>().currentUser?.id;
       final result = await FirestoreService().createPatientUser(
         fullNameAr: nameAr.isEmpty ? null : nameAr,
         fullNameEn: nameEn.isEmpty ? null : nameEn,
@@ -67,11 +70,10 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
         password: _passwordController.text.isEmpty ? null : _passwordController.text,
         dateOfBirth: _dateOfBirth != null ? toIsoDateString(_dateOfBirth!) : null,
         age: age,
-        gender: _gender,
+        gender: _genderValue.isEmpty ? null : _genderValue,
       );
-      final currentUserId = context.read<AuthProvider>().currentUser?.id;
       if (currentUserId != null) {
-        AuditService.log(
+        await AuditService.log(
           action: 'patient_created',
           entityType: 'user',
           entityId: result.uid,
@@ -81,10 +83,21 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
       }
       if (!mounted) return;
       final email = _emailController.text.trim();
-      await _showCredentialsDialog(context, email: email, password: result.password);
-      if (mounted) Navigator.of(context).pop(result.uid);
+      // Yield so iOS finishes focus/route updates before another dialog + pop (avoids navigator/assert issues).
+      await Future<void>.delayed(Duration.zero);
+      if (!mounted) return;
+      try {
+        await _showCredentialsDialog(context, email: email, password: result.password);
+      } catch (_) {
+        // Still close the form; credentials can be reset via Firebase if needed.
+      }
+      if (!mounted) return;
+      await Future<void>.delayed(Duration.zero);
+      if (!mounted) return;
+      Navigator.of(context).pop(result.uid);
     } catch (e) {
-      if (mounted) setState(() {
+      if (!mounted) return;
+      setState(() {
         _error = AppLocalizations.of(context).generalErrorMessage(generalErrorToMessageKey(e));
         _loading = false;
       });
@@ -122,9 +135,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
                 ),
                 child: SelectableText(
                   credentialsText,
-                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                    fontFamily: 'monospace',
-                  ),
+                  style: Theme.of(ctx).textTheme.bodyMedium,
                 ),
               ),
             ],
@@ -134,7 +145,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
           TextButton.icon(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: credentialsText));
-              ScaffoldMessenger.of(ctx).showSnackBar(
+              ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(
                 const SnackBar(content: Text('Copied to clipboard')),
               );
             },
@@ -283,18 +294,40 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
                 ),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String?>(
-                value: _gender,
-                decoration: InputDecoration(
-                  labelText: '${l10n.gender} (optional)',
-                  border: const OutlineInputBorder(),
+              // FilterChips instead of DropdownButtonFormField — Dropdown has had iOS assertion/layout crashes in nested dialogs.
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${l10n.gender} (optional)',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilterChip(
+                          label: const Text('—'),
+                          selected: _genderValue.isEmpty,
+                          onSelected: (_) => setState(() => _genderValue = ''),
+                        ),
+                        FilterChip(
+                          label: Text(l10n.male),
+                          selected: _genderValue == 'male',
+                          onSelected: (_) => setState(() => _genderValue = 'male'),
+                        ),
+                        FilterChip(
+                          label: Text(l10n.female),
+                          selected: _genderValue == 'female',
+                          onSelected: (_) => setState(() => _genderValue = 'female'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                items: [
-                  DropdownMenuItem<String?>(value: null, child: Text('—')),
-                  DropdownMenuItem<String?>(value: 'male', child: Text(l10n.male)),
-                  DropdownMenuItem<String?>(value: 'female', child: Text(l10n.female)),
-                ],
-                onChanged: (v) => setState(() => _gender = v),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
