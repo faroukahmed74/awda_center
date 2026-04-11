@@ -43,9 +43,10 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
     final cache = context.watch<DataCacheProvider>();
 
     final q = _searchController.text.trim().toLowerCase();
+    final doctorRows = cache.activeDoctors;
     final filtered = q.isEmpty
-        ? cache.doctors
-        : cache.doctors.where((d) {
+        ? doctorRows
+        : doctorRows.where((d) {
             final name = (cache.userName(d.userId) ?? d.displayName ?? '').toLowerCase();
             final spec = (d.specializationEn ?? d.specializationAr ?? '').toLowerCase();
             final qual = (d.qualificationsEn ?? d.qualificationsAr ?? '').toLowerCase();
@@ -54,7 +55,8 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
             return name.contains(q) || spec.contains(q) || qual.contains(q) || cert.contains(q) || bio.contains(q);
           }).toList();
 
-    final showLoading = cache.doctorsLoading && cache.doctors.isEmpty;
+    final showLoading = (cache.doctorsLoading && cache.doctors.isEmpty) ||
+        (cache.usersLoading && cache.doctors.isNotEmpty && doctorRows.isEmpty);
 
     return Directionality(
       textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,

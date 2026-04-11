@@ -94,7 +94,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       _loadError = null;
     });
     final cache = context.read<DataCacheProvider>();
-    final doctors = cache.doctors;
+    final doctors = cache.activeDoctors;
 
     // Date range and config month from period
     int rangeStartMonth;
@@ -325,7 +325,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
   void _applyIncomeAndExpense() {
     if (!mounted) return;
     final cache = context.read<DataCacheProvider>();
-    final doctors = cache.doctors;
+    final doctors = cache.activeDoctors;
     final (monthStart, monthEnd) = _getMonthRange();
     final incomeList = _lastIncomeList
         .where((r) => !r.incomeDate.isBefore(monthStart) && !r.incomeDate.isAfter(monthEnd))

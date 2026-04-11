@@ -1005,7 +1005,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     existing: a,
                     currentUserId: auth?.id,
                     patients: cache.patients,
-                    doctors: cache.doctors,
+                    doctors: cache.activeDoctors,
                     rooms: cache.rooms,
                     services: cache.services,
                     packages: _packages,
@@ -1025,7 +1025,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   builder: (_) => AppointmentFormDialog(
                     currentUserId: auth?.id,
                     patients: cache.patients,
-                    doctors: cache.doctors,
+                    doctors: cache.activeDoctors,
                     rooms: cache.rooms,
                     services: cache.services,
                     packages: _packages,
@@ -1310,7 +1310,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     builder: (_) => AppointmentFormDialog(
                       currentUserId: auth.id,
                       patients: cache.patients,
-                      doctors: cache.doctors,
+                      doctors: cache.activeDoctors,
                       rooms: cache.rooms,
                       services: cache.services,
                       packages: _packages,
@@ -1679,7 +1679,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   value: null,
                                   child: Text(l10n.filterAll),
                                 ),
-                                ...cache.doctors.map(
+                                ...cache.activeDoctors.map(
                                   (d) => DropdownMenuItem<String?>(
                                     value: d.id,
                                     child: Text(
@@ -1893,7 +1893,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                                                 patients: cache
                                                                     .patients,
                                                                 doctors: cache
-                                                                    .doctors,
+                                                                    .activeDoctors,
                                                                 rooms:
                                                                     cache.rooms,
                                                                 services: cache

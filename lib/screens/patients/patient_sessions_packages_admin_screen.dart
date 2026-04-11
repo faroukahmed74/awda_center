@@ -359,7 +359,7 @@ class _PatientSessionsPackagesAdminScreenState extends State<PatientSessionsPack
           existing: appointment,
           currentUserId: auth.id,
           patients: cache.patients,
-          doctors: cache.doctors,
+          doctors: cache.activeDoctors,
           rooms: cache.rooms,
           services: cache.services,
           packages: _packages,

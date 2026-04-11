@@ -14,9 +14,11 @@ import 'providers/theme_provider.dart';
 import 'router/app_router.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'web/reload_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ensureFreshWebLoad();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   tz_data.initializeTimeZones();
   try {

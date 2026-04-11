@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment_model.dart';
@@ -10,6 +9,7 @@ import '../../models/package_model.dart';
 import '../../models/service_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/data_cache_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
@@ -99,10 +99,10 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   }
 
   /// Patients filtered by name, email, or phone (partial, case-insensitive).
-  List<UserModel> get _filteredPatients {
+  List<UserModel> _filteredPatients(List<UserModel> patients) {
     final q = _patientSearchController.text.trim().toLowerCase();
-    if (q.isEmpty) return widget.patients;
-    return widget.patients.where((p) {
+    if (q.isEmpty) return patients;
+    return patients.where((p) {
       final name = p.displayName.toLowerCase();
       final email = p.email.toLowerCase();
       final phone = (p.phone ?? '').toLowerCase();
@@ -305,6 +305,11 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isEdit = widget.existing != null;
+    final cache = context.watch<DataCacheProvider>();
+    final patientsSource = cache.patients.isNotEmpty ? cache.patients : widget.patients;
+    final doctorsSource = cache.activeDoctors.isNotEmpty
+        ? cache.activeDoctors
+        : DataCacheProvider.filterActiveDoctors(widget.doctors, cache.users);
 
     return AlertDialog(
       title: Text(isEdit ? l10n.editAppointment : l10n.createAppointment),
@@ -324,9 +329,9 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
             const SizedBox(height: 4),
             Builder(
               builder: (context) {
-                final list = List<UserModel>.from(_filteredPatients);
+                final list = List<UserModel>.from(_filteredPatients(patientsSource));
                 if (_patientId != null && !list.any((p) => p.id == _patientId)) {
-                  final found = widget.patients.where((p) => p.id == _patientId).toList();
+                  final found = patientsSource.where((p) => p.id == _patientId).toList();
                   if (found.isNotEmpty) list.insert(0, found.first);
                 }
                 return DropdownButtonFormField<String?>(
@@ -344,14 +349,26 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
               },
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String?>(
-              value: _doctorId,
-              decoration: InputDecoration(labelText: l10n.doctor),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('—')),
-                ...widget.doctors.map((d) => DropdownMenuItem(value: d.id, child: Text(d.displayName ?? d.userId))),
-              ],
-              onChanged: (v) => setState(() => _doctorId = v),
+            Builder(
+              builder: (context) {
+                final list = List<DoctorModel>.from(doctorsSource);
+                if (_doctorId != null && !list.any((d) => d.id == _doctorId)) {
+                  final found = cache.doctors.where((d) => d.id == _doctorId).toList();
+                  if (found.isNotEmpty) list.insert(0, found.first);
+                }
+                return DropdownButtonFormField<String?>(
+                  value: _doctorId,
+                  decoration: InputDecoration(labelText: l10n.doctor),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('—')),
+                    ...list.map((d) {
+                      final doctorName = cache.doctorDisplayName(d.id) ?? d.displayName ?? d.userId;
+                      return DropdownMenuItem(value: d.id, child: Text(doctorName));
+                    }),
+                  ],
+                  onChanged: (v) => setState(() => _doctorId = v),
+                );
+              },
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String?>(

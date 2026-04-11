@@ -676,6 +676,14 @@ class FirestoreService {
   }
 
   // Audit log (admin read)
+  Stream<QuerySnapshot<Map<String, dynamic>>> auditLogsStream({int limit = 100}) {
+    return _firestore
+        .collection('audit_log')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots();
+  }
+
   Future<List<AuditLogModel>> getAuditLogs({int limit = 100}) async {
     final snapshot = await _firestore
         .collection('audit_log')

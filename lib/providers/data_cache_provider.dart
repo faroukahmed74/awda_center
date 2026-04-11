@@ -7,6 +7,28 @@ import '../models/service_model.dart';
 import '../models/user_model.dart';
 import '../services/firestore_service.dart';
 
+/// One profile per [DoctorModel.userId]: user exists, has doctor role, is active; newest doc wins on duplicates.
+List<DoctorModel> _filterActiveDoctorsList(List<DoctorModel> doctors, List<UserModel> users) {
+  final usersById = <String, UserModel>{for (final u in users) u.id: u};
+  if (doctors.isEmpty) return [];
+  final sorted = List<DoctorModel>.from(doctors)
+    ..sort((a, b) {
+      final ta = a.updatedAt ?? a.createdAt ?? DateTime(0);
+      final tb = b.updatedAt ?? b.createdAt ?? DateTime(0);
+      final c = tb.compareTo(ta);
+      if (c != 0) return c;
+      return b.id.compareTo(a.id);
+    });
+  final byUserId = <String, DoctorModel>{};
+  for (final d in sorted) {
+    if (d.userId.isEmpty) continue;
+    final u = usersById[d.userId];
+    if (u == null || !u.hasRole(UserRole.doctor) || !u.isActive) continue;
+    byUserId.putIfAbsent(d.userId, () => d);
+  }
+  return byUserId.values.toList();
+}
+
 /// Caches doctors, patients (users with role patient), rooms, and user display names.
 /// Listens to Firestore streams and updates cache when data changes so screens
 /// can show cached data immediately and only reload when data actually changes.
@@ -31,6 +53,34 @@ class DataCacheProvider with ChangeNotifier {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _servicesSub;
 
   List<DoctorModel> get doctors => List.unmodifiable(_doctors);
+
+  /// Doctors for staff-facing lists: linked to an active user with role doctor, one row per user (newest profile if duplicate docs).
+  List<DoctorModel> get activeDoctors {
+    final list = _filterActiveDoctorsList(_doctors, _users);
+    final sorted = List<DoctorModel>.from(list)
+      ..sort((a, b) {
+        final na = (userName(a.userId) ?? a.displayName ?? a.id).toLowerCase();
+        final nb = (userName(b.userId) ?? b.displayName ?? b.id).toLowerCase();
+        return na.compareTo(nb);
+      });
+    return List.unmodifiable(sorted);
+  }
+
+  /// Same rules as [activeDoctors] when using doctor lists not from the live cache (e.g. dialog props before streams fill).
+  static List<DoctorModel> filterActiveDoctors(List<DoctorModel> doctors, List<UserModel> users) {
+    final list = _filterActiveDoctorsList(doctors, users);
+    final usersById = <String, UserModel>{for (final u in users) u.id: u};
+    final sorted = List<DoctorModel>.from(list)
+      ..sort((a, b) {
+        final ua = usersById[a.userId];
+        final ub = usersById[b.userId];
+        final na = (ua?.fullNameAr ?? ua?.fullNameEn ?? ua?.displayName ?? a.displayName ?? a.id).toLowerCase();
+        final nb = (ub?.fullNameAr ?? ub?.fullNameEn ?? ub?.displayName ?? b.displayName ?? b.id).toLowerCase();
+        return na.compareTo(nb);
+      });
+    return sorted;
+  }
+
   List<UserModel> get users => List.unmodifiable(_users);
   List<UserModel> get patients => List.unmodifiable(_users.where((u) => u.roles.contains('patient')).toList());
   List<RoomModel> get rooms => List.unmodifiable(_rooms);

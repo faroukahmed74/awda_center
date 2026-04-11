@@ -613,7 +613,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                                   value: null,
                                   child: Text(l10n.filterAll),
                                 ),
-                                ...cache.doctors.map(
+                                ...cache.activeDoctors.map(
                                   (d) => DropdownMenuItem<String?>(
                                     value: d.id,
                                     child: Text(
@@ -1615,7 +1615,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                         value: null,
                         child: Text('—'),
                       ),
-                      ...cache.doctors.map(
+                      ...cache.activeDoctors.map(
                         (d) => DropdownMenuItem<String?>(
                           value: d.id,
                           child: Text(
@@ -1798,7 +1798,7 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                         value: null,
                         child: Text('—'),
                       ),
-                      ...cache.doctors.map(
+                      ...cache.activeDoctors.map(
                         (d) => DropdownMenuItem<String?>(
                           value: d.id,
                           child: Text(

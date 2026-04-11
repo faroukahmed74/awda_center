@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/responsive.dart';
@@ -17,6 +20,8 @@ class AuditLogScreen extends StatefulWidget {
 
 class _AuditLogScreenState extends State<AuditLogScreen> {
   final FirestoreService _firestore = FirestoreService();
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _auditSubscription;
+  int _hydrateToken = 0;
   List<AuditLogModel> _list = [];
   Map<String, String> _userNameById = {};
   Map<String, String> _doctorNameById = {};
@@ -29,12 +34,33 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _subscribeToAuditLogs();
+  }
+
+  @override
+  void dispose() {
+    _auditSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToAuditLogs() {
+    _auditSubscription?.cancel();
+    _auditSubscription = _firestore.auditLogsStream(limit: 200).listen((snapshot) {
+      final list = snapshot.docs.map((d) => AuditLogModel.fromFirestore(d)).toList();
+      unawaited(_hydrateAndSet(list));
+    });
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
     final list = await _firestore.getAuditLogs();
+    await _hydrateAndSet(list);
+  }
+
+  Future<void> _hydrateAndSet(List<AuditLogModel> list) async {
+    final token = ++_hydrateToken;
+    if (_list.isEmpty && mounted) {
+      setState(() => _loading = true);
+    }
     list.sort((a, b) => (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
 
     final userIds = <String>{};
@@ -123,6 +149,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
       if (pkg != null) packageNameById[packageIdList[i]] = pkg.displayName;
     }
 
+    if (!mounted || token != _hydrateToken) return;
     if (mounted) {
       setState(() {
         _list = list;
@@ -171,9 +198,16 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
 
     if (details != null && details.isNotEmpty) {
       final resolved = <String>[];
+      final platform = details['platform'];
+      final deviceType = details['deviceType'];
+      if (platform != null) resolved.add('platform: $platform');
+      if (deviceType != null) resolved.add('deviceType: $deviceType');
       for (final entry in details.entries) {
         final key = entry.key;
         final value = entry.value;
+        if (key == 'platform' || key == 'deviceType') {
+          continue;
+        }
         if (key == 'patientId' && value is String) {
           resolved.add('patient: ${_userNameById[value] ?? value}');
         } else if (key == 'doctorId' && value is String) {
@@ -192,7 +226,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
           resolved.add('$key: $value');
         }
       }
-      if (resolved.isNotEmpty) parts.add(resolved.take(3).join(' · '));
+      if (resolved.isNotEmpty) parts.add(resolved.take(5).join(' · '));
     }
 
     return parts.join(' · ');
@@ -222,7 +256,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                         itemCount: _list.length,
                         itemBuilder: (context, i) {
                           final e = _list[i];
-                          final when = e.createdAt != null ? AppDateFormat.shortDateTime.format(e.createdAt!) : '';
+                          final when = e.createdAt != null ? AppDateFormat.shortDateTimeSec.format(e.createdAt!) : '';
                           final who = _userNameById[e.userId] ?? e.userEmail ?? e.userId;
                           final what = _auditActionLabel(e, l10n);
                           return Card(

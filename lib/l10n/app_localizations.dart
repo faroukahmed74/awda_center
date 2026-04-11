@@ -375,6 +375,23 @@ class AppLocalizations {
   String get notifications => _map['notifications']!;
   String get noNotifications => _map['noNotifications']!;
   String get retry => _map['retry']!;
+  String get checkForUpdate => _map['checkForUpdate']!;
+  String get updateNotConfigured => _map['updateNotConfigured']!;
+  String get updateCheckFailed => _map['updateCheckFailed']!;
+  String get updateAlreadyLatest => _map['updateAlreadyLatest']!;
+  String get updateAvailable => _map['updateAvailable']!;
+  String get updateReleaseNotes => _map['updateReleaseNotes']!;
+  String get updateDownload => _map['updateDownload']!;
+  String get updateDownloadFailed => _map['updateDownloadFailed']!;
+  String get updateOpeningInstaller => _map['updateOpeningInstaller']!;
+  String get updateRequiredTitle => _map['updateRequiredTitle']!;
+  String get updateRequiredBody => _map['updateRequiredBody']!;
+  String updateVersionCurrent(String version, int code) =>
+      _map['updateVersionCurrent']!.replaceAll('{version}', version).replaceAll('{code}', '$code');
+  String updateVersionNew(String version, int code) =>
+      _map['updateVersionNew']!.replaceAll('{version}', version).replaceAll('{code}', '$code');
+  String updateDownloadingPercent(int percent) =>
+      _map['updateDownloadingPercent']!.replaceAll('{percent}', '$percent');
   // Notification text (used in push and local notifications)
   String get notificationReminderTitle => _map['notificationReminderTitle']!;
   String get notificationReminderBody => _map['notificationReminderBody']!;
@@ -743,6 +760,22 @@ class AppLocalizations {
     'notifications': 'Notifications',
     'noNotifications': 'No notifications',
     'retry': 'Retry',
+    'checkForUpdate': 'Check for updates',
+    'updateNotConfigured':
+        'In-app updates are not configured. Add your JSON manifest URL in lib/core/android_update_config.dart (kAndroidUpdateManifestUrlEmbedded), or build with ANDROID_UPDATE_MANIFEST_URL. Use the Dropbox link to version.json, not the APK file.',
+    'updateCheckFailed': 'Could not check for updates. Check your internet connection and try again.',
+    'updateAlreadyLatest': 'You are using the latest version.',
+    'updateAvailable': 'Update available',
+    'updateReleaseNotes': 'Release notes',
+    'updateDownload': 'Download & install',
+    'updateDownloadFailed': 'Download failed. Check your connection and try again.',
+    'updateOpeningInstaller': 'Opening installer… If nothing happens, allow installs from this source in Settings.',
+    'updateRequiredTitle': 'Update required',
+    'updateRequiredBody':
+        'Your app version is no longer supported. Please download and install the latest version.',
+    'updateVersionCurrent': 'Current: {version} (build {code})',
+    'updateVersionNew': 'New: {version} (build {code})',
+    'updateDownloadingPercent': 'Downloading… {percent}%',
     'notificationReminderTitle': 'Appointment reminder',
     'notificationReminderBody': 'Session on {date} at {time}',
     'notificationAppointmentConfirmed': 'Appointment confirmed',
@@ -1118,6 +1151,21 @@ class AppLocalizations {
     'notifications': 'الإشعارات',
     'noNotifications': 'لا توجد إشعارات',
     'retry': 'إعادة المحاولة',
+    'checkForUpdate': 'التحقق من التحديثات',
+    'updateNotConfigured':
+        'لم يُضبط التحديث داخل التطبيق. أضف رابط ملف JSON في lib/core/android_update_config.dart (kAndroidUpdateManifestUrlEmbedded)، أو ابنِ التطبيق بـ ANDROID_UPDATE_MANIFEST_URL. استخدم رابط Dropbox لملف version.json وليس ملف الـ APK.',
+    'updateCheckFailed': 'تعذر التحقق من التحديثات. تحقق من الاتصال بالإنترنت وحاول مرة أخرى.',
+    'updateAlreadyLatest': 'أنت تستخدم أحدث إصدار.',
+    'updateAvailable': 'يتوفر إصدار جديد',
+    'updateReleaseNotes': 'ملاحظات الإصدار',
+    'updateDownload': 'تنزيل وتثبيت',
+    'updateDownloadFailed': 'فشل التنزيل. تحقق من الاتصال وحاول مرة أخرى.',
+    'updateOpeningInstaller': 'جاري فتح المثبت… إذا لم يحدث شيء، اسمح بالتثبيت من هذا المصدر في الإعدادات.',
+    'updateRequiredTitle': 'يلزم التحديث',
+    'updateRequiredBody': 'إصدار التطبيق لم يعد مدعوماً. يرجى تنزيل وتثبيت أحدث إصدار.',
+    'updateVersionCurrent': 'الحالي: {version} (بناء {code})',
+    'updateVersionNew': 'الجديد: {version} (بناء {code})',
+    'updateDownloadingPercent': 'جاري التنزيل… {percent}٪',
     'notificationReminderTitle': 'تذكير موعد',
     'notificationReminderBody': 'جلسة في {date} الساعة {time}',
     'notificationAppointmentConfirmed': 'تم تأكيد الموعد',

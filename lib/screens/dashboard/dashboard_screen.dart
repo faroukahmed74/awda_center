@@ -15,6 +15,7 @@ import '../../providers/data_cache_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../router/app_router.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/android_update_flow.dart';
 import '../../widgets/live_date_time_banner.dart';
 import '../../widgets/main_app_bar_actions.dart';
 import '../../widgets/notifications_button.dart';
@@ -31,6 +32,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int? _todayAppointmentsCount;
   String? _lastSyncedLocaleCode;
   String? _lastSyncedUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(runAndroidUpdateCheck(context, userInitiated: false));
+    });
+  }
 
   void _closeDrawerIfOpen() {
     final scaffold = Scaffold.maybeOf(context);
@@ -844,7 +854,7 @@ class _DashboardAppointmentsSectionState
                       value: null,
                       child: Text(l10n.filterAll),
                     ),
-                    ...cache.doctors.map(
+                    ...cache.activeDoctors.map(
                       (d) => DropdownMenuItem<String?>(
                         value: d.id,
                         child: Text(

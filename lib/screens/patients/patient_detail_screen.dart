@@ -466,7 +466,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                                           return AppointmentFormDialog(
                                             currentUserId: currentUserId,
                                             patients: cache.patients,
-                                            doctors: cache.doctors,
+                                            doctors: cache.activeDoctors,
                                             rooms: cache.rooms,
                                             services: cache.services,
                                             packages: _packages,
