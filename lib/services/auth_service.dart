@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
+import '../core/google_sign_in_config.dart';
 import '../models/user_model.dart';
 import 'firebase_callable_http.dart';
 import 'firestore_service.dart';
@@ -9,7 +10,10 @@ import 'firestore_service.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: const ['email', 'profile'],
+    serverClientId: googleSignInServerClientId,
+  );
 
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -68,6 +72,12 @@ class AuthService {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
       final googleAuth = await googleUser.authentication;
+      if (googleAuth.idToken == null) {
+        throw FirebaseAuthException(
+          code: 'invalid-credential',
+          message: 'Google Sign-In did not return an ID token. Check serverClientId (Web OAuth client) in Firebase.',
+        );
+      }
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,

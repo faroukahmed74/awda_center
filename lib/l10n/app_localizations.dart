@@ -792,6 +792,8 @@ class AppLocalizations {
     'authErrorTooManyRequests': 'Too many attempts. Please try again later.',
     'authErrorNetwork': 'Connection error. Check your internet and try again.',
     'authErrorTryAgain': 'Something went wrong. Please try again.',
+    'authErrorGoogleSignInConfiguration':
+        'Google sign-in failed for this app build. In Firebase Console → Project settings → Your apps → Android, add this computer\'s SHA-1 fingerprint (debug and release), then download a fresh google-services.json if needed.',
     'authErrorNoAccountWithEmail': 'No account found with this email.',
     'errorPermissionDenied': 'You don\'t have permission to perform this action. Please contact your administrator.',
     'errorNetwork': 'Connection error. Please check your internet and try again.',
@@ -1182,6 +1184,8 @@ class AppLocalizations {
     'authErrorTooManyRequests': 'محاولات كثيرة. حاول لاحقاً.',
     'authErrorNetwork': 'خطأ في الاتصال. تحقق من الإنترنت وحاول مرة أخرى.',
     'authErrorTryAgain': 'حدث خطأ. حاول مرة أخرى.',
+    'authErrorGoogleSignInConfiguration':
+        'فشل تسجيل الدخول بـ Google لهذا الإصدار. في إعدادات Firebase للمشروع → تطبيق Android أضف بصمة SHA-1 (للتطوير والإصدار) ثم حمّل google-services.json المحدث إن لزم.',
     'authErrorNoAccountWithEmail': 'لا يوجد حساب بهذا البريد الإلكتروني.',
     'errorPermissionDenied': 'ليس لديك صلاحية لتنفيذ هذا الإجراء. يرجى التواصل مع المسؤول.',
     'errorNetwork': 'خطأ في الاتصال. تحقق من الإنترنت وحاول مرة أخرى.',
