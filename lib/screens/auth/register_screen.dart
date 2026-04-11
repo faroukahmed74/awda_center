@@ -19,6 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _fullNameArController = TextEditingController();
   final _fullNameEnController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _phone2Controller = TextEditingController();
   bool _obscurePassword = true;
 
   @override
@@ -28,6 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _fullNameArController.dispose();
     _fullNameEnController.dispose();
     _phoneController.dispose();
+    _phone2Controller.dispose();
     super.dispose();
   }
 
@@ -39,6 +41,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           fullNameAr: _fullNameArController.text.trim().isEmpty ? null : _fullNameArController.text.trim(),
           fullNameEn: _fullNameEnController.text.trim().isEmpty ? null : _fullNameEnController.text.trim(),
           phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+          phone2: _phone2Controller.text.trim().isEmpty ? null : _phone2Controller.text.trim(),
         );
     if (ok && mounted) context.go('/dashboard');
   }
@@ -144,6 +147,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         labelText: l10n.phone,
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _phone2Controller,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: '${l10n.secondaryPhone} (${l10n.optional})',
                         prefixIcon: const Icon(Icons.phone_outlined),
                       ),
                     ),

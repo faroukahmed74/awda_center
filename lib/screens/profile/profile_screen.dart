@@ -175,6 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (user.fullNameEn != null && user.fullNameEn!.isNotEmpty) Text('${l10n.fullNameEn}: ${user.fullNameEn}', style: Theme.of(context).textTheme.bodyMedium),
                       Text('${l10n.email}: ${user.email}', style: Theme.of(context).textTheme.bodyMedium),
                       if (user.phone != null && user.phone!.isNotEmpty) Text('${l10n.phone}: ${user.phone}', style: Theme.of(context).textTheme.bodyMedium),
+                      if (user.phone2 != null && user.phone2!.isNotEmpty) Text('${l10n.secondaryPhone}: ${user.phone2}', style: Theme.of(context).textTheme.bodyMedium),
                       Text('${l10n.role}: ${user.roles.map((r) => l10n.roleDisplay(r)).join(", ")}', style: Theme.of(context).textTheme.bodySmall),
                       Text(user.isActive ? l10n.active : l10n.inactive, style: Theme.of(context).textTheme.bodySmall),
                       if (canChangePassword) ...[

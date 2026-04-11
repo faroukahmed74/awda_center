@@ -10,8 +10,8 @@
 /// JSON shape:
 /// ```json
 /// {
-///   "versionName": "1.0.21",
-///   "versionCode": 2,
+///   "versionName": "1.0.22",
+///   "versionCode": 3,
 ///   "apkUrl": "https://www.dropbox.com/s/xxxx/app-release.apk?dl=1",
 ///   "releaseNotes": "Optional notes",
 ///   "minSupportedVersionCode": 1

@@ -56,7 +56,8 @@ class _PatientsScreenState extends State<PatientsScreen> {
             final name = u.displayName.toLowerCase();
             final email = u.email.toLowerCase();
             final phone = (u.phone ?? '').toLowerCase();
-            return name.contains(q) || email.contains(q) || phone.contains(q);
+            final phone2 = (u.phone2 ?? '').toLowerCase();
+            return name.contains(q) || email.contains(q) || phone.contains(q) || phone2.contains(q);
           }).toList();
 
     final showLoading = cache.usersLoading && cache.patients.isEmpty;

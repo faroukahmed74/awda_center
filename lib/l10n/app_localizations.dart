@@ -44,6 +44,8 @@ class AppLocalizations {
   String get fullNameAr => _map['fullNameAr']!;
   String get fullNameEn => _map['fullNameEn']!;
   String get phone => _map['phone']!;
+  /// Secondary / alternate phone (optional field stored as `phone2` in Firestore).
+  String get secondaryPhone => _map['secondaryPhone']!;
   String get dashboard => _map['dashboard']!;
   String get users => _map['users']!;
   String get appointments => _map['appointments']!;
@@ -435,6 +437,7 @@ class AppLocalizations {
     'fullNameAr': 'Full name (Arabic)',
     'fullNameEn': 'Full name (English)',
     'phone': 'Phone',
+    'secondaryPhone': 'Secondary phone',
     'dashboard': 'Dashboard',
     'users': 'Users',
     'appointments': 'Appointments',
@@ -828,6 +831,7 @@ class AppLocalizations {
     'fullNameAr': 'الاسم الكامل (عربي)',
     'fullNameEn': 'الاسم الكامل (إنجليزي)',
     'phone': 'الهاتف',
+    'secondaryPhone': 'هاتف ثانوي',
     'dashboard': 'لوحة التحكم',
     'users': 'المستخدمون',
     'appointments': 'المواعيد',

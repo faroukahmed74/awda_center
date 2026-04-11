@@ -259,10 +259,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   Future<void> _exportUsers(AppLocalizations l10n, [Rect? sharePositionOrigin]) async {
     final users = await _firestore.getUsers();
     final sb = StringBuffer();
-    sb.writeln('Id,Email,FullNameAr,FullNameEn,Phone,Roles,Active');
+    sb.writeln('Id,Email,FullNameAr,FullNameEn,Phone,Phone2,Roles,Active');
     for (final u in users) {
       sb.writeln(
-        '${u.id},${u.email},${u.fullNameAr ?? ''},${u.fullNameEn ?? ''},${u.phone ?? ''},${u.roles.join(";")},${u.isActive}',
+        '${u.id},${u.email},${u.fullNameAr ?? ''},${u.fullNameEn ?? ''},${u.phone ?? ''},${u.phone2 ?? ''},${u.roles.join(";")},${u.isActive}',
       );
     }
     await Share.share(sb.toString(), subject: l10n.exportUsers, sharePositionOrigin: sharePositionOrigin);
@@ -1042,8 +1042,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       0: const pw.FlexColumnWidth(2),
                       1: const pw.FlexColumnWidth(2),
                       2: const pw.FlexColumnWidth(2),
-                      3: const pw.FlexColumnWidth(1.6),
-                      4: const pw.FlexColumnWidth(1.2),
+                      3: const pw.FlexColumnWidth(1.4),
+                      4: const pw.FlexColumnWidth(1.4),
+                      5: const pw.FlexColumnWidth(1.2),
                     },
                     children: [
                       if (start == 0)
@@ -1054,6 +1055,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                             pdfHeaderCell(l10n.fullNameEn, bg: headerBg, textColor: headerText),
                             pdfHeaderCell(l10n.email, bg: headerBg, textColor: headerText),
                             pdfHeaderCell(l10n.phone, bg: headerBg, textColor: headerText),
+                            pdfHeaderCell(l10n.secondaryPhone, bg: headerBg, textColor: headerText),
                             pdfHeaderCell(l10n.role, bg: headerBg, textColor: headerText),
                           ],
                         ),
@@ -1066,6 +1068,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                             pdfCell(u.fullNameEn ?? '', alternate: alt, textDirection: pw.TextDirection.ltr),
                             pdfCell(u.email, alternate: alt, textDirection: pw.TextDirection.ltr),
                             pdfCell(u.phone ?? '', alternate: alt, textDirection: pw.TextDirection.ltr),
+                            pdfCell(u.phone2 ?? '', alternate: alt, textDirection: pw.TextDirection.ltr),
                             pdfCell(u.roles.join(', '), alternate: alt, textDirection: pw.TextDirection.ltr),
                           ],
                         );
@@ -1163,6 +1166,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         TextCellValue(l10n.fullNameEn),
         TextCellValue(l10n.email),
         TextCellValue(l10n.phone),
+        TextCellValue(l10n.secondaryPhone),
         TextCellValue(l10n.role),
       ]);
       for (final u in _users) {
@@ -1171,6 +1175,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           TextCellValue(u.fullNameEn ?? ''),
           TextCellValue(u.email),
           TextCellValue(u.phone ?? ''),
+          TextCellValue(u.phone2 ?? ''),
           TextCellValue(u.roles.join(', ')),
         ]);
       }

@@ -270,6 +270,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         Text(_user!.displayName, style: theme.titleSmall),
         if (_user!.email.isNotEmpty) Text(_user!.email, style: theme.bodySmall),
         if (_user!.phone != null && _user!.phone!.isNotEmpty) Text(_user!.phone!, style: theme.bodySmall),
+        if (_user!.phone2 != null && _user!.phone2!.isNotEmpty) Text(_user!.phone2!, style: theme.bodySmall),
         if (_profile != null) ...[
           if (_profile!.dateOfBirth != null) ...[
             Text(

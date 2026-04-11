@@ -22,6 +22,7 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
   late TextEditingController _nameArController;
   late TextEditingController _nameEnController;
   late TextEditingController _phoneController;
+  late TextEditingController _phone2Controller;
   late bool _isActive;
   late bool _isStarred;
   bool _loading = false;
@@ -34,6 +35,7 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
     _nameArController = TextEditingController(text: widget.user.fullNameAr ?? '');
     _nameEnController = TextEditingController(text: widget.user.fullNameEn ?? '');
     _phoneController = TextEditingController(text: widget.user.phone ?? '');
+    _phone2Controller = TextEditingController(text: widget.user.phone2 ?? '');
     _isActive = widget.user.isActive;
     _isStarred = widget.user.isStarred;
   }
@@ -43,6 +45,7 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
     _nameArController.dispose();
     _nameEnController.dispose();
     _phoneController.dispose();
+    _phone2Controller.dispose();
     super.dispose();
   }
 
@@ -72,6 +75,7 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
       fullNameAr: _nameArController.text.trim().isEmpty ? null : _nameArController.text.trim(),
       fullNameEn: _nameEnController.text.trim().isEmpty ? null : _nameEnController.text.trim(),
       phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+      phone2: _phone2Controller.text.trim().isEmpty ? null : _phone2Controller.text.trim(),
     );
     await auth.updateUserRoles(uid, _roles);
     await auth.updateUserPermissions(uid, _permissions);
@@ -122,6 +126,12 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
             TextField(
               controller: _phoneController,
               decoration: InputDecoration(labelText: l10n.phone),
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _phone2Controller,
+              decoration: InputDecoration(labelText: '${l10n.secondaryPhone} (${l10n.optional})'),
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 12),

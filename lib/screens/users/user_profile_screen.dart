@@ -167,6 +167,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 Text('${l10n.email}: ${_user!.email}', style: Theme.of(context).textTheme.bodyMedium),
                                 if (_user!.phone != null && _user!.phone!.isNotEmpty)
                                   Text('${l10n.phone}: ${_user!.phone}', style: Theme.of(context).textTheme.bodyMedium),
+                                if (_user!.phone2 != null && _user!.phone2!.isNotEmpty)
+                                  Text('${l10n.secondaryPhone}: ${_user!.phone2}', style: Theme.of(context).textTheme.bodyMedium),
                                 Text('${l10n.role}: ${_user!.roles.map((r) => l10n.roleDisplay(r)).join(", ")}', style: Theme.of(context).textTheme.bodySmall),
                                 Text(_user!.isActive ? l10n.active : l10n.inactive, style: Theme.of(context).textTheme.bodySmall),
                               ],

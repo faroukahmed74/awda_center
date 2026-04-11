@@ -106,7 +106,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
       final name = p.displayName.toLowerCase();
       final email = p.email.toLowerCase();
       final phone = (p.phone ?? '').toLowerCase();
-      return name.contains(q) || email.contains(q) || phone.contains(q);
+      final phone2 = (p.phone2 ?? '').toLowerCase();
+      return name.contains(q) || email.contains(q) || phone.contains(q) || phone2.contains(q);
     }).toList();
   }
 
@@ -340,7 +341,13 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                   items: [
                     const DropdownMenuItem(value: null, child: Text('—')),
                     ...list.map((p) {
-                      final subtitle = (p.phone != null && p.phone!.isNotEmpty) ? ' • ${p.phone}' : '';
+                      final subtitle = () {
+                        final parts = <String>[];
+                        if (p.phone != null && p.phone!.isNotEmpty) parts.add(p.phone!);
+                        if (p.phone2 != null && p.phone2!.isNotEmpty) parts.add(p.phone2!);
+                        if (parts.isEmpty) return '';
+                        return ' • ${parts.join(' · ')}';
+                      }();
                       return DropdownMenuItem(value: p.id, child: Text('${p.displayName}$subtitle'));
                     }),
                   ],

@@ -139,6 +139,7 @@ class AuthProvider with ChangeNotifier {
     String? fullNameAr,
     String? fullNameEn,
     String? phone,
+    String? phone2,
   }) async {
     _loading = true;
     _error = null;
@@ -150,6 +151,7 @@ class AuthProvider with ChangeNotifier {
         fullNameAr: fullNameAr,
         fullNameEn: fullNameEn,
         phone: phone,
+        phone2: phone2,
       );
       _currentUser = user;
     } catch (e, st) {
@@ -193,13 +195,14 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateUserProfile(String uid, {String? fullNameAr, String? fullNameEn, String? phone}) async {
-    await _authService.updateUserProfile(uid, fullNameAr: fullNameAr, fullNameEn: fullNameEn, phone: phone);
-    if (_currentUser?.id == uid && (fullNameAr != null || fullNameEn != null || phone != null)) {
+  Future<void> updateUserProfile(String uid, {String? fullNameAr, String? fullNameEn, String? phone, String? phone2}) async {
+    await _authService.updateUserProfile(uid, fullNameAr: fullNameAr, fullNameEn: fullNameEn, phone: phone, phone2: phone2);
+    if (_currentUser?.id == uid && (fullNameAr != null || fullNameEn != null || phone != null || phone2 != null)) {
       _currentUser = _currentUser!.copyWith(
         fullNameAr: fullNameAr ?? _currentUser!.fullNameAr,
         fullNameEn: fullNameEn ?? _currentUser!.fullNameEn,
         phone: phone ?? _currentUser!.phone,
+        phone2: phone2 ?? _currentUser!.phone2,
       );
       notifyListeners();
     }

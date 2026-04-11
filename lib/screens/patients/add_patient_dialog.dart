@@ -25,6 +25,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
   final _fullNameArController = TextEditingController();
   final _fullNameEnController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _phone2Controller = TextEditingController();
   final _ageController = TextEditingController();
   DateTime? _dateOfBirth;
   /// Empty string = not selected (avoid nullable [DropdownMenuItem] values — can crash on some devices).
@@ -40,6 +41,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
     _fullNameArController.dispose();
     _fullNameEnController.dispose();
     _phoneController.dispose();
+    _phone2Controller.dispose();
     _ageController.dispose();
     super.dispose();
   }
@@ -66,6 +68,7 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
         fullNameAr: nameAr.isEmpty ? null : nameAr,
         fullNameEn: nameEn.isEmpty ? null : nameEn,
         phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+        phone2: _phone2Controller.text.trim().isEmpty ? null : _phone2Controller.text.trim(),
         email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
         password: _passwordController.text.isEmpty ? null : _passwordController.text,
         dateOfBirth: _dateOfBirth != null ? toIsoDateString(_dateOfBirth!) : null,
@@ -231,6 +234,16 @@ class _AddPatientDialogState extends State<AddPatientDialog> {
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: l10n.phone,
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phone2Controller,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: '${l10n.secondaryPhone} (${l10n.optional})',
                   prefixIcon: const Icon(Icons.phone_outlined),
                   border: const OutlineInputBorder(),
                 ),

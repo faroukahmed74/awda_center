@@ -239,6 +239,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                               Text(user?.displayName ?? '', style: Theme.of(context).textTheme.titleLarge),
                               if (user?.email != null) Text(user!.email, style: Theme.of(context).textTheme.bodyMedium),
                               if (user?.phone != null && user!.phone!.isNotEmpty) Text(user.phone!, style: Theme.of(context).textTheme.bodyMedium),
+                              if (user?.phone2 != null && user!.phone2!.isNotEmpty) Text(user.phone2!, style: Theme.of(context).textTheme.bodyMedium),
                               if (_profile!.dateOfBirth != null) Text('${l10n.date}: ${_profile!.dateOfBirth}', style: Theme.of(context).textTheme.bodySmall),
                               if (_profile!.dateOfBirth == null && _profile!.age != null) Text('${l10n.age}: ${_profile!.age} ${l10n.yearsOld}', style: Theme.of(context).textTheme.bodySmall),
                               if (_profile!.gender != null && _profile!.gender!.isNotEmpty) Text('${l10n.gender}: ${_profile!.gender}', style: Theme.of(context).textTheme.bodySmall),

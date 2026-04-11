@@ -359,6 +359,12 @@ Future<List<int>> buildPatientReportPdf({
                           fontSize: 10,
                           textDirection: pw.TextDirection.ltr,
                         ),
+                      if (user.phone2 != null && user.phone2!.isNotEmpty)
+                        plainText(
+                          user.phone2!,
+                          fontSize: 10,
+                          textDirection: pw.TextDirection.ltr,
+                        ),
                     ],
                   ),
 

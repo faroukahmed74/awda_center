@@ -664,7 +664,8 @@ class _DashboardAppointmentsSectionState
         if (patient == null) return true;
         return patient.displayName.toLowerCase().contains(q) ||
             patient.email.toLowerCase().contains(q) ||
-            (patient.phone ?? '').toLowerCase().contains(q);
+            (patient.phone ?? '').toLowerCase().contains(q) ||
+            (patient.phone2 ?? '').toLowerCase().contains(q);
       }).toList();
     }
     // Sort by calendar date (newest first), then within same day by start time 00:00 -> 23:59.

@@ -24,6 +24,8 @@ class UserModel {
   final String? fullNameAr;
   final String? fullNameEn;
   final String? phone;
+  /// Optional second phone (same storage pattern as [phone]).
+  final String? phone2;
   /// Multiple roles: e.g. ['admin', 'doctor']. Default new user: ['patient'].
   final List<String> roles;
   /// Optional: admin-set privileges. If non-empty, access uses these instead of role defaults.
@@ -42,6 +44,7 @@ class UserModel {
     this.fullNameAr,
     this.fullNameEn,
     this.phone,
+    this.phone2,
     this.roles = const ['patient'],
     this.permissions = const [],
     this.isActive = true,
@@ -109,6 +112,7 @@ class UserModel {
       fullNameAr: d['fullNameAr'] as String?,
       fullNameEn: d['fullNameEn'] as String?,
       phone: d['phone'] as String?,
+      phone2: d['phone2'] as String?,
       roles: rolesList,
       permissions: permList,
       isActive: d['isActive'] as bool? ?? true,
@@ -125,6 +129,7 @@ class UserModel {
       'fullNameAr': fullNameAr,
       'fullNameEn': fullNameEn,
       'phone': phone,
+      'phone2': phone2,
       'roles': roles,
       'permissions': permissions,
       'isActive': isActive,
@@ -138,6 +143,7 @@ class UserModel {
     String? fullNameAr,
     String? fullNameEn,
     String? phone,
+    String? phone2,
     List<String>? roles,
     List<String>? permissions,
     bool? isActive,
@@ -149,6 +155,7 @@ class UserModel {
       fullNameAr: fullNameAr ?? this.fullNameAr,
       fullNameEn: fullNameEn ?? this.fullNameEn,
       phone: phone ?? this.phone,
+      phone2: phone2 ?? this.phone2,
       roles: roles ?? this.roles,
       permissions: permissions ?? this.permissions,
       isActive: isActive ?? this.isActive,

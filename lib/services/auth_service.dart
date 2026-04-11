@@ -111,6 +111,7 @@ class AuthService {
     String? fullNameAr,
     String? fullNameEn,
     String? phone,
+    String? phone2,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
     final user = cred.user;
@@ -130,6 +131,7 @@ class AuthService {
       fullNameAr: fullNameAr ?? invite?['fullNameAr'] as String?,
       fullNameEn: fullNameEn ?? invite?['fullNameEn'] as String?,
       phone: phone ?? invite?['phone'] as String?,
+      phone2: phone2 ?? invite?['phone2'] as String?,
       roles: roles,
       isActive: true,
       createdAt: DateTime.now(),
@@ -209,11 +211,12 @@ class AuthService {
   }
 
   /// Admin: update user profile fields (name, phone). Roles/permissions/active have dedicated methods.
-  Future<void> updateUserProfile(String uid, {String? fullNameAr, String? fullNameEn, String? phone}) async {
+  Future<void> updateUserProfile(String uid, {String? fullNameAr, String? fullNameEn, String? phone, String? phone2}) async {
     final data = <String, dynamic>{'updatedAt': FieldValue.serverTimestamp()};
     if (fullNameAr != null) data['fullNameAr'] = fullNameAr;
     if (fullNameEn != null) data['fullNameEn'] = fullNameEn;
     if (phone != null) data['phone'] = phone;
+    if (phone2 != null) data['phone2'] = phone2;
     if (data.length <= 1) return;
     await _firestore.collection('users').doc(uid).update(data);
   }
