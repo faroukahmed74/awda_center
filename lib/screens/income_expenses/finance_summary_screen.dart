@@ -223,8 +223,10 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         final bonus = (income - _target) > 0 ? (income - _target) : 0.0;
         final rate = _commissionRateForIncome(income);
         final percentVal = bonus * rate;
-        final consumables = _overridesConsumables[d.id] ?? consumablesByDoctor[d.id] ?? 0;
-        final media = _overridesMedia[d.id] ?? mediaByDoctor[d.id] ?? 0;
+        final fromCons = consumablesByDoctor[d.id] ?? 0;
+        final fromMed = mediaByDoctor[d.id] ?? 0;
+        final consumables = _mergeExpenseOverride(_overridesConsumables, d.id, fromCons);
+        final media = _mergeExpenseOverride(_overridesMedia, d.id, fromMed);
         rows.add(_DoctorRow(
           doctorId: d.id,
           doctorName: cache.doctorDisplayNameEn(d.id) ?? d.displayName ?? d.id,
@@ -272,6 +274,20 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         }
       }
     }
+  }
+
+  /// Saved config may store `0` for consumables/media (e.g. after Save when expenses
+  /// were not loaded yet). A stored `0` must not beat positive totals from expenses
+  /// (`??` treats `0` as a real value). Manual non‑zero overrides still win.
+  double _mergeExpenseOverride(
+    Map<String, double> overrides,
+    String doctorId,
+    double fromExpenses,
+  ) {
+    if (!overrides.containsKey(doctorId)) return fromExpenses;
+    final o = overrides[doctorId] ?? 0;
+    if (o == 0 && fromExpenses > 0) return fromExpenses;
+    return o;
   }
 
   (DateTime, DateTime) _getMonthRange() {
@@ -357,8 +373,10 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       final bonus = (income - _target) > 0 ? (income - _target) : 0.0;
       final rate = _commissionRateForIncome(income);
       final percentVal = bonus * rate;
-      final consumables = _overridesConsumables[d.id] ?? consumablesByDoctor[d.id] ?? 0;
-      final media = _overridesMedia[d.id] ?? mediaByDoctor[d.id] ?? 0;
+      final fromCons = consumablesByDoctor[d.id] ?? 0;
+      final fromMed = mediaByDoctor[d.id] ?? 0;
+      final consumables = _mergeExpenseOverride(_overridesConsumables, d.id, fromCons);
+      final media = _mergeExpenseOverride(_overridesMedia, d.id, fromMed);
       rows.add(_DoctorRow(
         doctorId: d.id,
         doctorName: cache.doctorDisplayNameEn(d.id) ?? d.displayName ?? d.id,
