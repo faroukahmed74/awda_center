@@ -202,9 +202,10 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
           consumablesByDoctor[id] = (consumablesByDoctor[id] ?? 0) + r.amount;
         }
       }
-      if (rentTotal > 0 && _rentGuard == 0) _rentGuard = rentTotal;
-      if (salaryTotal > 0 && _receptionist == 0) _receptionist = salaryTotal;
-
+      // Always keep these two cells synced to expenses for the selected period.
+      _rentGuard = rentTotal;
+      _receptionist = salaryTotal;
+ 
       _overridesConsumables = config['consumablesByDoctor'] is Map
           ? Map<String, double>.from(
               (config['consumablesByDoctor'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble())))
@@ -356,15 +357,24 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     }
     final consumablesByDoctor = <String, double>{};
     final mediaByDoctor = <String, double>{};
+    double rentTotal = 0;
+    double salaryTotal = 0;
     for (final r in expenseList) {
       final cat = (r.category).toLowerCase().trim();
       final id = r.paidByDoctorId ?? '';
-      if (cat == 'media') {
+      if (cat == 'rent') {
+        rentTotal += r.amount;
+      } else if (cat == 'salary') {
+        salaryTotal += r.amount;
+      } else if (cat == 'media') {
         mediaByDoctor[id] = (mediaByDoctor[id] ?? 0) + r.amount;
       } else if (cat == 'supplies' || cat == 'other' || cat == 'consumables') {
         consumablesByDoctor[id] = (consumablesByDoctor[id] ?? 0) + r.amount;
       }
     }
+    // Always keep these two cells synced to expenses for the selected period.
+    _rentGuard = rentTotal;
+    _receptionist = salaryTotal;
     final rows = <_DoctorRow>[];
     for (final d in doctors) {
       final income = incomeByDoctor[d.id] ?? 0;

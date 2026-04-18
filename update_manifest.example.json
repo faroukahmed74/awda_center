@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.22",
-  "versionCode": 3,
+  "versionName": "1.0.23",
+  "versionCode": 4,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.22: Optional secondary phone number (phone2) on register and add patient, saved like primary phone; edit in Profile and user settings; shown on profiles and patient detail; included in search, appointment patient picker, and user exports (CSV/PDF/Excel). Web reload helper and audit/appointment fixes.",
+  "releaseNotes": "1.0.23: Finance Summary sync improvements. Salary expenses now auto-sync to Receptionist and rent expenses auto-sync to Rent+Guard in live updates, with manual override support when edited in summary.",
   "minSupportedVersionCode": 1
 }
