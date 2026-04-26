@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.23",
-  "versionCode": 4,
+  "versionName": "1.0.25",
+  "versionCode": 6,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.23: Finance Summary sync improvements. Salary expenses now auto-sync to Receptionist and rent expenses auto-sync to Rent+Guard in live updates, with manual override support when edited in summary.",
+  "releaseNotes": "1.0.25: Appointments now block duplicate bookings for the same patient on the same day with a clear inline message (EN/AR). Finance Summary commission brackets fixed: doctor % column matches the commission table with sorted income ranges, legacy thousands-based min/max normalized to real income amounts, and sensible fallbacks for incomes below the first slice or in gaps. Web release 1.0.25 (6).",
   "minSupportedVersionCode": 1
 }

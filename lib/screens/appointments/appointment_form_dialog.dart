@@ -183,6 +183,19 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     final dayEnd = dayStart.add(const Duration(days: 1));
     final range = await fs.getAppointments(from: dayStart, to: dayEnd);
 
+    // Patient duplicate booking: same patient, same day. Cancelled/no-show/apologized do not block.
+    final samePatientSameDay = range.any((a) =>
+        a.patientId == _patientId &&
+        a.status.occupiesSlot &&
+        a.id != (widget.existing?.id ?? ''));
+    if (samePatientSameDay && mounted) {
+      setState(() {
+        _saving = false;
+        _errorMessage = AppLocalizations.of(context).patientAlreadyHasAppointmentSameDay;
+      });
+      return;
+    }
+
     // Room conflict: same date, same room, overlapping time. Absent/apologized do not block.
     if (_roomId != null && _roomId!.trim().isNotEmpty) {
       final sameRoom = range

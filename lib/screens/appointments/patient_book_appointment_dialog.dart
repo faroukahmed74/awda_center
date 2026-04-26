@@ -102,6 +102,17 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
     final dayStart = DateTime(_date.year, _date.month, _date.day);
     final dayEnd = dayStart.add(const Duration(days: 1));
     try {
+      // Block duplicate booking for the same patient on the same day.
+      final patientDay = await _firestore.getAppointments(patientId: widget.patientId, from: dayStart, to: dayEnd);
+      final patientHasSameDay = patientDay.any((a) => a.status.occupiesSlot);
+      if (patientHasSameDay && mounted) {
+        setState(() {
+          _saving = false;
+          _errorMessage = AppLocalizations.of(context).patientAlreadyHasAppointmentSameDay;
+        });
+        return;
+      }
+
       final existing = await _firestore.getAppointments(doctorId: _doctorId, from: dayStart, to: dayEnd);
       final conflicting = existing
           .where((a) => a.status.occupiesSlot)

@@ -162,7 +162,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       }
       final sl = config['commissionSlices'];
       if (sl is List && sl.isNotEmpty) {
-        _slices = sl.map<({double min, double? max, double percent, double rate})>((s) {
+        final parsed = sl.map<({double min, double? max, double percent, double rate})>((s) {
           final m = s is Map ? s : {};
           final pct = (m['percent'] as num?)?.toDouble() ?? 0;
           final storedRate = (m['rate'] as num?)?.toDouble();
@@ -176,6 +176,7 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
             rate: rate,
           );
         }).toList();
+        _slices = _normalizeCommissionSlicesFromFirestore(parsed);
       }
 
       final incomeByDoctor = <String, double>{};
@@ -439,21 +440,59 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     }
   }
 
+  /// Older configs stored [min]/[max] in "thousands" (e.g. 10 = 10k) while income is full currency.
+  /// The UI always saves full amounts; normalize so [_commissionRateForIncome] matches the table.
+  List<({double min, double? max, double percent, double rate})> _normalizeCommissionSlicesFromFirestore(
+    List<({double min, double? max, double percent, double rate})> slices,
+  ) {
+    if (slices.isEmpty) return slices;
+    final looksLikeThousands = slices.every(
+      (s) => s.min < 1000 && (s.max == null || s.max! < 1000),
+    );
+    if (!looksLikeThousands) return slices;
+    return [
+      for (final s in slices)
+        (
+          min: s.min * 1000,
+          max: s.max == null ? null : s.max! * 1000,
+          percent: s.percent,
+          rate: s.rate,
+        ),
+    ];
+  }
+
+  double _rateFromSlice(({double min, double? max, double percent, double rate}) s) {
+    if (s.percent > 0) return s.percent / 100.0;
+    return s.rate;
+  }
+
   /// Multiplier for bonus: Commission % / 100 (same as Rate). Legacy: if percent is 0, use [rate] only.
+  /// Slices are matched in ascending [min] order; income below the first bracket uses the first row;
+  /// gaps / values above a closed top bracket use the highest bracket whose [min] is still <= income.
   double _commissionRateForIncome(double income) {
-    for (final s in _slices) {
+    if (_slices.isEmpty) return 0.25;
+    final sorted = List<({double min, double? max, double percent, double rate})>.from(_slices)
+      ..sort((a, b) => a.min.compareTo(b.min));
+
+    for (final s in sorted) {
       if (income < s.min) continue;
       if (s.max == null || income <= s.max!) {
-        if (s.percent > 0) return s.percent / 100.0;
-        return s.rate;
+        return _rateFromSlice(s);
       }
     }
-    if (_slices.isNotEmpty) {
-      final last = _slices.last;
-      if (last.percent > 0) return last.percent / 100.0;
-      return last.rate;
+
+    if (income < sorted.first.min) {
+      return _rateFromSlice(sorted.first);
     }
-    return 0.25;
+
+    for (var i = sorted.length - 1; i >= 0; i--) {
+      final s = sorted[i];
+      if (income >= s.min) {
+        return _rateFromSlice(s);
+      }
+    }
+
+    return _rateFromSlice(sorted.last);
   }
 
   /// Sort rows by _doctorOrder; update _doctorOrder to current order for saving.

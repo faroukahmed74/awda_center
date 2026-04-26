@@ -147,6 +147,7 @@ class AppLocalizations {
   String get slotFull => _map['slotFull']!;
   String get roomTimeConflict => _map['roomTimeConflict']!;
   String get doctorTimeConflict => _map['doctorTimeConflict']!;
+  String get patientAlreadyHasAppointmentSameDay => _map['patientAlreadyHasAppointmentSameDay']!;
   String get updateStatus => _map['updateStatus']!;
   String get name => _map['name']!;
   String get service => _map['service']!;
@@ -540,6 +541,7 @@ class AppLocalizations {
     'slotFull': 'This time slot is full (max 3 sessions + 1 extra).',
     'roomTimeConflict': 'This room is already booked for an appointment in this time range.',
     'doctorTimeConflict': 'This doctor already has an appointment at the selected date and time. Please choose another time.',
+    'patientAlreadyHasAppointmentSameDay': 'This patient already has an appointment on the selected day. Duplicate bookings on the same day are not allowed.',
     'updateStatus': 'Update status',
     'name': 'Name',
     'service': 'Service',
@@ -934,6 +936,7 @@ class AppLocalizations {
     'slotFull': 'هذا الموعد ممتلئ (٣ جلسات + ١ إضافية).',
     'roomTimeConflict': 'هذه الغرفة محجوزة بالفعل لموعد في هذا التوقيت.',
     'doctorTimeConflict': 'هذا الطبيب لديه موعد بالفعل في التاريخ والوقت المحدد. يرجى اختيار وقت آخر.',
+    'patientAlreadyHasAppointmentSameDay': 'يوجد لهذا المريض موعد بالفعل في نفس اليوم. لا يمكن حجز أكثر من موعد للمريض في اليوم نفسه.',
     'updateStatus': 'تحديث الحالة',
     'name': 'الاسم',
     'service': 'الخدمة',
