@@ -374,6 +374,7 @@ class AppLocalizations {
   String get noSearchResults => _map['noSearchResults']!;
   String get patientCode => _map['patientCode']!;
   String get searchByPatientCodeHint => _map['searchByPatientCodeHint']!;
+  String get searchByDoctorOrPatientHint => _map['searchByDoctorOrPatientHint']!;
   String get assignPatientCode => _map['assignPatientCode']!;
   String get notifications => _map['notifications']!;
   String get noNotifications => _map['noNotifications']!;
@@ -576,6 +577,7 @@ class AppLocalizations {
     'searchAppointmentsHint': 'Search by patient, code, doctor or service',
     'searchUsersHint': 'Search by name, email, phone or patient code',
     'searchByPatientCodeHint': 'Search by name, email, phone or code',
+    'searchByDoctorOrPatientHint': 'Search by doctor or patient name',
     'patientCode': 'Patient code',
     'assignPatientCode': 'Assign patient code',
     'about': 'About',
@@ -971,6 +973,7 @@ class AppLocalizations {
     'searchAppointmentsHint': 'البحث بالمريض أو الرمز أو الطبيب أو الخدمة',
     'searchUsersHint': 'البحث بالاسم أو البريد أو الهاتف أو رمز المريض',
     'searchByPatientCodeHint': 'البحث بالاسم أو البريد أو الهاتف أو الرمز',
+    'searchByDoctorOrPatientHint': 'بحث باسم الطبيب أو المريض',
     'patientCode': 'رمز المريض',
     'assignPatientCode': 'تعيين رمز المريض',
     'about': 'نبذة',

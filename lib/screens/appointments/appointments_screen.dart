@@ -1993,8 +1993,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                                                     result
                                                                         .status,
                                                               );
+                                                              // Idempotent: re-completing the same appointment updates the
+                                                              // existing Session income row instead of inserting duplicates.
                                                               await _firestore
-                                                                  .addIncomeRecord(
+                                                                  .upsertSessionIncomeForAppointment(
+                                                                    a.id,
                                                                     income,
                                                                   );
                                                             }

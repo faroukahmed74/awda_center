@@ -30,6 +30,8 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   /// Package display name by ID so audit log shows package name instead of ID.
   Map<String, String> _packageNameById = {};
   bool _loading = true;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -40,7 +42,41 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   @override
   void dispose() {
     _auditSubscription?.cancel();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  /// Match an entry against the search query by resolved doctor/patient names
+  /// (with ID fallback) found either in [details] or as the entry's [entityId].
+  /// Empty query matches everything.
+  bool _matchesSearch(AuditLogModel e) {
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    bool contains(String? value) =>
+        value != null && value.isNotEmpty && value.toLowerCase().contains(q);
+
+    final details = e.details;
+    if (details != null) {
+      final pid = details['patientId'];
+      if (pid is String && pid.isNotEmpty) {
+        if (contains(_userNameById[pid]) || contains(pid)) return true;
+      }
+      final did = details['doctorId'];
+      if (did is String && did.isNotEmpty) {
+        if (contains(_doctorNameById[did]) || contains(did)) return true;
+      }
+    }
+
+    final entityId = e.entityId;
+    if (entityId != null && entityId.isNotEmpty) {
+      if (e.entityType == 'user' && contains(_userNameById[entityId])) {
+        return true;
+      }
+      if (e.entityType == 'doctor' && contains(_doctorNameById[entityId])) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void _subscribeToAuditLogs() {
@@ -247,34 +283,78 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _load,
-                child: _list.isEmpty
-                    ? Center(child: Text(l10n.noData))
-                    : ListView.builder(
-                        padding: responsiveListPadding(context),
-                        itemCount: _list.length,
-                        itemBuilder: (context, i) {
-                          final e = _list[i];
-                          final when = e.createdAt != null ? AppDateFormat.shortDateTimeSec.format(e.createdAt!) : '';
-                          final who = _userNameById[e.userId] ?? e.userEmail ?? e.userId;
-                          final what = _auditActionLabel(e, l10n);
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              title: Text(what, style: const TextStyle(fontWeight: FontWeight.w500)),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('${l10n.auditWho}: $who'),
-                                  Text('${l10n.auditWhen}: $when'),
-                                ],
+            : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: l10n.searchByDoctorOrPatientHint,
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _searchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
                               ),
-                              isThreeLine: true,
-                            ),
+                        isDense: true,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                    ),
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _load,
+                      child: Builder(
+                        builder: (context) {
+                          final filtered = _list.where(_matchesSearch).toList();
+                          if (filtered.isEmpty) {
+                            return ListView(
+                              padding: responsiveListPadding(context),
+                              children: [
+                                const SizedBox(height: 80),
+                                Center(
+                                  child: Text(_searchQuery.trim().isEmpty
+                                      ? l10n.noData
+                                      : l10n.noSearchResults),
+                                ),
+                              ],
+                            );
+                          }
+                          return ListView.builder(
+                            padding: responsiveListPadding(context),
+                            itemCount: filtered.length,
+                            itemBuilder: (context, i) {
+                              final e = filtered[i];
+                              final when = e.createdAt != null ? AppDateFormat.shortDateTimeSec.format(e.createdAt!) : '';
+                              final who = _userNameById[e.userId] ?? e.userEmail ?? e.userId;
+                              final what = _auditActionLabel(e, l10n);
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  title: Text(what, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('${l10n.auditWho}: $who'),
+                                      Text('${l10n.auditWhen}: $when'),
+                                    ],
+                                  ),
+                                  isThreeLine: true,
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
+                    ),
+                  ),
+                ],
               ),
       ),
     );

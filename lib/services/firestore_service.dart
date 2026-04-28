@@ -556,6 +556,61 @@ class FirestoreService {
     await _firestore.collection('income_records').doc(id).delete();
   }
 
+  /// All Session income records linked to [appointmentId] (most recent first).
+  /// Used to prevent duplicate Session income rows when an appointment is
+  /// re-marked as Completed and to dedupe any existing duplicates.
+  Future<List<IncomeRecordModel>> getSessionIncomeRecordsByAppointmentId(
+    String appointmentId,
+  ) async {
+    if (appointmentId.trim().isEmpty) return const [];
+    final snapshot = await _firestore
+        .collection('income_records')
+        .where('appointmentId', isEqualTo: appointmentId)
+        .get();
+    final list = snapshot.docs
+        .map((d) => IncomeRecordModel.fromFirestore(
+              d as DocumentSnapshot<Map<String, dynamic>>,
+            ))
+        .where((r) => r.source == 'Session')
+        .toList();
+    list.sort((a, b) {
+      final at = a.createdAt ?? a.incomeDate;
+      final bt = b.createdAt ?? b.incomeDate;
+      return bt.compareTo(at);
+    });
+    return list;
+  }
+
+  /// Upsert the Session income for [appointmentId]: update the most recent
+  /// existing row if one exists, otherwise add [record]. Prevents duplicates
+  /// when the same appointment is marked Completed more than once.
+  Future<void> upsertSessionIncomeForAppointment(
+    String appointmentId,
+    IncomeRecordModel record,
+  ) async {
+    final existing = await getSessionIncomeRecordsByAppointmentId(appointmentId);
+    if (existing.isEmpty) {
+      await addIncomeRecord(record);
+      return;
+    }
+    final keep = existing.first;
+    await updateIncomeRecord(keep.id, {
+      'amount': record.amount,
+      'currency': record.currency,
+      'source': record.source,
+      'doctorId': record.doctorId,
+      'patientId': record.patientId,
+      'notes': record.notes,
+      'incomeDate': Timestamp.fromDate(record.incomeDate),
+      if (record.sessionPaymentStatus != null)
+        'sessionPaymentStatus': record.sessionPaymentStatus,
+      'appointmentId': appointmentId,
+    });
+    for (var i = 1; i < existing.length; i++) {
+      await deleteIncomeRecord(existing[i].id);
+    }
+  }
+
   Future<void> addExpenseRecord(ExpenseRecordModel record) async {
     await _firestore.collection('expense_records').add(record.toFirestore());
   }

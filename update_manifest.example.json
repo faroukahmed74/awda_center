@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.25",
-  "versionCode": 6,
+  "versionName": "1.0.26",
+  "versionCode": 7,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.25: Appointments now block duplicate bookings for the same patient on the same day with a clear inline message (EN/AR). Finance Summary commission brackets fixed: doctor % column matches the commission table with sorted income ranges, legacy thousands-based min/max normalized to real income amounts, and sensible fallbacks for incomes below the first slice or in gaps. Web release 1.0.25 (6).",
+  "releaseNotes": "1.0.26: شريط بحث جديد في سجل التدقيق (Audit Log) للبحث باسم الطبيب أو المريض مع زر مسح سريع، ودعم كامل للعربية والإنجليزية. تحسين مالي مهم: عند إعادة وضع الحجز كـ \"مكتمل\" لن يتم إنشاء سجل دخل مكرر — يتم تحديث سجل الجلسة الحالي تلقائيًا (Idempotent) ويتم تنظيف أي تكرارات سابقة لنفس الموعد. الإصدار الإلكتروني 1.0.26 (7).",
   "minSupportedVersionCode": 1
 }
