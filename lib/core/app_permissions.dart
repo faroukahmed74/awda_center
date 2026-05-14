@@ -6,6 +6,7 @@ const List<String> kAllFeatureKeys = [
   'appointments_see_all', // When granted to a doctor: they see all appointments; otherwise only their own.
   'appointments_view_all', // View all appointments (list + schedule) with no create/edit/status change.
   'patients',
+  'patients_edit', // Allows editing patient profile (personal + medical) from patient detail screen.
   'income_expenses',
   'finance_summary',
   'reports',

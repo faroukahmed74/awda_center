@@ -80,6 +80,9 @@ class UserModel {
   bool get canAccessUsers => canAccessFeature('users');
   bool get canAccessAppointments => canAccessFeature('appointments');
   bool get canAccessPatients => canAccessFeature('patients');
+  /// True if the user can edit patient details (personal/medical) from the patient detail screen.
+  /// Admin has it by default; admin can grant it to any other role via the privileges dialog.
+  bool get canEditPatients => canAccessFeature('patients_edit');
   bool get canAccessIncomeExpenses => canAccessFeature('income_expenses');
   bool get canAccessFinanceSummary => canAccessFeature('finance_summary');
   bool get canAccessReports => canAccessFeature('reports');

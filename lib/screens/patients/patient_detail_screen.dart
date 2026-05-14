@@ -363,12 +363,13 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/patients'); }),
           actions: [
             ...MainAppBarActions.notificationsLanguageTheme(context),
-            if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true) ...[
+            if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
               IconButton(
                 icon: const Icon(Icons.picture_as_pdf_outlined),
                 tooltip: l10n.generateReport,
                 onPressed: () => _generateReport(l10n),
               ),
+            if (context.watch<AuthProvider>().currentUser?.canEditPatients == true)
               IconButton(
                 icon: const Icon(Icons.edit),
                 tooltip: l10n.editProfile,
@@ -380,7 +381,6 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                   if (ok == true && mounted) _load();
                 },
               ),
-            ],
             if (context.watch<AuthProvider>().currentUser?.canAccessAdminDashboard == true)
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert),

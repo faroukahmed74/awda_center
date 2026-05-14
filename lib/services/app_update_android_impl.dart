@@ -46,7 +46,8 @@ Future<AndroidUpdateCheckResult?> checkAndroidAppUpdate() async {
         remote: null,
       );
     }
-    final map = jsonDecode(res.body) as Map<String, dynamic>?;
+    final body = utf8.decode(res.bodyBytes, allowMalformed: true);
+    final map = jsonDecode(body) as Map<String, dynamic>?;
     final remote = RemoteUpdateManifest.fromJson(map);
     return AndroidUpdateCheckResult(
       currentVersionName: currentName,

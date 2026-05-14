@@ -176,6 +176,7 @@ class AppLocalizations {
   String get treatmentProgress => _map['treatmentProgress']!;
   String get progressNotes => _map['progressNotes']!;
   String get editProfile => _map['editProfile']!;
+  String get editPatientProfile => _map['editPatientProfile']!;
   String get editUser => _map['editUser']!;
   String get deleteUser => _map['deleteUser']!;
   String get search => _map['search']!;
@@ -571,6 +572,7 @@ class AppLocalizations {
     'treatmentProgress': 'Treatment progress',
     'progressNotes': 'Progress notes',
     'editProfile': 'Edit profile',
+    'editPatientProfile': 'Edit patient profile',
     'editUser': 'Edit user',
     'deleteUser': 'Delete user',
     'search': 'Search',
@@ -967,6 +969,7 @@ class AppLocalizations {
     'treatmentProgress': 'تقدم العلاج',
     'progressNotes': 'ملاحظات التقدم',
     'editProfile': 'تعديل الملف',
+    'editPatientProfile': 'تعديل ملف المريض',
     'editUser': 'تعديل المستخدم',
     'deleteUser': 'حذف المستخدم',
     'search': 'بحث',
