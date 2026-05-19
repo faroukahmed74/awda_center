@@ -556,10 +556,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     UserModel? auth,
     bool canUpdate,
   ) {
-    final list = _list
-        .where((a) => a.status != AppointmentStatus.cancelled)
-        .toList();
-    final firstSessionIds = _firstSessionIdsNewPatient(list);
+    final selectedDay = _filterDay ?? _scheduleDate;
+    final list = _displayListForSchedule(cache);
+    final firstSessionIds = _firstSessionIdsNewPatient(
+      _list.where((a) => a.status != AppointmentStatus.cancelled).toList(),
+    );
     final roomHeaders = [
       cache.rooms.length > 0 ? cache.rooms[0].displayName : '1',
       cache.rooms.length > 1 ? cache.rooms[1].displayName : '2',
@@ -574,15 +575,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left),
-                onPressed: () => setState(
-                  () => _scheduleDate = _scheduleDate.subtract(
-                    const Duration(days: 1),
-                  ),
-                ),
+                onPressed: () => setState(() {
+                  final d = selectedDay.subtract(const Duration(days: 1));
+                  _scheduleDate = d;
+                  _filterDay = d;
+                  _filterMonth = null;
+                  _filterYear = null;
+                }),
                 tooltip: l10n.previousDay,
               ),
               Text(
-                AppDateFormat.mediumDate().format(_scheduleDate),
+                AppDateFormat.mediumDate().format(selectedDay),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(width: 12),
@@ -592,22 +595,31 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 onPressed: () async {
                   final d = await showDatePicker(
                     context: context,
-                    initialDate: _scheduleDate,
+                    initialDate: selectedDay,
                     firstDate: DateTime.now().subtract(
                       const Duration(days: 365),
                     ),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
-                  if (d != null) setState(() => _scheduleDate = d);
+                  if (d != null) {
+                    setState(() {
+                      _scheduleDate = d;
+                      _filterDay = d;
+                      _filterMonth = null;
+                      _filterYear = null;
+                    });
+                  }
                 },
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
-                onPressed: () => setState(
-                  () => _scheduleDate = _scheduleDate.add(
-                    const Duration(days: 1),
-                  ),
-                ),
+                onPressed: () => setState(() {
+                  final d = selectedDay.add(const Duration(days: 1));
+                  _scheduleDate = d;
+                  _filterDay = d;
+                  _filterMonth = null;
+                  _filterYear = null;
+                }),
                 tooltip: l10n.nextDay,
               ),
             ],
@@ -680,7 +692,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               TableCellVerticalAlignment.middle,
                           children: _scheduleHours.map((hour) {
                             final slotApps = _appointmentsForSlot(
-                              _scheduleDate,
+                              selectedDay,
                               hour,
                               list,
                             );
@@ -1091,6 +1103,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   List<AppointmentModel> _displayListForWeek(DataCacheProvider cache) {
     final refDate = _filterDay ?? _scheduleDate;
     final (weekStart, weekEnd) = _weekRange(refDate);
+    var out = _applySharedFilters(cache, applyDateFilter: false);
+    out = out
+        .where(
+          (a) =>
+              !a.appointmentDate.isBefore(weekStart) &&
+              !a.appointmentDate.isAfter(weekEnd),
+        )
+        .toList();
+    return out;
+  }
+
+  /// Filters for schedule grid: same filter set used in list view.
+  List<AppointmentModel> _displayListForSchedule(DataCacheProvider cache) {
+    return _applySharedFilters(cache, applyDateFilter: true);
+  }
+
+  /// Shared appointment filtering used by list/schedule/counts.
+  List<AppointmentModel> _applySharedFilters(
+    DataCacheProvider cache, {
+    required bool applyDateFilter,
+  }) {
     var out = _list;
     if (_statusFilter != null) {
       if (_statusFilter == AppointmentStatus.noShow) {
@@ -1118,6 +1151,29 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         out = out.where((a) => a.status == _statusFilter!).toList();
       }
     }
+    if (applyDateFilter) {
+      if (_filterDay != null) {
+        final d = _filterDay!;
+        out = out
+            .where(
+              (a) =>
+                  a.appointmentDate.year == d.year &&
+                  a.appointmentDate.month == d.month &&
+                  a.appointmentDate.day == d.day,
+            )
+            .toList();
+      } else if (_filterYear != null && _filterMonth != null) {
+        out = out
+            .where(
+              (a) =>
+                  a.appointmentDate.year == _filterYear &&
+                  a.appointmentDate.month == _filterMonth,
+            )
+            .toList();
+      } else if (_filterYear != null) {
+        out = out.where((a) => a.appointmentDate.year == _filterYear).toList();
+      }
+    }
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       out = out.where((a) => a.doctorId == _filterDoctorId).toList();
     }
@@ -1136,13 +1192,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (_filterPackageId != null && _filterPackageId!.isNotEmpty) {
       out = out.where((a) => a.packageId == _filterPackageId).toList();
     }
-    out = out
-        .where(
-          (a) =>
-              !a.appointmentDate.isBefore(weekStart) &&
-              !a.appointmentDate.isAfter(weekEnd),
-        )
-        .toList();
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       out = out.where((a) {
@@ -1161,85 +1210,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   /// List to display: excludes cancelled; filtered by status, date (day/month/year), search; sorted by date then startTime.
   List<AppointmentModel> _displayList(DataCacheProvider cache) {
-    var out = _list;
-    if (_statusFilter != null) {
-      if (_statusFilter == AppointmentStatus.noShow) {
-        out = out
-            .where(
-              (a) =>
-                  a.status == AppointmentStatus.noShow ||
-                  a.status == AppointmentStatus.absentWithCause ||
-                  a.status == AppointmentStatus.absentWithoutCause,
-            )
-            .toList();
-      } else if (_statusFilter == AppointmentStatus.absentWithCause) {
-        out = out
-            .where((a) => a.status == AppointmentStatus.absentWithCause)
-            .toList();
-      } else if (_statusFilter == AppointmentStatus.absentWithoutCause) {
-        out = out
-            .where(
-              (a) =>
-                  a.status == AppointmentStatus.absentWithoutCause ||
-                  a.status == AppointmentStatus.noShow,
-            )
-            .toList();
-      } else {
-        out = out.where((a) => a.status == _statusFilter!).toList();
-      }
-    }
-    if (_filterDay != null) {
-      final d = _filterDay!;
-      out = out
-          .where(
-            (a) =>
-                a.appointmentDate.year == d.year &&
-                a.appointmentDate.month == d.month &&
-                a.appointmentDate.day == d.day,
-          )
-          .toList();
-    } else if (_filterYear != null && _filterMonth != null) {
-      out = out
-          .where(
-            (a) =>
-                a.appointmentDate.year == _filterYear &&
-                a.appointmentDate.month == _filterMonth,
-          )
-          .toList();
-    } else if (_filterYear != null) {
-      out = out.where((a) => a.appointmentDate.year == _filterYear).toList();
-    }
-    if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
-      out = out.where((a) => a.doctorId == _filterDoctorId).toList();
-    }
-    if (_filterServiceId != null &&
-        _filterServiceId!.isNotEmpty &&
-        cache.services.isNotEmpty) {
-      final service = cache.services.firstWhere(
-        (s) => s.id == _filterServiceId,
-        orElse: () => cache.services.first,
-      );
-      final serviceName = service.displayName.toLowerCase();
-      out = out
-          .where((a) => a.services.any((s) => s.toLowerCase() == serviceName))
-          .toList();
-    }
-    if (_filterPackageId != null && _filterPackageId!.isNotEmpty) {
-      out = out.where((a) => a.packageId == _filterPackageId).toList();
-    }
-    final q = _searchQuery.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      out = out.where((a) {
-        final patientName = (cache.userName(a.patientId) ?? a.patientId)
-            .toLowerCase();
-        final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId)
-            .toLowerCase();
-        final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
-        return patientName.contains(q) ||
-            doctorName.contains(q) ||
-            serviceMatch;
-      }).toList();
-    }
+    final out = _applySharedFilters(cache, applyDateFilter: true);
     // Sort by calendar date (newest first), then within same day by start time 00:00 -> 23:59.
     out.sort((a, b) {
       final aDay = DateTime(a.appointmentDate.year, a.appointmentDate.month, a.appointmentDate.day);
