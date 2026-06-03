@@ -67,8 +67,6 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
   bool _loading = true;
   bool _saving = false;
   String? _loadError;
-  Map<String, double> _overridesConsumables = {};
-  Map<String, double> _overridesMedia = {};
   List<IncomeRecordModel> _lastIncomeList = [];
   List<ExpenseRecordModel> _lastExpenseList = [];
   StreamSubscription? _incomeSub;
@@ -135,10 +133,12 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         const Duration(seconds: 25),
         onTimeout: () => throw TimeoutException('Income records'),
       );
-      final expenseList = await _firestore.getExpenseRecords(from: monthStart, to: monthEnd).timeout(
+      final expenseList = (await _firestore.getExpenseRecords(from: monthStart).timeout(
         const Duration(seconds: 25),
         onTimeout: () => throw TimeoutException('Expense records'),
-      );
+      ))
+          .where((r) => !r.expenseDate.isAfter(monthEnd))
+          .toList();
 
       final configTarget = (config['target'] as num?)?.toDouble() ?? 20000;
       var configRent = (config['rentGuard'] as num?)?.toDouble() ?? 0;
@@ -190,31 +190,18 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       double salaryTotal = 0;
       // Map expense category to summary cells: Supplies + Other → Consumables (per doctor);
       // Salary → Receptionist; Media → Media (per doctor); Rent → Rent+Guard
-      for (final r in expenseList) {
-        final cat = (r.category).toLowerCase().trim();
-        final id = r.paidByDoctorId ?? '';
-        if (cat == 'rent') {
-          rentTotal += r.amount;
-        } else if (cat == 'salary') {
-          salaryTotal += r.amount;
-        } else if (cat == 'media') {
-          mediaByDoctor[id] = (mediaByDoctor[id] ?? 0) + r.amount;
-        } else if (cat == 'supplies' || cat == 'other' || cat == 'consumables') {
-          consumablesByDoctor[id] = (consumablesByDoctor[id] ?? 0) + r.amount;
-        }
-      }
-      // Always keep these two cells synced to expenses for the selected period.
+      _accumulateExpenseTotals(
+        expenseList,
+        consumablesByDoctor: consumablesByDoctor,
+        mediaByDoctor: mediaByDoctor,
+        onRentSalary: (rent, salary) {
+          rentTotal = rent;
+          salaryTotal = salary;
+        },
+      );
+      // Always keep rent/receptionist/consumables/media synced to expenses for the period.
       _rentGuard = rentTotal;
       _receptionist = salaryTotal;
- 
-      _overridesConsumables = config['consumablesByDoctor'] is Map
-          ? Map<String, double>.from(
-              (config['consumablesByDoctor'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble())))
-          : <String, double>{};
-      _overridesMedia = config['mediaByDoctor'] is Map
-          ? Map<String, double>.from(
-              (config['mediaByDoctor'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble())))
-          : <String, double>{};
 
       // Spreadsheet equations: C = income*_percent30, D = BONUS, E = D*rate. Doctor names in English.
       final rows = <_DoctorRow>[];
@@ -225,10 +212,6 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         final bonus = (income - _target) > 0 ? (income - _target) : 0.0;
         final rate = _commissionRateForIncome(income);
         final percentVal = bonus * rate;
-        final fromCons = consumablesByDoctor[d.id] ?? 0;
-        final fromMed = mediaByDoctor[d.id] ?? 0;
-        final consumables = _mergeExpenseOverride(_overridesConsumables, d.id, fromCons);
-        final media = _mergeExpenseOverride(_overridesMedia, d.id, fromMed);
         rows.add(_DoctorRow(
           doctorId: d.id,
           doctorName: cache.doctorDisplayNameEn(d.id) ?? d.displayName ?? d.id,
@@ -237,8 +220,8 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
           bonus: bonus,
           percentVal: percentVal,
           commissionPercent: rate,
-          consumables: consumables,
-          media: media,
+          consumables: consumablesByDoctor[d.id] ?? 0,
+          media: mediaByDoctor[d.id] ?? 0,
         ));
       }
       _applyDoctorOrder(rows);
@@ -278,18 +261,37 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     }
   }
 
-  /// Saved config may store `0` for consumables/media (e.g. after Save when expenses
-  /// were not loaded yet). A stored `0` must not beat positive totals from expenses
-  /// (`??` treats `0` as a real value). Manual non‑zero overrides still win.
-  double _mergeExpenseOverride(
-    Map<String, double> overrides,
-    String doctorId,
-    double fromExpenses,
-  ) {
-    if (!overrides.containsKey(doctorId)) return fromExpenses;
-    final o = overrides[doctorId] ?? 0;
-    if (o == 0 && fromExpenses > 0) return fromExpenses;
-    return o;
+  static String _expenseDoctorKey(String? paidByDoctorId) =>
+      paidByDoctorId?.trim() ?? '';
+
+  static bool _isConsumablesCategory(String categoryLower) {
+    return categoryLower == 'supplies' ||
+        categoryLower == 'other' ||
+        categoryLower == 'consumables';
+  }
+
+  static void _accumulateExpenseTotals(
+    List<ExpenseRecordModel> expenseList, {
+    required Map<String, double> consumablesByDoctor,
+    required Map<String, double> mediaByDoctor,
+    required void Function(double rentTotal, double salaryTotal) onRentSalary,
+  }) {
+    double rentTotal = 0;
+    double salaryTotal = 0;
+    for (final r in expenseList) {
+      final cat = r.category.toLowerCase().trim();
+      final id = _expenseDoctorKey(r.paidByDoctorId);
+      if (cat == 'rent') {
+        rentTotal += r.amount;
+      } else if (cat == 'salary') {
+        salaryTotal += r.amount;
+      } else if (cat == 'media') {
+        mediaByDoctor[id] = (mediaByDoctor[id] ?? 0) + r.amount;
+      } else if (_isConsumablesCategory(cat)) {
+        consumablesByDoctor[id] = (consumablesByDoctor[id] ?? 0) + r.amount;
+      }
+    }
+    onRentSalary(rentTotal, salaryTotal);
   }
 
   (DateTime, DateTime) _getMonthRange() {
@@ -360,20 +362,15 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
     final mediaByDoctor = <String, double>{};
     double rentTotal = 0;
     double salaryTotal = 0;
-    for (final r in expenseList) {
-      final cat = (r.category).toLowerCase().trim();
-      final id = r.paidByDoctorId ?? '';
-      if (cat == 'rent') {
-        rentTotal += r.amount;
-      } else if (cat == 'salary') {
-        salaryTotal += r.amount;
-      } else if (cat == 'media') {
-        mediaByDoctor[id] = (mediaByDoctor[id] ?? 0) + r.amount;
-      } else if (cat == 'supplies' || cat == 'other' || cat == 'consumables') {
-        consumablesByDoctor[id] = (consumablesByDoctor[id] ?? 0) + r.amount;
-      }
-    }
-    // Always keep these two cells synced to expenses for the selected period.
+    _accumulateExpenseTotals(
+      expenseList,
+      consumablesByDoctor: consumablesByDoctor,
+      mediaByDoctor: mediaByDoctor,
+      onRentSalary: (rent, salary) {
+        rentTotal = rent;
+        salaryTotal = salary;
+      },
+    );
     _rentGuard = rentTotal;
     _receptionist = salaryTotal;
     final rows = <_DoctorRow>[];
@@ -384,10 +381,6 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
       final bonus = (income - _target) > 0 ? (income - _target) : 0.0;
       final rate = _commissionRateForIncome(income);
       final percentVal = bonus * rate;
-      final fromCons = consumablesByDoctor[d.id] ?? 0;
-      final fromMed = mediaByDoctor[d.id] ?? 0;
-      final consumables = _mergeExpenseOverride(_overridesConsumables, d.id, fromCons);
-      final media = _mergeExpenseOverride(_overridesMedia, d.id, fromMed);
       rows.add(_DoctorRow(
         doctorId: d.id,
         doctorName: cache.doctorDisplayNameEn(d.id) ?? d.displayName ?? d.id,
@@ -396,8 +389,8 @@ class _FinanceSummaryScreenState extends State<FinanceSummaryScreen> {
         bonus: bonus,
         percentVal: percentVal,
         commissionPercent: rate,
-        consumables: consumables,
-        media: media,
+        consumables: consumablesByDoctor[d.id] ?? 0,
+        media: mediaByDoctor[d.id] ?? 0,
       ));
     }
     _applyDoctorOrder(rows);

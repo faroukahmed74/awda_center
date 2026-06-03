@@ -16,11 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.30+10
+version: 1.0.32+12
 # Release notes:
-# 1.0.30: Unified appointments filters between list and schedule views
-# and fixed schedule star marking so "new patient" is calculated from
-# full appointment history (not current filtered subset).
+# 1.0.32: Finance summary consumables/media now always sync from Supplies/Other
+# and Media expenses; require Paid by doctor for per-doctor expense categories.
 
 environment:
   sdk: ^3.9.0

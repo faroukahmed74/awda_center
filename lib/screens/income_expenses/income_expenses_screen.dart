@@ -1529,6 +1529,10 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
     'Other',
   ];
 
+  static bool _requiresPaidByDoctor(String category) {
+    return category == 'Supplies' || category == 'Other' || category == 'Media';
+  }
+
   Future<void> _showAddExpense(
     BuildContext context,
     String? uid,
@@ -1665,6 +1669,18 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   final category = categoryController.text.trim().isEmpty
                       ? 'Salary'
                       : categoryController.text.trim();
+                  if (_requiresPaidByDoctor(category) &&
+                      (selectedPaidByDoctorId == null ||
+                          selectedPaidByDoctorId!.trim().isEmpty)) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${l10n.paidByDoctor}: ${l10n.required}',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
                   await _firestore.addExpenseRecord(
                     ExpenseRecordModel(
                       id: '',
@@ -1848,6 +1864,18 @@ class _IncomeExpensesScreenState extends State<IncomeExpensesScreen> {
                   final category = categoryController.text.trim().isEmpty
                       ? 'Salary'
                       : categoryController.text.trim();
+                  if (_requiresPaidByDoctor(category) &&
+                      (selectedPaidByDoctorId == null ||
+                          selectedPaidByDoctorId!.trim().isEmpty)) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${l10n.paidByDoctor}: ${l10n.required}',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
                   await _firestore.updateExpenseRecord(r.id, {
                     'amount': amount,
                     'category': category,

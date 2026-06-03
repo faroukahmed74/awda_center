@@ -182,13 +182,16 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     final dayStart = DateTime(_date.year, _date.month, _date.day);
     final dayEnd = dayStart.add(const Duration(days: 1));
     final range = await fs.getAppointments(from: dayStart, to: dayEnd);
+    final currentUser = context.read<AuthProvider>().currentUser;
+    final isAdmin = currentUser?.hasRole(UserRole.admin) ?? false;
 
-    // Patient duplicate booking: same patient, same day. Cancelled/no-show/apologized do not block.
-    final samePatientSameDay = range.any((a) =>
+    // Patient duplicate: same patient, same day, overlapping time. Admin may override.
+    final samePatientSameDayTime = range.any((a) =>
         a.patientId == _patientId &&
         a.status.occupiesSlot &&
-        a.id != (widget.existing?.id ?? ''));
-    if (samePatientSameDay && mounted) {
+        a.id != (widget.existing?.id ?? '') &&
+        _timeRangesOverlap(a.startTime, a.endTime, _startTime, _endTime));
+    if (samePatientSameDayTime && !isAdmin && mounted) {
       setState(() {
         _saving = false;
         _errorMessage = AppLocalizations.of(context).patientAlreadyHasAppointmentSameDay;
