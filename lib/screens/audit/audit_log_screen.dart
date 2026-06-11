@@ -19,6 +19,8 @@ class AuditLogScreen extends StatefulWidget {
 }
 
 class _AuditLogScreenState extends State<AuditLogScreen> {
+  static const int _auditFetchLimit = 5000;
+
   final FirestoreService _firestore = FirestoreService();
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _auditSubscription;
   int _hydrateToken = 0;
@@ -81,17 +83,39 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
     return false;
   }
 
+  DateTime get _auditWindowStart => FirestoreService.auditLogSinceOneMonthAgo();
+
+  /// Keep last 30 days after fetching the most recent rows (avoids Firestore
+  /// range-query quirks and still loads enough history beyond the old 200 cap).
+  List<AuditLogModel> _filterToAuditWindow(List<AuditLogModel> raw) {
+    final since = _auditWindowStart;
+    return raw.where((e) {
+      final at = e.createdAt;
+      return at != null && !at.isBefore(since);
+    }).toList();
+  }
+
   void _subscribeToAuditLogs() {
     _auditSubscription?.cancel();
-    _auditSubscription = _firestore.auditLogsStream(limit: 200).listen((snapshot) {
-      final list = snapshot.docs.map((d) => AuditLogModel.fromFirestore(d)).toList();
-      unawaited(_hydrateAndSet(list));
-    });
+    _auditSubscription = _firestore
+        .auditLogsStream(limit: _auditFetchLimit)
+        .listen(
+      (snapshot) {
+        final list = _filterToAuditWindow(
+          snapshot.docs.map((d) => AuditLogModel.fromFirestore(d)).toList(),
+        );
+        unawaited(_hydrateAndSet(list));
+      },
+      onError: (Object error, StackTrace stack) {
+        debugPrint('audit log stream error: $error\n$stack');
+        if (mounted) setState(() => _loading = false);
+      },
+    );
   }
 
   Future<void> _load() async {
-    final list = await _firestore.getAuditLogs();
-    await _hydrateAndSet(list);
+    final raw = await _firestore.getAuditLogs(limit: _auditFetchLimit);
+    await _hydrateAndSet(_filterToAuditWindow(raw));
   }
 
   Future<void> _hydrateAndSet(List<AuditLogModel> list) async {
@@ -343,6 +367,21 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                       onChanged: (v) => setState(() => _searchQuery = v),
                     ),
                   ),
+                  if (_list.isNotEmpty && _searchQuery.trim().isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          isRtl
+                              ? '${_list.length} إدخال من ${AppDateFormat.shortDate.format(_auditWindowStart)}'
+                              : '${_list.length} entries since ${AppDateFormat.shortDate.format(_auditWindowStart)}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                    ),
                   Expanded(
                     child: RefreshIndicator(
                       onRefresh: _load,

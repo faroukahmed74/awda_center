@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.33",
-  "versionCode": 13,
+  "versionName": "1.0.34",
+  "versionCode": 14,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.33: عرض تاريخ ووقت الموعد بجانب اسم الطبيب في سجل التدقيق (Audit Log) لجميع الإجراءات المتعلقة بالمواعيد، مع حفظ وقت الموعد في سجل الإجراء للمواعيد الجديدة.",
+  "releaseNotes": "1.0.34: تحميل سجل التدقيق (Audit Log) لآخر 30 يومًا (حتى 5000 سجل) بدلًا من أحدث 200 سجل فقط.",
   "minSupportedVersionCode": 1
 }

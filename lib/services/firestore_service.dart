@@ -733,20 +733,39 @@ class FirestoreService {
   }
 
   // Audit log (admin read)
-  Stream<QuerySnapshot<Map<String, dynamic>>> auditLogsStream({int limit = 100}) {
-    return _firestore
-        .collection('audit_log')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots();
+  /// Default window for audit log screens: last 30 days (from start of today).
+  static DateTime auditLogSinceOneMonthAgo() {
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    return startOfToday.subtract(const Duration(days: 30));
   }
 
-  Future<List<AuditLogModel>> getAuditLogs({int limit = 100}) async {
-    final snapshot = await _firestore
-        .collection('audit_log')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .get();
+  Stream<QuerySnapshot<Map<String, dynamic>>> auditLogsStream({
+    DateTime? since,
+    int limit = 100,
+  }) {
+    Query<Map<String, dynamic>> q = _firestore.collection('audit_log');
+    if (since != null) {
+      q = q.where(
+        'createdAt',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(since),
+      );
+    }
+    return q.orderBy('createdAt', descending: true).limit(limit).snapshots();
+  }
+
+  Future<List<AuditLogModel>> getAuditLogs({
+    DateTime? since,
+    int limit = 100,
+  }) async {
+    Query<Map<String, dynamic>> q = _firestore.collection('audit_log');
+    if (since != null) {
+      q = q.where(
+        'createdAt',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(since),
+      );
+    }
+    final snapshot = await q.orderBy('createdAt', descending: true).limit(limit).get();
     return snapshot.docs.map((d) => AuditLogModel.fromFirestore(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
   }
 
