@@ -527,6 +527,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         'patientId': a.patientId,
         'doctorId': a.doctorId,
         'status': newStatus.value,
+        'appointmentWhen':
+            '${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime}',
       },
     );
   }

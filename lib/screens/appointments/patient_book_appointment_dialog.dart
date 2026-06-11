@@ -158,7 +158,7 @@ class _PatientBookAppointmentDialogState extends State<PatientBookAppointmentDia
         entityId: appointmentId,
         userId: currentUser?.id ?? widget.patientId,
         userEmail: currentUser?.email,
-        details: {'patientId': widget.patientId, 'doctorId': _doctorId},
+        details: {'patientId': widget.patientId, 'doctorId': _doctorId, 'appointmentWhen': '${AppDateFormat.shortDate.format(_date)} $_startTime'},
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);

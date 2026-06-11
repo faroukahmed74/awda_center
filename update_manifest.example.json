@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.32",
-  "versionCode": 12,
+  "versionName": "1.0.33",
+  "versionCode": 13,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.32: تم إصلاح مزامنة عمود المستهلكات (Consumables) وMedia في ملخص المالية مع مصروفات Supplies وOther وMedia من شاشة الإيرادات والمصروفات مباشرة، وإلزام اختيار \"مدفوع من (الطبيب)\" لهذه الفئات لظهور المبالغ في جدول الأطباء.",
+  "releaseNotes": "1.0.33: عرض تاريخ ووقت الموعد بجانب اسم الطبيب في سجل التدقيق (Audit Log) لجميع الإجراءات المتعلقة بالمواعيد، مع حفظ وقت الموعد في سجل الإجراء للمواعيد الجديدة.",
   "minSupportedVersionCode": 1
 }

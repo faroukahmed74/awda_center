@@ -16,10 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.32+12
+version: 1.0.33+13
 # Release notes:
-# 1.0.32: Finance summary consumables/media now always sync from Supplies/Other
-# and Media expenses; require Paid by doctor for per-doctor expense categories.
+# 1.0.33: Audit log shows appointment date and time beside the doctor name
+# for appointment-related actions.
 
 environment:
   sdk: ^3.9.0

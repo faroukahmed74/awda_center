@@ -27,6 +27,8 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   Map<String, String> _doctorNameById = {};
   /// Current status (value) per appointment ID so audit log shows up-to-date session status.
   Map<String, String> _currentStatusByAppointmentId = {};
+  /// Appointment date + start time per ID (e.g. "31/05/2026 09:00").
+  Map<String, String> _appointmentScheduleById = {};
   /// Package display name by ID so audit log shows package name instead of ID.
   Map<String, String> _packageNameById = {};
   bool _loading = true;
@@ -169,9 +171,14 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
       appointmentIds.map((id) => _firestore.getAppointmentById(id)),
     );
     final currentStatusByAppointmentId = <String, String>{};
+    final appointmentScheduleById = <String, String>{};
     for (var i = 0; i < appointmentIds.length; i++) {
       final a = appointmentResults[i];
-      if (a != null) currentStatusByAppointmentId[appointmentIds[i]] = a.status.value;
+      if (a != null) {
+        currentStatusByAppointmentId[appointmentIds[i]] = a.status.value;
+        final dateStr = AppDateFormat.shortDate.format(a.appointmentDate);
+        appointmentScheduleById[appointmentIds[i]] = '$dateStr ${a.startTime}';
+      }
     }
 
     // Fetch package names so we show package name instead of package ID in logs
@@ -192,6 +199,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
         _userNameById = userNameById;
         _doctorNameById = doctorNameById;
         _currentStatusByAppointmentId = currentStatusByAppointmentId;
+        _appointmentScheduleById = appointmentScheduleById;
         _packageNameById = packageNameById;
         _loading = false;
       });
@@ -210,6 +218,24 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
       case AppointmentStatus.absentWithCause: return l10n.apologized;
       case AppointmentStatus.absentWithoutCause: return l10n.absent;
     }
+  }
+
+  /// Date + time of the appointment an audit entry refers to (live fetch, or stored in details).
+  String? _appointmentScheduleForEntry(AuditLogModel e) {
+    if (e.entityType != 'appointment') return null;
+    final id = e.entityId;
+    if (id != null && id.isNotEmpty) {
+      final live = _appointmentScheduleById[id];
+      if (live != null && live.isNotEmpty) return live;
+    }
+    final stored = e.details?['appointmentWhen'];
+    if (stored is String && stored.trim().isNotEmpty) return stored.trim();
+    final date = e.details?['appointmentDate'];
+    final time = e.details?['startTime'];
+    if (date is String && date.isNotEmpty && time is String && time.isNotEmpty) {
+      return '$date $time';
+    }
+    return null;
   }
 
   String _auditActionLabel(AuditLogModel e, AppLocalizations l10n) {
@@ -247,7 +273,13 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
         if (key == 'patientId' && value is String) {
           resolved.add('patient: ${_userNameById[value] ?? value}');
         } else if (key == 'doctorId' && value is String) {
-          resolved.add('doctor: ${_doctorNameById[value] ?? value}');
+          final doctorPart = 'doctor: ${_doctorNameById[value] ?? value}';
+          final schedule = _appointmentScheduleForEntry(e);
+          if (schedule != null) {
+            resolved.add('$doctorPart · $schedule');
+          } else {
+            resolved.add(doctorPart);
+          }
         } else if (key == 'status') {
           // For appointments, show current session status (from live data) with localized label
           final statusValue = entityType == 'appointment' && entityId != null
@@ -256,6 +288,10 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
           resolved.add('${l10n.status}: ${_statusLabelForValue(statusValue, l10n)}');
         } else if (key == 'packageId' && value is String) {
           resolved.add('package: ${_packageNameById[value] ?? value}');
+        } else if (key == 'appointmentWhen' ||
+            key == 'appointmentDate' ||
+            key == 'startTime') {
+          continue;
         } else if (key == 'targetEmail' || key == 'fileName' || key == 'roles' || key == 'permissions' || key == 'amount' || key == 'category' || key == 'source') {
           resolved.add('$key: $value');
         } else {

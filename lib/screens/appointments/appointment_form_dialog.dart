@@ -300,6 +300,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
           details: {
             'patientId': _patientId,
             'doctorId': _doctorId,
+            'appointmentWhen':
+                '${AppDateFormat.shortDate.format(_date)} $_startTime',
             if (widget.initialPatientId != null) 'fromPatientDetail': true,
           },
         );
