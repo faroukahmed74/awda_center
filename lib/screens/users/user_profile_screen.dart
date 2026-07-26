@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/main_app_bar_actions.dart';
+import '../chat/chat_entry.dart';
 import 'edit_user_privileges_dialog.dart';
 
 /// Admin view of a user's profile: personal data, Edit (roles/permissions), Delete, and link to patient detail if patient.
@@ -110,6 +111,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           title: Text(l10n.viewProfile),
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (context.canPop()) context.pop(); else context.go('/users'); }),
           actions: [
+            if (chatMessageActionButton(context, _user?.id) != null)
+              chatMessageActionButton(context, _user?.id)!,
             ...MainAppBarActions.notificationsLanguageTheme(context),
             if (isAdmin && _user != null && _user!.id != auth.currentUser?.id) ...[
               IconButton(

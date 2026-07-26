@@ -62,7 +62,13 @@
 		<string>http</string>
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs photo library access to attach images to patient documents.</string>
+	<string>Awda Center needs photo library access to send and save chat media and patient documents.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Awda Center needs permission to save chat photos and videos to your library.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Awda Center needs camera access to take photos and videos for chat.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Awda Center needs microphone access to record voice messages in chat.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

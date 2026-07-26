@@ -16,10 +16,11 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.34+14
+version: 1.0.35+15
 # Release notes:
-# 1.0.34: Audit log loads entries from the last 30 days (up to 5000)
-# instead of only the most recent 200 entries.
+# 1.0.35: Chat media opens fullscreen; media is cached on device; WhatsApp-style
+# reactions and reply-to messages; PDFs open in the device PDF app; document
+# thumbnails show the first PDF page.
 
 environment:
   sdk: ^3.9.0
@@ -55,6 +56,13 @@ dependencies:
   pdf: ^3.11.1
   excel: ^4.0.3
   path_provider: ^2.1.5
+  image_picker: ^1.1.2
+  record: ^6.0.0
+  gal: ^2.3.0
+  video_player: ^2.9.2
+  just_audio: ^0.9.42
+  cross_file: ^0.3.4
+  permission_handler: ^11.3.1
 
   # State & routing
   provider: ^6.1.2
@@ -70,6 +78,9 @@ dependencies:
   fl_chart: ^0.69.0
   dio: ^5.9.2
   open_filex: ^4.7.0
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.2
+  pdfx: ^2.9.2
 
 dev_dependencies:
   flutter_test:

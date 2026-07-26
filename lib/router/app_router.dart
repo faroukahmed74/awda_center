@@ -29,13 +29,51 @@ import '../screens/packages/packages_screen.dart';
 import '../screens/price_quote/price_quote_screen.dart';
 import '../screens/audit/audit_log_screen.dart';
 import '../screens/doctors/doctors_admin_screen.dart';
+import '../screens/chat/chat_inbox_screen.dart';
+import '../screens/chat/chat_thread_screen.dart';
+import '../screens/chat/chat_new_screen.dart';
+import '../screens/chat/chat_settings_screen.dart';
+import '../screens/chat/chat_broadcast_screen.dart';
+import '../screens/chat/chat_group_new_screen.dart';
+import '../screens/chat/chat_group_info_screen.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> appRootNavigatorKey = GlobalKey<NavigatorState>();
+
+/// Pending deep-link path (e.g. `/chat/xyz`) set by notification taps before router is ready.
+String? pendingNotificationRoute;
+
+void goPendingNotificationRoute(GoRouter router) {
+  final path = pendingNotificationRoute;
+  if (path == null || path.isEmpty) return;
+  pendingNotificationRoute = null;
+  router.go(path);
+}
+
+void handleNotificationNavigation(Map<String, dynamic>? data) {
+  if (data == null || data.isEmpty) return;
+  final type = data['type']?.toString() ?? '';
+  String? path;
+  if (type == 'chat_message' || type == 'chat_broadcast') {
+    final id = data['conversationId']?.toString();
+    if (id != null && id.isNotEmpty) path = '/chat/$id';
+  } else if (type.startsWith('appointment')) {
+    path = '/appointments';
+  }
+  if (path == null) return;
+  final ctx = appRootNavigatorKey.currentContext;
+  if (ctx != null) {
+    try {
+      GoRouter.of(ctx).go(path);
+      return;
+    } catch (_) {}
+  }
+  pendingNotificationRoute = path;
+}
 
 GoRouter createAppRouter(BuildContext context) {
   final authProvider = context.read<AuthProvider>();
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: appRootNavigatorKey,
     initialLocation: '/login',
     // Re-run redirect on login/logout only — not when locale/theme rebuilds the app.
     refreshListenable: authProvider,
@@ -165,6 +203,40 @@ GoRouter createAppRouter(BuildContext context) {
         path: '/doctors-admin',
         builder: (context, state) => const DoctorsAdminScreen(),
       ),
+      GoRoute(
+        path: '/chat',
+        builder: (context, state) => const ChatInboxScreen(),
+      ),
+      GoRoute(
+        path: '/chat/new',
+        builder: (context, state) => const ChatNewScreen(),
+      ),
+      GoRoute(
+        path: '/chat/settings',
+        builder: (context, state) => const ChatSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/chat/broadcast',
+        builder: (context, state) => const ChatBroadcastScreen(),
+      ),
+      GoRoute(
+        path: '/chat/group/new',
+        builder: (context, state) => const ChatGroupNewScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:id/info',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ChatGroupInfoScreen(conversationId: id);
+        },
+      ),
+      GoRoute(
+        path: '/chat/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ChatThreadScreen(conversationId: id);
+        },
+      ),
     ],
   );
 }
@@ -201,6 +273,12 @@ bool canAccessRoute(UserModel? user, String path) {
       return user.canAccessFeature('requirements');
     case '/admin-todos':
       return user.canAccessFeature('admin_todos');
+    case '/chat':
+    case '/chat/new':
+    case '/chat/settings':
+    case '/chat/broadcast':
+    case '/chat/group/new':
+      return user.canAccessChat;
     case '/rooms':
     case '/services':
     case '/packages':
@@ -209,6 +287,7 @@ bool canAccessRoute(UserModel? user, String path) {
       return user.canAccessFeature('admin_dashboard');
     default:
       if (path.startsWith('/users/')) return user.canAccessFeature('users');
+      if (path.startsWith('/chat/')) return user.canAccessChat;
       return false;
   }
 }

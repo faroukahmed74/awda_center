@@ -63,6 +63,25 @@ class _EditUserPrivilegesDialogState extends State<EditUserPrivilegesDialog> {
       case 'reports': return l10n.reports;
       case 'requirements': return l10n.requirements;
       case 'admin_todos': return l10n.toDoList;
+      case 'chat': return l10n.chatFeatureChat;
+      case 'chat_start': return l10n.chatFeatureStart;
+      case 'chat_message_anyone': return l10n.chatFeatureMessageAnyone;
+      case 'chat_send_text': return l10n.chatFeatureSendText;
+      case 'chat_send_image': return l10n.chatFeatureSendImage;
+      case 'chat_send_video': return l10n.chatFeatureSendVideo;
+      case 'chat_send_audio': return l10n.chatFeatureSendAudio;
+      case 'chat_send_voice': return l10n.chatFeatureSendVoice;
+      case 'chat_send_document': return l10n.chatFeatureSendDocument;
+      case 'chat_send_any_media': return l10n.chatFeatureSendAnyMedia;
+      case 'chat_save_media': return l10n.chatFeatureSaveMedia;
+      case 'chat_view_all': return l10n.chatFeatureViewAll;
+      case 'chat_broadcast': return l10n.chatFeatureBroadcast;
+      case 'chat_create_group': return l10n.chatFeatureCreateGroup;
+      case 'chat_manage_group': return l10n.chatFeatureManageGroup;
+      case 'chat_manage_retention': return l10n.chatFeatureManageRetention;
+      case 'chat_delete_any': return l10n.chatFeatureDeleteAny;
+      case 'chat_delete': return l10n.chatFeatureDelete;
+      case 'chat_settings': return l10n.chatFeatureSettings;
       default: return key;
     }
   }

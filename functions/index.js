@@ -496,3 +496,171 @@ exports.onAppointmentCreated = functions.firestore
       await sendAppointmentBookedToPatientAndDoctor(context.params.appointmentId, after);
     }
   });
+
+// —— Chat (additive; does not change appointment FCM above) ——
+
+const CHAT_WEB_BASE = 'https://awdacenter-eb0a8.web.app/#/chat';
+
+/**
+ * Cairo-ish local hour for quiet hours (UTC+3). Avoids changing global timezone.
+ */
+function cairoHourNow() {
+  const d = new Date();
+  const utc = d.getTime() + d.getTimezoneOffset() * 60000;
+  return new Date(utc + 3 * 3600000).getHours();
+}
+
+function inQuietHours(settings) {
+  if (!settings || settings.quietHoursEnabled === false) return false;
+  const start = typeof settings.quietHoursStart === 'number' ? settings.quietHoursStart : 22;
+  const end = typeof settings.quietHoursEnd === 'number' ? settings.quietHoursEnd : 8;
+  if (start === end) return false;
+  const h = cairoHourNow();
+  if (start < end) return h >= start && h < end;
+  return h >= start || h < end;
+}
+
+async function sendChatMulticast(title, body, tokens, data) {
+  const unique = [...new Set((tokens || []).filter((t) => t && typeof t === 'string'))];
+  if (unique.length === 0) return;
+  const conversationId = (data && data.conversationId) || '';
+  const dataOut = { title: String(title), body: String(body) };
+  Object.keys(data || {}).forEach((k) => {
+    dataOut[k] = data[k] == null ? '' : String(data[k]);
+  });
+  for (let i = 0; i < unique.length; i += 500) {
+    const chunk = unique.slice(i, i + 500);
+    const message = {
+      notification: { title, body },
+      data: dataOut,
+      tokens: chunk,
+      android: { priority: 'high' },
+      apns: { payload: { aps: { sound: 'default' } } },
+      webpush: {
+        notification: { title, body, icon: '/icons/Icon-192.png' },
+        fcmOptions: { link: conversationId ? `${CHAT_WEB_BASE}/${conversationId}` : `${CHAT_WEB_BASE}` },
+      },
+    };
+    try {
+      await messaging.sendEachForMulticast(message);
+    } catch (err) {
+      console.error('Chat FCM error:', err);
+    }
+  }
+}
+
+/**
+ * Push other participants when a chat message is created.
+ */
+exports.onChatMessageCreated = functions.firestore
+  .document('conversations/{conversationId}/messages/{messageId}')
+  .onCreate(async (snap, context) => {
+    const msg = snap.data() || {};
+    const conversationId = context.params.conversationId;
+    const senderId = msg.senderId;
+    if (!senderId) return;
+
+    let settings = {};
+    try {
+      const s = await db.collection('app_settings').doc('chat').get();
+      if (s.exists) settings = s.data() || {};
+    } catch (e) {
+      console.warn('chat settings', e);
+    }
+    if (inQuietHours(settings)) {
+      console.log('Chat push skipped (quiet hours)');
+      return;
+    }
+
+    const convSnap = await db.collection('conversations').doc(conversationId).get();
+    if (!convSnap.exists) return;
+    const conv = convSnap.data() || {};
+    const participants = Array.isArray(conv.participantIds) ? conv.participantIds : [];
+    const recipients = participants.filter((uid) => uid && uid !== senderId);
+    if (recipients.length === 0) return;
+
+    let senderName = 'Awda Center';
+    try {
+      const u = await db.collection('users').doc(senderId).get();
+      if (u.exists) {
+        const d = u.data() || {};
+        senderName = String(d.fullNameAr || d.fullNameEn || d.email || 'Awda Center').trim() || senderName;
+      }
+    } catch (_) {}
+
+    const type = msg.type || 'text';
+    let body = String(msg.text || '').trim();
+    if (!body) {
+      if (type === 'image') body = '📷';
+      else if (type === 'video') body = '🎬';
+      else if (type === 'voice' || type === 'audio') body = '🎤';
+      else if (type === 'document') body = String(msg.fileName || '📄');
+      else body = 'رسالة جديدة';
+    }
+    if (body.length > 180) body = body.substring(0, 180);
+
+    const isBroadcast = conv.type === 'broadcast';
+    const title = isBroadcast
+      ? String(conv.title || 'إعلان')
+      : `رسالة من ${senderName}`;
+
+    const data = {
+      type: isBroadcast ? 'chat_broadcast' : 'chat_message',
+      conversationId,
+      messageId: context.params.messageId,
+    };
+
+    for (const uid of recipients) {
+      const tokens = await getFcmTokensForUser(uid);
+      await sendChatMulticast(title, body, tokens, data);
+    }
+  });
+
+/**
+ * Daily: delete messages older than retentionDays (and best-effort Storage files).
+ * Does not run when retentionDays is 0 / missing.
+ */
+exports.cleanupExpiredChatMessages = functions.pubsub
+  .schedule('every 24 hours')
+  .timeZone('Africa/Cairo')
+  .onRun(async () => {
+    const s = await db.collection('app_settings').doc('chat').get();
+    const retentionDays = s.exists ? Number((s.data() || {}).retentionDays || 0) : 0;
+    if (!retentionDays || retentionDays <= 0) {
+      console.log('Chat retention unlimited; skip cleanup');
+      return null;
+    }
+    const cutoff = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000)
+    );
+    const convs = await db.collection('conversations').limit(500).get();
+    let deleted = 0;
+    const bucket = admin.storage().bucket();
+    for (const conv of convs.docs) {
+      const old = await conv.ref
+        .collection('messages')
+        .where('createdAt', '<', cutoff)
+        .limit(200)
+        .get();
+      for (const m of old.docs) {
+        const mediaUrl = (m.data() || {}).mediaUrl;
+        if (mediaUrl && typeof mediaUrl === 'string') {
+          try {
+            const match = mediaUrl.match(/\/o\/([^?]+)/);
+            if (match) {
+              const path = decodeURIComponent(match[1]);
+              if (path.startsWith('chat/')) {
+                await bucket.file(path).delete({ ignoreNotFound: true });
+              }
+            }
+          } catch (e) {
+            console.warn('chat media delete', e.message);
+          }
+        }
+        await m.ref.delete();
+        deleted += 1;
+      }
+    }
+    console.log('Chat cleanup deleted messages:', deleted);
+    return null;
+  });

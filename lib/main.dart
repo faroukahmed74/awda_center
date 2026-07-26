@@ -53,6 +53,12 @@ class _AwdaAppState extends State<AwdaApp> {
           _router ??= createAppRouter(context);
           final locale = context.watch<LocaleProvider>();
           final theme = context.watch<ThemeProvider>();
+          final auth = context.watch<AuthProvider>();
+          if (auth.currentUser != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_router != null) goPendingNotificationRoute(_router!);
+            });
+          }
           return MaterialApp.router(
             title: 'Awda Center',
             debugShowCheckedModeBanner: false,

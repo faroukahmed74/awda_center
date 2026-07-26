@@ -7,6 +7,7 @@ import '../providers/locale_provider.dart';
 import '../providers/theme_provider.dart';
 import '../web/reload_page.dart';
 import 'android_app_update_button.dart';
+import 'chat_messages_button.dart';
 import 'notifications_button.dart';
 
 /// Notifications, language, and theme toggles — same behavior as [DashboardScreen] app bar.
@@ -28,6 +29,7 @@ class MainAppBarActions {
   /// Notifications, language, and theme — use on most authenticated screens.
   static List<Widget> notificationsLanguageTheme(BuildContext context) => [
         if (AndroidAppUpdateButton.isSupported) const AndroidAppUpdateButton(),
+        const ChatMessagesButton(),
         const NotificationsButton(),
         ..._refreshLangTheme(context),
       ];

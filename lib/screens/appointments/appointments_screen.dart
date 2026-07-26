@@ -16,6 +16,7 @@ import '../../services/audit_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/main_app_bar_actions.dart';
+import '../chat/chat_entry.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
 import 'appointment_form_dialog.dart';
@@ -2111,6 +2112,25 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                                             _notifyAppointmentStatusChange(
                                                               a,
                                                             );
+                                                          } else if (v == 'message_patient') {
+                                                            await openDirectChatWith(
+                                                              context,
+                                                              otherUserId: a.patientId,
+                                                            );
+                                                          } else if (v == 'message_doctor') {
+                                                            String? doctorUserId;
+                                                            for (final d in cache.activeDoctors) {
+                                                              if (d.id == a.doctorId) {
+                                                                doctorUserId = d.userId;
+                                                                break;
+                                                              }
+                                                            }
+                                                            if (doctorUserId != null && doctorUserId.isNotEmpty) {
+                                                              await openDirectChatWith(
+                                                                context,
+                                                                otherUserId: doctorUserId,
+                                                              );
+                                                            }
                                                           }
                                                         },
                                                         itemBuilder: (context) => [
@@ -2120,6 +2140,19 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                                               l10n.edit,
                                                             ),
                                                           ),
+                                                          if (auth != null &&
+                                                              auth.canAccessChat &&
+                                                              auth.canStartChat &&
+                                                              auth.canMessageAnyone) ...[
+                                                            PopupMenuItem(
+                                                              value: 'message_patient',
+                                                              child: Text(l10n.messageUser),
+                                                            ),
+                                                            PopupMenuItem(
+                                                              value: 'message_doctor',
+                                                              child: Text('${l10n.messageUser} (${l10n.doctor})'),
+                                                            ),
+                                                          ],
                                                           if (auth
                                                               .canAccessAdminDashboard)
                                                             PopupMenuItem(

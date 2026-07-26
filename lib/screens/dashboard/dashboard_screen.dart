@@ -161,6 +161,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Navigator.pop(context);
                       },
                     ),
+                    if (canAccessRoute(user, '/chat')) ...[
+                      ListTile(
+                        leading: const Icon(Icons.chat_bubble_outline),
+                        title: Text(l10n.messages),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/chat');
+                        },
+                      ),
+                    ],
                     if (canAccessRoute(user, '/admin-dashboard')) ...[
                       ListTile(
                         leading: const Icon(Icons.admin_panel_settings),

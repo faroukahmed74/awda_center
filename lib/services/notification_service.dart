@@ -7,6 +7,7 @@ import 'firestore_service.dart';
 import 'notification_service_stub.dart' if (dart.library.html) 'notification_service_web.dart' as web_notif;
 import '../models/appointment_model.dart';
 import '../models/user_model.dart';
+import '../router/app_router.dart';
 
 /// Arabic-only strings for scheduled local notifications (aligned with server push language).
 Map<String, String> _notificationStringsAr() {
@@ -100,6 +101,7 @@ class NotificationService {
       if (message.notification == null) return;
       final title = message.notification!.title ?? 'Notification';
       final body = message.notification!.body ?? '';
+      final payload = _payloadFromData(message.data);
       if (kIsWeb) {
         web_notif.showWebNotification(title, body);
       } else {
@@ -115,16 +117,39 @@ class NotificationService {
             ),
             iOS: DarwinNotificationDetails(),
           ),
+          payload: payload,
         );
       }
     });
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      // Could navigate to /appointments or /my-appointments based on payload
+      handleNotificationNavigation(message.data);
+    });
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) handleNotificationNavigation(message.data);
     });
   }
 
+  String? _payloadFromData(Map<String, dynamic> data) {
+    final type = data['type']?.toString() ?? '';
+    if (type == 'chat_message' || type == 'chat_broadcast') {
+      final id = data['conversationId']?.toString();
+      if (id != null && id.isNotEmpty) return 'chat:$id';
+    }
+    if (type.startsWith('appointment')) return 'appointments';
+    return null;
+  }
+
   void _onNotificationTap(NotificationResponse response) {
-    // App opened from local notification; could navigate by payload
+    final p = response.payload;
+    if (p == null || p.isEmpty) return;
+    if (p.startsWith('chat:')) {
+      handleNotificationNavigation({
+        'type': 'chat_message',
+        'conversationId': p.substring(5),
+      });
+    } else if (p == 'appointments') {
+      handleNotificationNavigation({'type': 'appointment_status'});
+    }
   }
 
   /// Web: VAPID key from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates.

@@ -406,6 +406,91 @@ class AppLocalizations {
   String get notificationAppointmentNoShow => _map['notificationAppointmentNoShow']!;
   String get notificationTodoReminderTitle => _map['notificationTodoReminderTitle']!;
 
+  // Chat
+  String get messages => _map['messages']!;
+  String get chatSettings => _map['chatSettings']!;
+  String get chatRetentionTitle => _map['chatRetentionTitle']!;
+  String get chatRetentionHint => _map['chatRetentionHint']!;
+  String get chatRetentionDays => _map['chatRetentionDays']!;
+  String get chatRetentionZeroUnlimited => _map['chatRetentionZeroUnlimited']!;
+  String get chatPrivacyNotice => _map['chatPrivacyNotice']!;
+  String get newChat => _map['newChat']!;
+  String get typeMessage => _map['typeMessage']!;
+  String get myChats => _map['myChats']!;
+  String get allChats => _map['allChats']!;
+  String get chatAttach => _map['chatAttach']!;
+  String get chatCameraPhoto => _map['chatCameraPhoto']!;
+  String get chatCameraVideo => _map['chatCameraVideo']!;
+  String get chatGallery => _map['chatGallery']!;
+  String get chatDocument => _map['chatDocument']!;
+  String get chatAudioFile => _map['chatAudioFile']!;
+  String get chatVoiceMessage => _map['chatVoiceMessage']!;
+  String get chatStopRecording => _map['chatStopRecording']!;
+  String get chatSaveMedia => _map['chatSaveMedia']!;
+  String get chatMediaSaved => _map['chatMediaSaved']!;
+  String get chatMediaSaveFailed => _map['chatMediaSaveFailed']!;
+  String get chatSendFailed => _map['chatSendFailed']!;
+  String get chatFileTooLarge => _map['chatFileTooLarge']!;
+  String get chatNoConversations => _map['chatNoConversations']!;
+  String get chatSearchUsers => _map['chatSearchUsers']!;
+  String get chatFeatureChat => _map['chatFeatureChat']!;
+  String get chatFeatureStart => _map['chatFeatureStart']!;
+  String get chatFeatureMessageAnyone => _map['chatFeatureMessageAnyone']!;
+  String get chatFeatureSendText => _map['chatFeatureSendText']!;
+  String get chatFeatureSendImage => _map['chatFeatureSendImage']!;
+  String get chatFeatureSendVideo => _map['chatFeatureSendVideo']!;
+  String get chatFeatureSendAudio => _map['chatFeatureSendAudio']!;
+  String get chatFeatureSendVoice => _map['chatFeatureSendVoice']!;
+  String get chatFeatureSendDocument => _map['chatFeatureSendDocument']!;
+  String get chatFeatureSendAnyMedia => _map['chatFeatureSendAnyMedia']!;
+  String get chatFeatureSaveMedia => _map['chatFeatureSaveMedia']!;
+  String get chatFeatureViewAll => _map['chatFeatureViewAll']!;
+  String get chatFeatureBroadcast => _map['chatFeatureBroadcast']!;
+  String get chatFeatureManageRetention => _map['chatFeatureManageRetention']!;
+  String get chatFeatureDeleteAny => _map['chatFeatureDeleteAny']!;
+  String get chatFeatureDelete => _map['chatFeatureDelete']!;
+  String get chatFeatureSettings => _map['chatFeatureSettings']!;
+  String get chatDeleteChat => _map['chatDeleteChat']!;
+  String get chatDeleteChatConfirm => _map['chatDeleteChatConfirm']!;
+  String get chatReply => _map['chatReply']!;
+  String get chatReact => _map['chatReact']!;
+  String get chatReplyingTo => _map['chatReplyingTo']!;
+  String get chatOpenDocument => _map['chatOpenDocument']!;
+  String get chatOpenDocumentFailed => _map['chatOpenDocumentFailed']!;
+  String get saved => _map['saved']!;
+  String get chatBroadcast => _map['chatBroadcast']!;
+  String get chatBroadcastTitle => _map['chatBroadcastTitle']!;
+  String get chatCaptionOptional => _map['chatCaptionOptional']!;
+  String get chatQuietHours => _map['chatQuietHours']!;
+  String get chatQuietHoursHint => _map['chatQuietHoursHint']!;
+  String get chatQuietStart => _map['chatQuietStart']!;
+  String get chatQuietEnd => _map['chatQuietEnd']!;
+  String get selectAll => _map['selectAll']!;
+  String get clearSelection => _map['clearSelection']!;
+  String get send => _map['send']!;
+  String get ok => _map['ok']!;
+  String get messageUser => _map['messageUser']!;
+  String get chatNewGroup => _map['chatNewGroup']!;
+  String get chatGroupTitle => _map['chatGroupTitle']!;
+  String get chatCreateGroup => _map['chatCreateGroup']!;
+  String chatGroupMembersSelected(int count) =>
+      _map['chatGroupMembersSelected']!.replaceAll('{count}', '$count');
+  String get chatFeatureCreateGroup => _map['chatFeatureCreateGroup']!;
+  String get chatGroupCreated => _map['chatGroupCreated']!;
+  String get chatGroupInfo => _map['chatGroupInfo']!;
+  String get chatRenameGroup => _map['chatRenameGroup']!;
+  String get chatAddMembers => _map['chatAddMembers']!;
+  String get chatRemoveMember => _map['chatRemoveMember']!;
+  String get chatRemoveMemberConfirm => _map['chatRemoveMemberConfirm']!;
+  String get chatDeleteGroup => _map['chatDeleteGroup']!;
+  String get chatDeleteGroupConfirm => _map['chatDeleteGroupConfirm']!;
+  String get chatLeaveGroup => _map['chatLeaveGroup']!;
+  String get chatGroupCreator => _map['chatGroupCreator']!;
+  String get chatFeatureManageGroup => _map['chatFeatureManageGroup']!;
+  String get chatGroupRenamed => _map['chatGroupRenamed']!;
+  String get chatGroupMembersAdded => _map['chatGroupMembersAdded']!;
+  String get chatGroupMemberRemoved => _map['chatGroupMemberRemoved']!;
+
   /// User-friendly auth error message for login/register. Returns localized text for known keys, or [key] if unknown.
   String authErrorMessage(String? key) => key == null ? '' : (_map[key] ?? key);
 
@@ -792,6 +877,88 @@ class AppLocalizations {
     'notificationAppointmentCancelled': 'Appointment cancelled',
     'notificationAppointmentNoShow': 'Appointment marked no-show',
     'notificationTodoReminderTitle': 'To-do reminder',
+    'messages': 'Messages',
+    'chatSettings': 'Chat settings',
+    'chatRetentionTitle': 'Message retention',
+    'chatRetentionHint': 'Messages older than this many days are hidden. Set 0 for unlimited.',
+    'chatRetentionDays': 'Retention days',
+    'chatRetentionZeroUnlimited': '0 = keep forever',
+    'chatPrivacyNotice': 'Chat is for clinic communication. For emergencies call the clinic. Medical records still belong in notes and sessions.',
+    'newChat': 'New chat',
+    'typeMessage': 'Type a message…',
+    'myChats': 'My chats',
+    'allChats': 'All chats',
+    'chatAttach': 'Attach',
+    'chatCameraPhoto': 'Camera photo',
+    'chatCameraVideo': 'Camera video',
+    'chatGallery': 'Gallery',
+    'chatDocument': 'Document (PDF, Word, Excel)',
+    'chatAudioFile': 'Audio file',
+    'chatVoiceMessage': 'Voice message',
+    'chatStopRecording': 'Stop & send',
+    'chatSaveMedia': 'Save',
+    'chatMediaSaved': 'Saved',
+    'chatMediaSaveFailed': 'Could not save media',
+    'chatSendFailed': 'Could not send message',
+    'chatFileTooLarge': 'File is too large',
+    'chatNoConversations': 'No conversations yet',
+    'chatSearchUsers': 'Search users by name, email or phone',
+    'chatFeatureChat': 'Chat — access messages',
+    'chatFeatureStart': 'Chat — start new conversation',
+    'chatFeatureMessageAnyone': 'Chat — message anyone',
+    'chatFeatureSendText': 'Chat — send text',
+    'chatFeatureSendImage': 'Chat — send images',
+    'chatFeatureSendVideo': 'Chat — send videos',
+    'chatFeatureSendAudio': 'Chat — send audio files',
+    'chatFeatureSendVoice': 'Chat — send voice messages',
+    'chatFeatureSendDocument': 'Chat — send documents',
+    'chatFeatureSendAnyMedia': 'Chat — send any media',
+    'chatFeatureSaveMedia': 'Chat — save media',
+    'chatFeatureViewAll': 'Chat — view all conversations',
+    'chatFeatureBroadcast': 'Chat — broadcast',
+    'chatFeatureManageRetention': 'Chat — manage retention',
+    'chatFeatureDeleteAny': 'Chat — delete any message',
+    'chatFeatureDelete': 'Chat — delete conversations',
+    'chatFeatureSettings': 'Chat — settings',
+    'chatDeleteChat': 'Delete chat',
+    'chatDeleteChatConfirm': 'Delete this conversation and all its messages for everyone?',
+    'chatReply': 'Reply',
+    'chatReact': 'React',
+    'chatReplyingTo': 'Replying to',
+    'chatOpenDocument': 'Open document',
+    'chatOpenDocumentFailed': 'Could not open document',
+    'saved': 'Saved',
+    'chatBroadcast': 'Broadcast',
+    'chatBroadcastTitle': 'Broadcast title',
+    'chatCaptionOptional': 'Caption (optional)',
+    'chatQuietHours': 'Quiet hours (no chat push)',
+    'chatQuietHoursHint': 'Chat push notifications are paused during these hours (Cairo time).',
+    'chatQuietStart': 'Quiet from (hour 0–23)',
+    'chatQuietEnd': 'Quiet until (hour 0–23)',
+    'selectAll': 'Select all',
+    'clearSelection': 'Clear',
+    'send': 'Send',
+    'ok': 'OK',
+    'messageUser': 'Message',
+    'chatNewGroup': 'New group',
+    'chatGroupTitle': 'Group name',
+    'chatCreateGroup': 'Create group',
+    'chatGroupMembersSelected': '{count} members selected',
+    'chatFeatureCreateGroup': 'Chat — create group',
+    'chatGroupCreated': 'Group created',
+    'chatGroupInfo': 'Group info',
+    'chatRenameGroup': 'Rename group',
+    'chatAddMembers': 'Add members',
+    'chatRemoveMember': 'Remove member',
+    'chatRemoveMemberConfirm': 'Remove this member from the group?',
+    'chatDeleteGroup': 'Delete group',
+    'chatDeleteGroupConfirm': 'Delete this group and all its messages?',
+    'chatLeaveGroup': 'Leave',
+    'chatGroupCreator': 'Creator',
+    'chatFeatureManageGroup': 'Chat — manage any group (CRUD)',
+    'chatGroupRenamed': 'Group renamed',
+    'chatGroupMembersAdded': 'Members added',
+    'chatGroupMemberRemoved': 'Member removed',
     'authErrorInvalidEmail': 'Please enter a valid email address.',
     'authErrorInvalidCredentials': 'Invalid email or password. Please try again.',
     'authErrorEmailAlreadyInUse': 'This email is already registered. Try logging in or use another email.',
@@ -1188,6 +1355,88 @@ class AppLocalizations {
     'notificationAppointmentCancelled': 'تم إلغاء الموعد',
     'notificationAppointmentNoShow': 'تم تسجيل عدم الحضور',
     'notificationTodoReminderTitle': 'تذكير مهمة',
+    'messages': 'الرسائل',
+    'chatSettings': 'إعدادات المحادثة',
+    'chatRetentionTitle': 'مدة الاحتفاظ بالرسائل',
+    'chatRetentionHint': 'الرسائل الأقدم من هذا العدد من الأيام تُخفى. ضع 0 للاحتفاظ بلا حدود.',
+    'chatRetentionDays': 'أيام الاحتفاظ',
+    'chatRetentionZeroUnlimited': '0 = بلا حدود',
+    'chatPrivacyNotice': 'المحادثة للتواصل داخل المركز. للطوارئ اتصل بالمركز. السجل الطبي يبقى في الملاحظات والجلسات.',
+    'newChat': 'محادثة جديدة',
+    'typeMessage': 'اكتب رسالة…',
+    'myChats': 'محادثاتي',
+    'allChats': 'كل المحادثات',
+    'chatAttach': 'إرفاق',
+    'chatCameraPhoto': 'صورة من الكاميرا',
+    'chatCameraVideo': 'فيديو من الكاميرا',
+    'chatGallery': 'المعرض',
+    'chatDocument': 'مستند (PDF، Word، Excel)',
+    'chatAudioFile': 'ملف صوتي',
+    'chatVoiceMessage': 'رسالة صوتية',
+    'chatStopRecording': 'إيقاف وإرسال',
+    'chatSaveMedia': 'حفظ',
+    'chatMediaSaved': 'تم الحفظ',
+    'chatMediaSaveFailed': 'تعذر حفظ الوسائط',
+    'chatSendFailed': 'تعذر إرسال الرسالة',
+    'chatFileTooLarge': 'الملف كبير جداً',
+    'chatNoConversations': 'لا توجد محادثات بعد',
+    'chatSearchUsers': 'ابحث بالاسم أو البريد أو الهاتف',
+    'chatFeatureChat': 'محادثة — الوصول للرسائل',
+    'chatFeatureStart': 'محادثة — بدء محادثة جديدة',
+    'chatFeatureMessageAnyone': 'محادثة — مراسلة أي مستخدم',
+    'chatFeatureSendText': 'محادثة — إرسال نص',
+    'chatFeatureSendImage': 'محادثة — إرسال صور',
+    'chatFeatureSendVideo': 'محادثة — إرسال فيديو',
+    'chatFeatureSendAudio': 'محادثة — إرسال ملفات صوتية',
+    'chatFeatureSendVoice': 'محادثة — رسائل صوتية',
+    'chatFeatureSendDocument': 'محادثة — إرسال مستندات',
+    'chatFeatureSendAnyMedia': 'محادثة — إرسال أي وسائط',
+    'chatFeatureSaveMedia': 'محادثة — حفظ الوسائط',
+    'chatFeatureViewAll': 'محادثة — عرض كل المحادثات',
+    'chatFeatureBroadcast': 'محادثة — بث',
+    'chatFeatureManageRetention': 'محادثة — إدارة مدة الاحتفاظ',
+    'chatFeatureDeleteAny': 'محادثة — حذف أي رسالة',
+    'chatFeatureDelete': 'محادثة — حذف المحادثات',
+    'chatFeatureSettings': 'محادثة — الإعدادات',
+    'chatDeleteChat': 'حذف المحادثة',
+    'chatDeleteChatConfirm': 'حذف هذه المحادثة وجميع رسائلها للجميع؟',
+    'chatReply': 'رد',
+    'chatReact': 'تفاعل',
+    'chatReplyingTo': 'الرد على',
+    'chatOpenDocument': 'فتح المستند',
+    'chatOpenDocumentFailed': 'تعذر فتح المستند',
+    'saved': 'تم الحفظ',
+    'chatBroadcast': 'بث',
+    'chatBroadcastTitle': 'عنوان البث',
+    'chatCaptionOptional': 'تعليق (اختياري)',
+    'chatQuietHours': 'ساعات الهدوء (بدون إشعارات محادثة)',
+    'chatQuietHoursHint': 'تتوقف إشعارات المحادثة خلال هذه الساعات (توقيت القاهرة).',
+    'chatQuietStart': 'من الساعة (0–23)',
+    'chatQuietEnd': 'حتى الساعة (0–23)',
+    'selectAll': 'تحديد الكل',
+    'clearSelection': 'مسح',
+    'send': 'إرسال',
+    'ok': 'حسناً',
+    'messageUser': 'مراسلة',
+    'chatNewGroup': 'مجموعة جديدة',
+    'chatGroupTitle': 'اسم المجموعة',
+    'chatCreateGroup': 'إنشاء مجموعة',
+    'chatGroupMembersSelected': '{count} أعضاء محددون',
+    'chatFeatureCreateGroup': 'محادثة — إنشاء مجموعة',
+    'chatGroupCreated': 'تم إنشاء المجموعة',
+    'chatGroupInfo': 'معلومات المجموعة',
+    'chatRenameGroup': 'إعادة تسمية المجموعة',
+    'chatAddMembers': 'إضافة أعضاء',
+    'chatRemoveMember': 'إزالة عضو',
+    'chatRemoveMemberConfirm': 'إزالة هذا العضو من المجموعة؟',
+    'chatDeleteGroup': 'حذف المجموعة',
+    'chatDeleteGroupConfirm': 'حذف هذه المجموعة وجميع رسائلها؟',
+    'chatLeaveGroup': 'مغادرة',
+    'chatGroupCreator': 'المنشئ',
+    'chatFeatureManageGroup': 'محادثة — إدارة أي مجموعة (إنشاء/تعديل/حذف)',
+    'chatGroupRenamed': 'تم تغيير اسم المجموعة',
+    'chatGroupMembersAdded': 'تمت إضافة أعضاء',
+    'chatGroupMemberRemoved': 'تمت إزالة عضو',
     'authErrorInvalidEmail': 'يرجى إدخال بريد إلكتروني صحيح.',
     'authErrorInvalidCredentials': 'البريد الإلكتروني أو كلمة المرور غير صحيحة. حاول مرة أخرى.',
     'authErrorEmailAlreadyInUse': 'هذا البريد مسجل مسبقاً. سجّل الدخول أو استخدم بريداً آخر.',

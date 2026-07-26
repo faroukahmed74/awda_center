@@ -89,6 +89,35 @@ class UserModel {
   bool get canAccessRequirements => canAccessFeature('requirements');
   bool get canAccessAdminTodos => canAccessFeature('admin_todos');
 
+  // —— Chat privileges (admin can grant any key to any user) ——
+  bool get canAccessChat => canAccessFeature('chat');
+  bool get canStartChat => canAccessFeature('chat_start');
+  bool get canMessageAnyone => canAccessFeature('chat_message_anyone');
+  bool get canSendChatText =>
+      canAccessFeature('chat_send_text') || canAccessFeature('chat_send_any_media');
+  bool get canSendChatImage =>
+      canAccessFeature('chat_send_image') || canAccessFeature('chat_send_any_media');
+  bool get canSendChatVideo =>
+      canAccessFeature('chat_send_video') || canAccessFeature('chat_send_any_media');
+  bool get canSendChatAudio =>
+      canAccessFeature('chat_send_audio') || canAccessFeature('chat_send_any_media');
+  bool get canSendChatVoice =>
+      canAccessFeature('chat_send_voice') || canAccessFeature('chat_send_any_media');
+  bool get canSendChatDocument =>
+      canAccessFeature('chat_send_document') || canAccessFeature('chat_send_any_media');
+  bool get canSaveChatMedia => canAccessFeature('chat_save_media');
+  bool get canViewAllChats => canAccessFeature('chat_view_all');
+  bool get canBroadcastChat => canAccessFeature('chat_broadcast');
+  bool get canCreateChatGroup => canAccessFeature('chat_create_group');
+  bool get canManageChatGroup => canAccessFeature('chat_manage_group');
+  bool get canManageChatRetention => canAccessFeature('chat_manage_retention');
+  bool get canDeleteAnyChat => canAccessFeature('chat_delete_any');
+  /// Delete conversations the user participates in (or any if [canDeleteAnyChat]).
+  bool get canDeleteChat =>
+      canAccessFeature('chat_delete') || canAccessFeature('chat_delete_any');
+  bool get canAccessChatSettings =>
+      canAccessFeature('chat_settings') || canAccessFeature('chat_manage_retention');
+
   String get displayName {
     if (fullNameAr != null && fullNameAr!.isNotEmpty) return fullNameAr!;
     if (fullNameEn != null && fullNameEn!.isNotEmpty) return fullNameEn!;
