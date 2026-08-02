@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.35",
-  "versionCode": 15,
+  "versionName": "1.0.36",
+  "versionCode": 16,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.35: فتح الوسائط بملء الشاشة في المحادثات، تخزين مؤقت للوسائط على الجهاز، تفاعلات ورد على الرسائل مثل واتساب، فتح ملفات PDF في تطبيق الجهاز، وإنشاء صورة مصغرة لأول صفحة للمستندات.",
+  "releaseNotes": "1.0.36: تمييز جلسات الباكدج في تفاصيل المريض بألوان وأرقام الجلسات، إصلاح البث في المحادثات، وتحسين عرض الوسائط وتشغيل الصوت في محادثات الويب.",
   "minSupportedVersionCode": 1
 }

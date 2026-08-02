@@ -16,11 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.35+15
+version: 1.0.36+16
 # Release notes:
-# 1.0.35: Chat media opens fullscreen; media is cached on device; WhatsApp-style
-# reactions and reply-to messages; PDFs open in the device PDF app; document
-# thumbnails show the first PDF page.
+# 1.0.36: Patient detail shows package-linked session numbers with color markers;
+# chat broadcast fix; web chat media display and voice playback improvements.
 
 environment:
   sdk: ^3.9.0

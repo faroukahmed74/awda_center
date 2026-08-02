@@ -121,14 +121,15 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     }
   }
 
-  /// Package progress for this patient: list of (package, completedCount, totalSessions).
-  List<({PackageModel pkg, int completed, int total})> _packageProgress() {
-    final out = <({PackageModel pkg, int completed, int total})>[];
+  /// Ordered package cycles for this patient (each purchase/chunk of sessions).
+  List<_PackageCycleView> _packageCycles() {
+    final out = <_PackageCycleView>[];
     final byPackage = <String, List<AppointmentModel>>{};
     for (final a in _appointmentSessions) {
       if (a.packageId == null || a.packageId!.isEmpty) continue;
       byPackage.putIfAbsent(a.packageId!, () => []).add(a);
     }
+    var colorIndex = 0;
     for (final pkg in _packages) {
       final list = byPackage[pkg.id];
       if (list == null) continue;
@@ -143,10 +144,38 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         final completed = cycle
             .where((a) => a.status == AppointmentStatus.completed)
             .length;
-        out.add((pkg: pkg, completed: completed, total: totalSessions));
+        out.add(_PackageCycleView(
+          pkg: pkg,
+          completed: completed,
+          total: totalSessions,
+          colorIndex: colorIndex++,
+          appointments: cycle,
+        ));
       }
     }
     return out;
+  }
+
+  Map<String, _PackageSessionTag> _packageSessionTagsByAppointmentId() {
+    final map = <String, _PackageSessionTag>{};
+    for (final cycle in _packageCycles()) {
+      for (var i = 0; i < cycle.appointments.length; i++) {
+        map[cycle.appointments[i].id] = _PackageSessionTag(
+          packageName: cycle.pkg.displayName,
+          sessionNumber: i + 1,
+          totalSessions: cycle.total,
+          color: cycle.color,
+        );
+      }
+    }
+    return map;
+  }
+
+  /// Package progress for this patient: list of (package, completedCount, totalSessions).
+  List<({PackageModel pkg, int completed, int total})> _packageProgress() {
+    return _packageCycles()
+        .map((c) => (pkg: c.pkg, completed: c.completed, total: c.total))
+        .toList();
   }
 
   /// Merged session rows: from sessions collection and from all appointments, sorted by date desc. Status reflects current appointment status.
@@ -167,6 +196,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
             r.amount.isFinite)
           r.appointmentId!: r.amount,
     };
+    final packageTags = _packageSessionTagsByAppointmentId();
     for (final s in _sessions) {
       rows.add(_SessionRow(
         date: s.sessionDate,
@@ -184,6 +214,9 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         paymentAmountLabel: s.appointmentId == null
             ? null
             : _paymentAmountLabel(paymentAmountByAppointmentId[s.appointmentId!]),
+        packageTag: s.appointmentId == null
+            ? null
+            : packageTags[s.appointmentId!],
       ));
     }
     for (final a in _appointmentSessions) {
@@ -201,6 +234,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
           l10n,
         ),
         paymentAmountLabel: _paymentAmountLabel(paymentAmountByAppointmentId[a.id]),
+        packageTag: packageTags[a.id],
       ));
     }
     rows.sort((a, b) => b.date.compareTo(a.date));
@@ -501,19 +535,47 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                         const SizedBox(height: 8),
                         Builder(
                           builder: (context) {
-                            final progress = _packageProgress();
-                            if (progress.isEmpty) {
+                            final cycles = _packageCycles();
+                            if (cycles.isEmpty) {
                               return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)));
                             }
                             return Column(
-                              children: progress.map((e) => Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  leading: const Icon(Icons.inventory_2_outlined),
-                                  title: Text(e.pkg.displayName),
-                                  subtitle: Text('${e.completed} / ${e.total} ${l10n.sessions}'),
-                                ),
-                              )).toList(),
+                              children: cycles.map((cycle) {
+                                final dots = List.generate(
+                                  cycle.total,
+                                  (i) => _PackageSessionDot(
+                                    color: cycle.color,
+                                    filled: i < cycle.completed,
+                                    sessionNumber: i + 1,
+                                    compact: true,
+                                  ),
+                                );
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    leading: _PackageColorBadge(
+                                      color: cycle.color,
+                                      size: 40,
+                                    ),
+                                    title: Text(cycle.pkg.displayName),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${cycle.completed} / ${cycle.total} ${l10n.sessions}',
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 4,
+                                          children: dots,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                             );
                           },
                         ),
@@ -530,20 +592,32 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                               return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(l10n.noData)));
                             }
                             return Column(
-                              children: rows.map((r) => Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  title: Text(AppDateFormat.shortDate.format(r.date)),
-                                  subtitle: Text([
-                                    '${r.startTime} - ${r.endTime}',
-                                    if (r.service != null && r.service!.isNotEmpty) r.service,
-                                    if (r.doctorLabel != null && r.doctorLabel!.isNotEmpty) r.doctorLabel,
-                                    if (r.statusLabel != null) r.statusLabel,
-                                    if (r.paymentStatusLabel != null) r.paymentStatusLabel,
-                                    if (r.paymentAmountLabel != null) r.paymentAmountLabel,
-                                  ].where((e) => e != null && e.isNotEmpty).join(' • ')),
-                                ),
-                              )).toList(),
+                              children: rows.map((r) {
+                                final tag = r.packageTag;
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    leading: tag != null
+                                        ? _PackageColorBadge(
+                                            color: tag.color,
+                                            label: '${tag.sessionNumber}',
+                                            size: 40,
+                                          )
+                                        : null,
+                                    title: Text(AppDateFormat.shortDate.format(r.date)),
+                                    subtitle: Text([
+                                      if (tag != null)
+                                        '${tag.packageName} • ${tag.sessionNumber} / ${tag.totalSessions} ${l10n.sessions}',
+                                      '${r.startTime} - ${r.endTime}',
+                                      if (r.service != null && r.service!.isNotEmpty) r.service,
+                                      if (r.doctorLabel != null && r.doctorLabel!.isNotEmpty) r.doctorLabel,
+                                      if (r.statusLabel != null) r.statusLabel,
+                                      if (r.paymentStatusLabel != null) r.paymentStatusLabel,
+                                      if (r.paymentAmountLabel != null) r.paymentAmountLabel,
+                                    ].where((e) => e != null && e.isNotEmpty).join(' • ')),
+                                  ),
+                                );
+                              }).toList(),
                             );
                           },
                         ),
@@ -685,6 +759,7 @@ class _SessionRow {
   final String? statusLabel;
   final String? paymentStatusLabel;
   final String? paymentAmountLabel;
+  final _PackageSessionTag? packageTag;
 
   _SessionRow({
     required this.date,
@@ -695,7 +770,134 @@ class _SessionRow {
     this.statusLabel,
     this.paymentStatusLabel,
     this.paymentAmountLabel,
+    this.packageTag,
   });
+}
+
+const _kPackageCycleColors = <Color>[
+  Color(0xFF42A5F5),
+  Color(0xFF66BB6A),
+  Color(0xFFFFA726),
+  Color(0xFFAB47BC),
+  Color(0xFFEF5350),
+  Color(0xFF26C6DA),
+  Color(0xFF8D6E63),
+  Color(0xFF78909C),
+];
+
+class _PackageCycleView {
+  final PackageModel pkg;
+  final int completed;
+  final int total;
+  final int colorIndex;
+  final List<AppointmentModel> appointments;
+
+  const _PackageCycleView({
+    required this.pkg,
+    required this.completed,
+    required this.total,
+    required this.colorIndex,
+    required this.appointments,
+  });
+
+  Color get color =>
+      _kPackageCycleColors[colorIndex % _kPackageCycleColors.length];
+}
+
+class _PackageSessionTag {
+  final String packageName;
+  final int sessionNumber;
+  final int totalSessions;
+  final Color color;
+
+  const _PackageSessionTag({
+    required this.packageName,
+    required this.sessionNumber,
+    required this.totalSessions,
+    required this.color,
+  });
+}
+
+class _PackageColorBadge extends StatelessWidget {
+  const _PackageColorBadge({
+    required this.color,
+    this.label,
+    this.size = 36,
+  });
+
+  final Color color;
+  final String? label;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.35),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: label != null
+          ? Text(
+              label!,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: size * 0.38,
+              ),
+            )
+          : const Icon(Icons.inventory_2_outlined, color: Colors.white, size: 20),
+    );
+  }
+}
+
+class _PackageSessionDot extends StatelessWidget {
+  const _PackageSessionDot({
+    required this.color,
+    required this.filled,
+    required this.sessionNumber,
+    this.compact = false,
+  });
+
+  final Color color;
+  final bool filled;
+  final int sessionNumber;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = compact ? 22.0 : 28.0;
+    return Tooltip(
+      message: '$sessionNumber',
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: filled ? color : color.withValues(alpha: 0.18),
+          shape: BoxShape.circle,
+          border: Border.all(color: color, width: filled ? 0 : 1.5),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$sessionNumber',
+          style: TextStyle(
+            fontSize: compact ? 10 : 12,
+            fontWeight: FontWeight.w600,
+            color: filled ? Colors.white : color,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 String? _paymentStatusLabel(String? status, AppLocalizations l10n) {
