@@ -20,6 +20,8 @@ import '../appointments/appointment_form_dialog.dart';
 import '../chat/chat_entry.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
+import '../../widgets/medical/medical_rich_text_html.dart';
+import '../../widgets/medical/medical_rich_text_view.dart';
 import 'patient_profile_edit_dialog.dart';
 import 'patient_document_dialog.dart';
 import 'document_viewer.dart';
@@ -337,19 +339,31 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
 
   Widget _buildMedicalDetails(AppLocalizations l10n) {
     final theme = Theme.of(context).textTheme;
-    final hasAny = _profile != null && (
-      (_profile!.diagnosis != null && _profile!.diagnosis!.isNotEmpty) ||
-      (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty) ||
-      (_profile!.treatmentProgress != null && _profile!.treatmentProgress!.isNotEmpty) ||
-      (_profile!.progressNotes != null && _profile!.progressNotes!.isNotEmpty) ||
-      (_profile!.areasToTreat != null && _profile!.areasToTreat!.isNotEmpty) ||
-      (_profile!.feesType != null && _profile!.feesType!.isNotEmpty) ||
-      (_profile!.chiefComplaint != null && _profile!.chiefComplaint!.isNotEmpty) ||
-      (_profile!.painLevel != null && _profile!.painLevel!.isNotEmpty) ||
-      (_profile!.treatmentGoals != null && _profile!.treatmentGoals!.isNotEmpty) ||
-      (_profile!.contraindications != null && _profile!.contraindications!.isNotEmpty) ||
-      (_profile!.previousTreatment != null && _profile!.previousTreatment!.isNotEmpty)
-    );
+    final p = _profile;
+    bool has(String? v) =>
+        v != null && !MedicalRichTextHtml.isEmpty(v);
+    final hasAny = p != null &&
+        (has(p.diagnosis) ||
+            has(p.medicalHistory) ||
+            has(p.treatmentProgress) ||
+            has(p.progressNotes) ||
+            has(p.areasToTreat) ||
+            has(p.feesType) ||
+            has(p.chiefComplaint) ||
+            has(p.painLevel) ||
+            has(p.treatmentGoals) ||
+            has(p.contraindications) ||
+            has(p.previousTreatment));
+    if (p == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.medicalDetails, style: theme.titleMedium),
+          const SizedBox(height: 8),
+          Text(l10n.noData, style: theme.bodySmall),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -358,28 +372,52 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         if (!hasAny)
           Text(l10n.noData, style: theme.bodySmall)
         else ...[
-          if (_profile!.diagnosis != null && _profile!.diagnosis!.isNotEmpty)
-            Text('${l10n.diagnosis}: ${_profile!.diagnosis}', style: theme.bodySmall),
-          if (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty)
-            Text('${l10n.medicalHistory}: ${_profile!.medicalHistory}', style: theme.bodySmall),
-          if (_profile!.treatmentProgress != null && _profile!.treatmentProgress!.isNotEmpty)
-            Text('${l10n.treatmentProgress}: ${_profile!.treatmentProgress}', style: theme.bodySmall),
-          if (_profile!.progressNotes != null && _profile!.progressNotes!.isNotEmpty)
-            Text('${l10n.progressNotes}: ${_profile!.progressNotes}', style: theme.bodySmall),
-          if (_profile!.areasToTreat != null && _profile!.areasToTreat!.isNotEmpty)
-            Text('${l10n.areasToTreat}: ${_profile!.areasToTreat}', style: theme.bodySmall),
-          if (_profile!.feesType != null && _profile!.feesType!.isNotEmpty)
-            Text('${l10n.feesType}: ${_profile!.feesType}', style: theme.bodySmall),
-          if (_profile!.chiefComplaint != null && _profile!.chiefComplaint!.isNotEmpty)
-            Text('${l10n.chiefComplaint}: ${_profile!.chiefComplaint}', style: theme.bodySmall),
-          if (_profile!.painLevel != null && _profile!.painLevel!.isNotEmpty)
-            Text('${l10n.painLevel}: ${_profile!.painLevel}', style: theme.bodySmall),
-          if (_profile!.treatmentGoals != null && _profile!.treatmentGoals!.isNotEmpty)
-            Text('${l10n.treatmentGoals}: ${_profile!.treatmentGoals}', style: theme.bodySmall),
-          if (_profile!.contraindications != null && _profile!.contraindications!.isNotEmpty)
-            Text('${l10n.contraindications}: ${_profile!.contraindications}', style: theme.bodySmall),
-          if (_profile!.previousTreatment != null && _profile!.previousTreatment!.isNotEmpty)
-            Text('${l10n.previousTreatment}: ${_profile!.previousTreatment}', style: theme.bodySmall),
+          if (has(p.diagnosis))
+            MedicalRichTextView(label: l10n.diagnosis, value: p.diagnosis!),
+          if (has(p.medicalHistory))
+            MedicalRichTextView(
+              label: l10n.medicalHistory,
+              value: p.medicalHistory!,
+            ),
+          if (has(p.treatmentProgress))
+            MedicalRichTextView(
+              label: l10n.treatmentProgress,
+              value: p.treatmentProgress!,
+            ),
+          if (has(p.progressNotes))
+            MedicalRichTextView(
+              label: l10n.progressNotes,
+              value: p.progressNotes!,
+            ),
+          if (has(p.areasToTreat))
+            MedicalRichTextView(
+              label: l10n.areasToTreat,
+              value: p.areasToTreat!,
+            ),
+          if (has(p.feesType))
+            Text('${l10n.feesType}: ${p.feesType}', style: theme.bodySmall),
+          if (has(p.chiefComplaint))
+            MedicalRichTextView(
+              label: l10n.chiefComplaint,
+              value: p.chiefComplaint!,
+            ),
+          if (has(p.painLevel))
+            Text('${l10n.painLevel}: ${p.painLevel}', style: theme.bodySmall),
+          if (has(p.treatmentGoals))
+            MedicalRichTextView(
+              label: l10n.treatmentGoals,
+              value: p.treatmentGoals!,
+            ),
+          if (has(p.contraindications))
+            MedicalRichTextView(
+              label: l10n.contraindications,
+              value: p.contraindications!,
+            ),
+          if (has(p.previousTreatment))
+            MedicalRichTextView(
+              label: l10n.previousTreatment,
+              value: p.previousTreatment!,
+            ),
         ],
       ],
     );

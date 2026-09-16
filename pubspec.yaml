@@ -16,10 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.36+16
+version: 1.0.37+17
 # Release notes:
-# 1.0.36: Patient detail shows package-linked session numbers with color markers;
-# chat broadcast fix; web chat media display and voice playback improvements.
+# 1.0.37: Medical details support rich text (bold, underline, font size, color)
+# in patient profile edit and readable formatted view on patient detail.
 
 environment:
   sdk: ^3.9.0
@@ -80,6 +80,11 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.2
   pdfx: ^2.9.2
+  flutter_quill: ^11.5.0
+  flutter_html: ^3.0.0
+  vsc_quill_delta_to_html: ^1.0.5
+  dart_quill_delta: ^10.8.3
+  flutter_quill_delta_from_html: ^1.5.3
 
 dev_dependencies:
   flutter_test:

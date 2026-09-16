@@ -5,6 +5,7 @@ import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/patient_profile_model.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/medical/medical_rich_text_field.dart';
 
 class PatientProfileEditDialog extends StatefulWidget {
   final String patientId;
@@ -28,17 +29,19 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
   late TextEditingController _occupation;
   late TextEditingController _referredBy;
   late TextEditingController _maritalStatus;
-  late TextEditingController _areasToTreat;
   late TextEditingController _feesType;
-  late TextEditingController _diagnosis;
-  late TextEditingController _medicalHistory;
-  late TextEditingController _treatmentProgress;
-  late TextEditingController _progressNotes;
-  late TextEditingController _chiefComplaint;
   late TextEditingController _painLevel;
-  late TextEditingController _treatmentGoals;
-  late TextEditingController _contraindications;
-  late TextEditingController _previousTreatment;
+
+  final _chiefComplaintKey = GlobalKey<MedicalRichTextFieldState>();
+  final _areasToTreatKey = GlobalKey<MedicalRichTextFieldState>();
+  final _diagnosisKey = GlobalKey<MedicalRichTextFieldState>();
+  final _medicalHistoryKey = GlobalKey<MedicalRichTextFieldState>();
+  final _treatmentGoalsKey = GlobalKey<MedicalRichTextFieldState>();
+  final _contraindicationsKey = GlobalKey<MedicalRichTextFieldState>();
+  final _previousTreatmentKey = GlobalKey<MedicalRichTextFieldState>();
+  final _treatmentProgressKey = GlobalKey<MedicalRichTextFieldState>();
+  final _progressNotesKey = GlobalKey<MedicalRichTextFieldState>();
+
   bool _saving = false;
 
   @override
@@ -53,17 +56,8 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
     _occupation = TextEditingController(text: e?.occupation ?? '');
     _referredBy = TextEditingController(text: e?.referredBy ?? '');
     _maritalStatus = TextEditingController(text: e?.maritalStatus ?? '');
-    _areasToTreat = TextEditingController(text: e?.areasToTreat ?? '');
     _feesType = TextEditingController(text: e?.feesType ?? '');
-    _diagnosis = TextEditingController(text: e?.diagnosis ?? '');
-    _medicalHistory = TextEditingController(text: e?.medicalHistory ?? '');
-    _treatmentProgress = TextEditingController(text: e?.treatmentProgress ?? '');
-    _progressNotes = TextEditingController(text: e?.progressNotes ?? '');
-    _chiefComplaint = TextEditingController(text: e?.chiefComplaint ?? '');
     _painLevel = TextEditingController(text: e?.painLevel ?? '');
-    _treatmentGoals = TextEditingController(text: e?.treatmentGoals ?? '');
-    _contraindications = TextEditingController(text: e?.contraindications ?? '');
-    _previousTreatment = TextEditingController(text: e?.previousTreatment ?? '');
   }
 
   @override
@@ -73,19 +67,13 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
     _occupation.dispose();
     _referredBy.dispose();
     _maritalStatus.dispose();
-    _areasToTreat.dispose();
     _feesType.dispose();
-    _diagnosis.dispose();
-    _medicalHistory.dispose();
-    _treatmentProgress.dispose();
-    _progressNotes.dispose();
-    _chiefComplaint.dispose();
     _painLevel.dispose();
-    _treatmentGoals.dispose();
-    _contraindications.dispose();
-    _previousTreatment.dispose();
     super.dispose();
   }
+
+  String? _rich(GlobalKey<MedicalRichTextFieldState> key) =>
+      key.currentState?.htmlValue;
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -101,20 +89,39 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
       gender: _gender,
       address: _address.text.trim().isEmpty ? null : _address.text.trim(),
       occupation: _occupation.text.trim().isEmpty ? null : _occupation.text.trim(),
-      referredBy: widget.canEditMedical ? (_referredBy.text.trim().isEmpty ? null : _referredBy.text.trim()) : e?.referredBy,
-      maritalStatus: _maritalStatus.text.trim().isEmpty ? null : _maritalStatus.text.trim(),
-      areasToTreat: widget.canEditMedical ? (_areasToTreat.text.trim().isEmpty ? null : _areasToTreat.text.trim()) : e?.areasToTreat,
-      feesType: widget.canEditMedical ? (_feesType.text.trim().isEmpty ? null : _feesType.text.trim()) : e?.feesType,
-      diagnosis: widget.canEditMedical ? (_diagnosis.text.trim().isEmpty ? null : _diagnosis.text.trim()) : e?.diagnosis,
-      followedByDoctorId: widget.canEditMedical ? e?.followedByDoctorId : e?.followedByDoctorId,
-      medicalHistory: widget.canEditMedical ? (_medicalHistory.text.trim().isEmpty ? null : _medicalHistory.text.trim()) : e?.medicalHistory,
-      treatmentProgress: widget.canEditMedical ? (_treatmentProgress.text.trim().isEmpty ? null : _treatmentProgress.text.trim()) : e?.treatmentProgress,
-      progressNotes: widget.canEditMedical ? (_progressNotes.text.trim().isEmpty ? null : _progressNotes.text.trim()) : e?.progressNotes,
-      chiefComplaint: widget.canEditMedical ? (_chiefComplaint.text.trim().isEmpty ? null : _chiefComplaint.text.trim()) : e?.chiefComplaint,
-      painLevel: widget.canEditMedical ? (_painLevel.text.trim().isEmpty ? null : _painLevel.text.trim()) : e?.painLevel,
-      treatmentGoals: widget.canEditMedical ? (_treatmentGoals.text.trim().isEmpty ? null : _treatmentGoals.text.trim()) : e?.treatmentGoals,
-      contraindications: widget.canEditMedical ? (_contraindications.text.trim().isEmpty ? null : _contraindications.text.trim()) : e?.contraindications,
-      previousTreatment: widget.canEditMedical ? (_previousTreatment.text.trim().isEmpty ? null : _previousTreatment.text.trim()) : e?.previousTreatment,
+      referredBy: widget.canEditMedical
+          ? (_referredBy.text.trim().isEmpty ? null : _referredBy.text.trim())
+          : e?.referredBy,
+      maritalStatus:
+          _maritalStatus.text.trim().isEmpty ? null : _maritalStatus.text.trim(),
+      areasToTreat:
+          widget.canEditMedical ? _rich(_areasToTreatKey) : e?.areasToTreat,
+      feesType: widget.canEditMedical
+          ? (_feesType.text.trim().isEmpty ? null : _feesType.text.trim())
+          : e?.feesType,
+      diagnosis: widget.canEditMedical ? _rich(_diagnosisKey) : e?.diagnosis,
+      followedByDoctorId:
+          widget.canEditMedical ? e?.followedByDoctorId : e?.followedByDoctorId,
+      medicalHistory:
+          widget.canEditMedical ? _rich(_medicalHistoryKey) : e?.medicalHistory,
+      treatmentProgress: widget.canEditMedical
+          ? _rich(_treatmentProgressKey)
+          : e?.treatmentProgress,
+      progressNotes:
+          widget.canEditMedical ? _rich(_progressNotesKey) : e?.progressNotes,
+      chiefComplaint:
+          widget.canEditMedical ? _rich(_chiefComplaintKey) : e?.chiefComplaint,
+      painLevel: widget.canEditMedical
+          ? (_painLevel.text.trim().isEmpty ? null : _painLevel.text.trim())
+          : e?.painLevel,
+      treatmentGoals:
+          widget.canEditMedical ? _rich(_treatmentGoalsKey) : e?.treatmentGoals,
+      contraindications: widget.canEditMedical
+          ? _rich(_contraindicationsKey)
+          : e?.contraindications,
+      previousTreatment: widget.canEditMedical
+          ? _rich(_previousTreatmentKey)
+          : e?.previousTreatment,
     );
     await _firestore.savePatientProfile(profile);
     if (mounted) Navigator.of(context).pop(true);
@@ -134,7 +141,8 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           onTap: () async {
             final picked = await showDatePicker(
               context: context,
-              initialDate: _dateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 25)),
+              initialDate: _dateOfBirth ??
+                  DateTime.now().subtract(const Duration(days: 365 * 25)),
               firstDate: DateTime(1900),
               lastDate: DateTime.now(),
             );
@@ -148,8 +156,12 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
             ),
             isEmpty: _dateOfBirth == null,
             child: Text(
-              _dateOfBirth != null ? AppDateFormat.mediumDate().format(_dateOfBirth!) : '',
-              style: _dateOfBirth != null ? null : TextStyle(color: Theme.of(context).hintColor),
+              _dateOfBirth != null
+                  ? AppDateFormat.mediumDate().format(_dateOfBirth!)
+                  : '',
+              style: _dateOfBirth != null
+                  ? null
+                  : TextStyle(color: Theme.of(context).hintColor),
             ),
           ),
         ),
@@ -158,7 +170,9 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               '${l10n.age}: ${ageFromDateOfBirth(toIsoDateString(_dateOfBirth!)) ?? "—"} ${l10n.yearsOld}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.primary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
           ),
         const SizedBox(height: _fieldSpacing),
@@ -182,50 +196,127 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           items: [
             DropdownMenuItem<String?>(value: null, child: Text('—')),
             DropdownMenuItem<String?>(value: 'male', child: Text(l10n.male)),
-            DropdownMenuItem<String?>(value: 'female', child: Text(l10n.female)),
+            DropdownMenuItem<String?>(
+                value: 'female', child: Text(l10n.female)),
           ],
           onChanged: (v) => setState(() => _gender = v),
         ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _address, decoration: InputDecoration(labelText: l10n.address, border: OutlineInputBorder()), maxLines: 2),
+        TextFormField(
+          controller: _address,
+          decoration: InputDecoration(
+            labelText: l10n.address,
+            border: const OutlineInputBorder(),
+          ),
+          maxLines: 2,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _occupation, decoration: InputDecoration(labelText: l10n.occupation, border: OutlineInputBorder())),
+        TextFormField(
+          controller: _occupation,
+          decoration: InputDecoration(
+            labelText: l10n.occupation,
+            border: const OutlineInputBorder(),
+          ),
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _referredBy, decoration: InputDecoration(labelText: l10n.referredBy, border: OutlineInputBorder())),
+        TextFormField(
+          controller: _referredBy,
+          decoration: InputDecoration(
+            labelText: l10n.referredBy,
+            border: const OutlineInputBorder(),
+          ),
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _maritalStatus, decoration: InputDecoration(labelText: l10n.maritalStatus, border: OutlineInputBorder())),
+        TextFormField(
+          controller: _maritalStatus,
+          decoration: InputDecoration(
+            labelText: l10n.maritalStatus,
+            border: const OutlineInputBorder(),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildMedicalColumn(AppLocalizations l10n) {
+    final e = widget.existing;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(l10n.medicalDetails, style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _chiefComplaint, decoration: InputDecoration(labelText: l10n.chiefComplaint, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _chiefComplaintKey,
+          label: l10n.chiefComplaint,
+          initialHtml: e?.chiefComplaint,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _painLevel, decoration: InputDecoration(labelText: l10n.painLevel, border: OutlineInputBorder())),
+        TextFormField(
+          controller: _painLevel,
+          decoration: InputDecoration(
+            labelText: l10n.painLevel,
+            border: const OutlineInputBorder(),
+          ),
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _areasToTreat, decoration: InputDecoration(labelText: l10n.areasToTreat, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _areasToTreatKey,
+          label: l10n.areasToTreat,
+          initialHtml: e?.areasToTreat,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _diagnosis, decoration: InputDecoration(labelText: l10n.diagnosis, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _diagnosisKey,
+          label: l10n.diagnosis,
+          initialHtml: e?.diagnosis,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _medicalHistory, decoration: InputDecoration(labelText: l10n.medicalHistory, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _medicalHistoryKey,
+          label: l10n.medicalHistory,
+          initialHtml: e?.medicalHistory,
+          minHeight: 140,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _treatmentGoals, decoration: InputDecoration(labelText: l10n.treatmentGoals, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _treatmentGoalsKey,
+          label: l10n.treatmentGoals,
+          initialHtml: e?.treatmentGoals,
+          minHeight: 160,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _contraindications, decoration: InputDecoration(labelText: l10n.contraindications, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _contraindicationsKey,
+          label: l10n.contraindications,
+          initialHtml: e?.contraindications,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _previousTreatment, decoration: InputDecoration(labelText: l10n.previousTreatment, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _previousTreatmentKey,
+          label: l10n.previousTreatment,
+          initialHtml: e?.previousTreatment,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _treatmentProgress, decoration: InputDecoration(labelText: l10n.treatmentProgress, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _treatmentProgressKey,
+          label: l10n.treatmentProgress,
+          initialHtml: e?.treatmentProgress,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _progressNotes, decoration: InputDecoration(labelText: l10n.progressNotes, border: OutlineInputBorder()), maxLines: 2),
+        MedicalRichTextField(
+          key: _progressNotesKey,
+          label: l10n.progressNotes,
+          initialHtml: e?.progressNotes,
+        ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(controller: _feesType, decoration: InputDecoration(labelText: l10n.feesType, border: OutlineInputBorder())),
+        TextFormField(
+          controller: _feesType,
+          decoration: InputDecoration(
+            labelText: l10n.feesType,
+            border: const OutlineInputBorder(),
+          ),
+        ),
       ],
     );
   }
@@ -265,10 +356,19 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _saving ? null : () => Navigator.of(context).pop(), child: Text(l10n.cancel)),
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
         FilledButton(
           onPressed: _saving ? null : _save,
-          child: _saving ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(l10n.save),
+          child: _saving
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.save),
         ),
       ],
     );

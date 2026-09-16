@@ -13,6 +13,7 @@ import '../../models/income_expense_models.dart';
 import '../../models/package_model.dart';
 import '../../models/patient_profile_model.dart';
 import '../../models/user_model.dart';
+import '../../widgets/medical/medical_rich_text_html.dart';
 
 /// One row for sessions section (from sessions collection or appointment).
 class PatientReportSessionRow {
@@ -239,8 +240,11 @@ Future<List<int>> buildPatientReportPdf({
   }
 
   pw.Widget bulletItem(String label, String value) {
+    final plainValue = MedicalRichTextHtml.isLikelyHtml(value)
+        ? MedicalRichTextHtml.htmlToPlainText(value)
+        : value;
     final labelText = shape(label);
-    final valueText = shape(value);
+    final valueText = shape(plainValue);
 
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 4),
@@ -252,7 +256,7 @@ Future<List<int>> buildPatientReportPdf({
           pw.Expanded(
             child: pw.RichText(
               textDirection:
-                  hasArabic('$label $value')
+                  hasArabic('$label $plainValue')
                       ? pw.TextDirection.rtl
                       : pw.TextDirection.ltr,
               text: pw.TextSpan(
