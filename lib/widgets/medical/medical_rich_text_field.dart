@@ -214,6 +214,35 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
       fontWeight: FontWeight.w700,
       color: widget.labelColor,
     );
+    // Quill defaults can leave empty editors looking like a solid grey slab on
+    // dark mobile themes; force theme text/placeholder colors.
+    final baseStyles = DefaultStyles.getInstance(context);
+    final paragraphStyle = (baseStyles.paragraph?.style ??
+            theme.textTheme.bodyMedium ??
+            const TextStyle())
+        .copyWith(color: theme.colorScheme.onSurface);
+    final customStyles = baseStyles.merge(
+      DefaultStyles(
+        paragraph: DefaultTextBlockStyle(
+          paragraphStyle,
+          baseStyles.paragraph?.horizontalSpacing ??
+              HorizontalSpacing.zero,
+          baseStyles.paragraph?.verticalSpacing ?? VerticalSpacing.zero,
+          baseStyles.paragraph?.lineSpacing ?? VerticalSpacing.zero,
+          null,
+        ),
+        placeHolder: DefaultTextBlockStyle(
+          paragraphStyle.copyWith(
+            color: theme.hintColor,
+          ),
+          baseStyles.placeHolder?.horizontalSpacing ??
+              HorizontalSpacing.zero,
+          baseStyles.placeHolder?.verticalSpacing ?? VerticalSpacing.zero,
+          baseStyles.placeHolder?.lineSpacing ?? VerticalSpacing.zero,
+          null,
+        ),
+      ),
+    );
 
     return InputDecorator(
       decoration: const InputDecoration(
@@ -222,6 +251,7 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -242,19 +272,23 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
             config: _toolbarConfig,
           ),
           Divider(height: 1, color: theme.dividerColor),
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: widget.minHeight,
-              maxHeight: widget.minHeight * 2.2,
-            ),
+          // Fixed height so Quill gets bounded constraints inside the parent
+          // SingleChildScrollView (unbounded height → blank grey editor on
+          // iOS/Android).
+          SizedBox(
+            height: widget.minHeight,
             child: QuillEditor.basic(
               controller: _controller,
               focusNode: _focusNode,
               scrollController: _scrollController,
               config: QuillEditorConfig(
+                scrollable: true,
+                expands: true,
+                autoFocus: false,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 placeholder: widget.label,
-                minHeight: widget.minHeight,
+                customStyles: customStyles,
+                keyboardAppearance: theme.brightness,
               ),
             ),
           ),

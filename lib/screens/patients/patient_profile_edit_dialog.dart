@@ -366,33 +366,48 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final twoCols = Breakpoint.isTabletOrWider(context);
+    final isMobile = Breakpoint.isMobile(context);
+    final screen = MediaQuery.sizeOf(context);
     return AlertDialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 40,
+        vertical: isMobile ? 16 : 24,
+      ),
       title: Text(widget.existing == null ? l10n.createProfile : l10n.editProfile),
-      content: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 320, maxWidth: 700),
-          child: Form(
-            key: _formKey,
-            child: widget.canEditMedical
-                ? (twoCols
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildPersonalColumn(l10n)),
-                          const SizedBox(width: 20),
-                          Expanded(child: _buildMedicalColumn(l10n)),
-                        ],
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildPersonalColumn(l10n),
-                          const SizedBox(height: 16),
-                          _buildMedicalColumn(l10n),
-                        ],
-                      ))
-                : _buildPersonalColumn(l10n),
+      content: SizedBox(
+        width: isMobile ? screen.width : 700,
+        // Bound dialog body height on phones so Quill editors get finite
+        // constraints and the form can scroll normally.
+        height: isMobile ? screen.height * 0.72 : null,
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: isMobile ? 0 : 320,
+              maxWidth: 700,
+            ),
+            child: Form(
+              key: _formKey,
+              child: widget.canEditMedical
+                  ? (twoCols
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _buildPersonalColumn(l10n)),
+                            const SizedBox(width: 20),
+                            Expanded(child: _buildMedicalColumn(l10n)),
+                          ],
+                        )
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildPersonalColumn(l10n),
+                            const SizedBox(height: 16),
+                            _buildMedicalColumn(l10n),
+                          ],
+                        ))
+                  : _buildPersonalColumn(l10n),
+            ),
           ),
         ),
       ),
