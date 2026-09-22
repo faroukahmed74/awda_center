@@ -106,7 +106,9 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
   }
 
   QuillSimpleToolbarConfig get _toolbarConfig => QuillSimpleToolbarConfig(
-        multiRowsDisplay: false,
+        // Wrap buttons onto multiple rows so overflow chevrons (often broken on
+        // web/desktop in narrow dialogs) are not needed to reach bold/color/etc.
+        multiRowsDisplay: true,
         showDividers: false,
         showFontFamily: false,
         showFontSize: true,
@@ -137,8 +139,7 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
         showSuperscript: false,
         customButtons: [
           QuillToolbarCustomButtonOptions(
-            tooltip:
-                'Copy format / paste format (long-press to clear copied style)',
+            tooltip: 'Copy format / paste format',
             childBuilder: (options, extra) {
               return ListenableBuilder(
                 listenable: MedicalFormatClipboard.instance,
@@ -147,7 +148,7 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
                   final theme = Theme.of(context);
                   return IconButton(
                     tooltip: has
-                        ? 'Paste format (long-press to clear)'
+                        ? 'Paste format (clears after paste)'
                         : 'Copy format from selection',
                     icon: Icon(
                       Icons.format_paint,
@@ -155,6 +156,7 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
                     ),
                     isSelected: has,
                     onPressed: () {
+                      final wasCopying = has;
                       MedicalFormatClipboard.instance
                           .toggleCopyOrPaste(extra.controller);
                       final messenger = ScaffoldMessenger.maybeOf(context);
@@ -163,16 +165,32 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
                       messenger.showSnackBar(
                         SnackBar(
                           content: Text(
-                            MedicalFormatClipboard.instance.hasFormat &&
-                                    !has
-                                ? 'Style copied — select text in any field and tap paint to paste'
-                                : 'Style applied',
+                            wasCopying
+                                ? 'Style applied'
+                                : 'Style copied — select text and tap paint to paste',
                           ),
                           duration: const Duration(seconds: 2),
                         ),
                       );
                     },
-                    onLongPress: () {
+                  );
+                },
+              );
+            },
+          ),
+          QuillToolbarCustomButtonOptions(
+            tooltip: 'Cancel copied format',
+            childBuilder: (options, extra) {
+              return ListenableBuilder(
+                listenable: MedicalFormatClipboard.instance,
+                builder: (context, _) {
+                  if (!MedicalFormatClipboard.instance.hasFormat) {
+                    return const SizedBox.shrink();
+                  }
+                  return IconButton(
+                    tooltip: 'Cancel copied format',
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
                       MedicalFormatClipboard.instance.clear();
                       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                         const SnackBar(

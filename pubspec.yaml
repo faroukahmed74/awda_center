@@ -16,12 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.38+18
+version: 1.0.39+19
 # Release notes:
-# 1.0.38: Medical rich text colors persist correctly; field labels can be
-# colored; format-painter copies styles across fields; Treatment goals renamed
-# to Treatment plan; removed Areas to treat, Contraindications, Previous PT /
-# Surgery, and Treatment progress from the medical UI.
+# 1.0.39: Medical rich-text toolbar wraps so style icons stay visible; format
+# painter clears after paste and adds a cancel control for copied styles.
 
 environment:
   sdk: ^3.9.0

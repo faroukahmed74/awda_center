@@ -40,20 +40,21 @@ class MedicalFormatClipboard extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Apply copied styles to the current selection.
-  void applyTo(QuillController controller) {
+  /// Apply copied styles to the current selection, then clear (one-shot paste).
+  void applyTo(QuillController controller, {bool clearAfter = true}) {
     final attrs = _attributes;
     if (attrs == null || attrs.isEmpty) return;
     if (!controller.selection.isValid) return;
     for (final attr in attrs) {
       controller.formatSelection(attr);
     }
+    if (clearAfter) clear();
   }
 
-  /// Tap: copy if empty, otherwise paste. Long-press (caller): [clear].
+  /// Tap: copy if empty, otherwise paste once and release the brush.
   void toggleCopyOrPaste(QuillController controller) {
     if (hasFormat) {
-      applyTo(controller);
+      applyTo(controller, clearAfter: true);
     } else {
       copyFrom(controller);
     }
