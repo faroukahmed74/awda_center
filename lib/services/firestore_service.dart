@@ -482,6 +482,7 @@ class FirestoreService {
       'treatmentGoals': profile.treatmentGoals,
       'contraindications': profile.contraindications,
       'previousTreatment': profile.previousTreatment,
+      'medicalLabelColors': profile.medicalLabelColors,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

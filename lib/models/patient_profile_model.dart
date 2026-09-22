@@ -22,12 +22,14 @@ class PatientProfileModel {
   final String? chiefComplaint;
   /// Pain level (e.g. VAS 0-10).
   final String? painLevel;
-  /// Treatment goals.
+  /// Treatment plan (stored as treatmentGoals for Firestore compatibility).
   final String? treatmentGoals;
   /// Contraindications / precautions.
   final String? contraindications;
   /// Previous PT or surgery.
   final String? previousTreatment;
+  /// Per-field label colors: map of field key → `#RRGGBB`.
+  final Map<String, String>? medicalLabelColors;
   final DateTime? updatedAt;
 
   const PatientProfileModel({
@@ -52,11 +54,21 @@ class PatientProfileModel {
     this.treatmentGoals,
     this.contraindications,
     this.previousTreatment,
+    this.medicalLabelColors,
     this.updatedAt,
   });
 
   factory PatientProfileModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
+    Map<String, String>? labelColors;
+    final rawColors = d['medicalLabelColors'];
+    if (rawColors is Map) {
+      labelColors = {
+        for (final e in rawColors.entries)
+          if (e.key is String && e.value is String) e.key as String: e.value as String,
+      };
+      if (labelColors.isEmpty) labelColors = null;
+    }
     return PatientProfileModel(
       id: doc.id,
       userId: d['userId'] as String? ?? doc.id,
@@ -79,6 +91,7 @@ class PatientProfileModel {
       treatmentGoals: d['treatmentGoals'] as String?,
       contraindications: d['contraindications'] as String?,
       previousTreatment: d['previousTreatment'] as String?,
+      medicalLabelColors: labelColors,
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -105,6 +118,7 @@ class PatientProfileModel {
       'treatmentGoals': treatmentGoals,
       'contraindications': contraindications,
       'previousTreatment': previousTreatment,
+      'medicalLabelColors': medicalLabelColors,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }

@@ -20,6 +20,7 @@ import '../appointments/appointment_form_dialog.dart';
 import '../chat/chat_entry.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/date_format.dart';
+import '../../widgets/medical/medical_color_picker.dart';
 import '../../widgets/medical/medical_rich_text_html.dart';
 import '../../widgets/medical/medical_rich_text_view.dart';
 import 'patient_profile_edit_dialog.dart';
@@ -302,7 +303,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.personalData, style: theme.titleMedium),
+        Text(l10n.personalData, style: theme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         Text(_user!.displayName, style: theme.titleSmall),
         if (_user!.email.isNotEmpty) Text(_user!.email, style: theme.bodySmall),
@@ -345,81 +346,101 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     final hasAny = p != null &&
         (has(p.diagnosis) ||
             has(p.medicalHistory) ||
-            has(p.treatmentProgress) ||
             has(p.progressNotes) ||
-            has(p.areasToTreat) ||
             has(p.feesType) ||
             has(p.chiefComplaint) ||
             has(p.painLevel) ||
-            has(p.treatmentGoals) ||
-            has(p.contraindications) ||
-            has(p.previousTreatment));
+            has(p.treatmentGoals));
     if (p == null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.medicalDetails, style: theme.titleMedium),
+          Text(l10n.medicalDetails, style: theme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           Text(l10n.noData, style: theme.bodySmall),
         ],
       );
     }
+    Color? labelColor(String key) =>
+        colorFromHex(p.medicalLabelColors?[key]);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.medicalDetails, style: theme.titleMedium),
+        Text(l10n.medicalDetails, style: theme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         if (!hasAny)
           Text(l10n.noData, style: theme.bodySmall)
         else ...[
           if (has(p.diagnosis))
-            MedicalRichTextView(label: l10n.diagnosis, value: p.diagnosis!),
+            MedicalRichTextView(
+              label: l10n.diagnosis,
+              value: p.diagnosis!,
+              labelColor: labelColor('diagnosis'),
+            ),
           if (has(p.medicalHistory))
             MedicalRichTextView(
               label: l10n.medicalHistory,
               value: p.medicalHistory!,
-            ),
-          if (has(p.treatmentProgress))
-            MedicalRichTextView(
-              label: l10n.treatmentProgress,
-              value: p.treatmentProgress!,
+              labelColor: labelColor('medicalHistory'),
             ),
           if (has(p.progressNotes))
             MedicalRichTextView(
               label: l10n.progressNotes,
               value: p.progressNotes!,
-            ),
-          if (has(p.areasToTreat))
-            MedicalRichTextView(
-              label: l10n.areasToTreat,
-              value: p.areasToTreat!,
+              labelColor: labelColor('progressNotes'),
             ),
           if (has(p.feesType))
-            Text('${l10n.feesType}: ${p.feesType}', style: theme.bodySmall),
+            _medicalPlainField(
+              l10n.feesType,
+              p.feesType!,
+              theme,
+              labelColor: labelColor('feesType'),
+            ),
           if (has(p.chiefComplaint))
             MedicalRichTextView(
               label: l10n.chiefComplaint,
               value: p.chiefComplaint!,
+              labelColor: labelColor('chiefComplaint'),
             ),
           if (has(p.painLevel))
-            Text('${l10n.painLevel}: ${p.painLevel}', style: theme.bodySmall),
+            _medicalPlainField(
+              l10n.painLevel,
+              p.painLevel!,
+              theme,
+              labelColor: labelColor('painLevel'),
+            ),
           if (has(p.treatmentGoals))
             MedicalRichTextView(
               label: l10n.treatmentGoals,
               value: p.treatmentGoals!,
-            ),
-          if (has(p.contraindications))
-            MedicalRichTextView(
-              label: l10n.contraindications,
-              value: p.contraindications!,
-            ),
-          if (has(p.previousTreatment))
-            MedicalRichTextView(
-              label: l10n.previousTreatment,
-              value: p.previousTreatment!,
+              labelColor: labelColor('treatmentGoals'),
             ),
         ],
       ],
+    );
+  }
+
+  Widget _medicalPlainField(
+    String label,
+    String value,
+    TextTheme theme, {
+    Color? labelColor,
+  }) {
+    final labelStyle = theme.titleSmall?.copyWith(
+      fontWeight: FontWeight.w700,
+      fontSize: (theme.titleSmall?.fontSize ?? 14) + 7,
+      color: labelColor,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: '$label: ', style: labelStyle),
+            TextSpan(text: value, style: theme.bodyMedium),
+          ],
+        ),
+      ),
     );
   }
 

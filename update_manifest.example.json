@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.37",
-  "versionCode": 17,
+  "versionName": "1.0.38",
+  "versionCode": 18,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.37: دعم تنسيق النص في التفاصيل الطبية (خط عريض، تسطير، حجم ولون الخط) في تعديل ملف المريض وعرض منسق في شاشة التفاصيل.",
+  "releaseNotes": "1.0.38: إصلاح حفظ ألوان النص الطبي، تلوين عناوين الحقول، نسخ التنسيق بين الحقول، إعادة تسمية أهداف العلاج إلى خطة العلاج، وإزالة حقول مناطق العلاج وموانع الاستعمال والعلاج السابق وتقدم العلاج من واجهة التفاصيل الطبية.",
   "minSupportedVersionCode": 1
 }

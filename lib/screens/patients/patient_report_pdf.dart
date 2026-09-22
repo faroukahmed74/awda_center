@@ -240,7 +240,9 @@ Future<List<int>> buildPatientReportPdf({
   }
 
   pw.Widget bulletItem(String label, String value) {
-    final plainValue = MedicalRichTextHtml.isLikelyHtml(value)
+    final plainValue =
+        (MedicalRichTextHtml.isLikelyHtml(value) ||
+            MedicalRichTextHtml.isDeltaJson(value))
         ? MedicalRichTextHtml.htmlToPlainText(value)
         : value;
     final labelText = shape(label);
@@ -294,9 +296,14 @@ Future<List<int>> buildPatientReportPdf({
         bulletItem(l10n.chiefComplaint, profile.chiefComplaint!),
       );
     }
-    if ((profile.treatmentProgress ?? '').isNotEmpty) {
+    if ((profile.treatmentGoals ?? '').isNotEmpty) {
       medicalLines.add(
-        bulletItem(l10n.treatmentProgress, profile.treatmentProgress!),
+        bulletItem(l10n.treatmentGoals, profile.treatmentGoals!),
+      );
+    }
+    if ((profile.progressNotes ?? '').isNotEmpty) {
+      medicalLines.add(
+        bulletItem(l10n.progressNotes, profile.progressNotes!),
       );
     }
   }

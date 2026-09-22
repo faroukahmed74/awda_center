@@ -274,8 +274,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (_profile!.diagnosis != null) Text('Diagnosis: ${_profile!.diagnosis}', style: Theme.of(context).textTheme.bodySmall),
                   if (_profile!.medicalHistory != null && _profile!.medicalHistory!.isNotEmpty)
                     Padding(padding: const EdgeInsets.only(top: 8), child: Text('${l10n.medicalHistory}: ${_profile!.medicalHistory}', style: Theme.of(context).textTheme.bodySmall)),
-                  if (_profile!.treatmentProgress != null && _profile!.treatmentProgress!.isNotEmpty)
-                    Padding(padding: const EdgeInsets.only(top: 4), child: Text('${l10n.treatmentProgress}: ${_profile!.treatmentProgress}', style: Theme.of(context).textTheme.bodySmall)),
                   if (_profile!.progressNotes != null && _profile!.progressNotes!.isNotEmpty)
                     Padding(padding: const EdgeInsets.only(top: 4), child: Text('${l10n.progressNotes}: ${_profile!.progressNotes}', style: Theme.of(context).textTheme.bodySmall)),
                 ],

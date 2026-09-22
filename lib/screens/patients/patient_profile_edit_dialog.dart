@@ -5,6 +5,7 @@ import '../../core/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/patient_profile_model.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/medical/medical_color_picker.dart';
 import '../../widgets/medical/medical_rich_text_field.dart';
 
 class PatientProfileEditDialog extends StatefulWidget {
@@ -33,16 +34,16 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
   late TextEditingController _painLevel;
 
   final _chiefComplaintKey = GlobalKey<MedicalRichTextFieldState>();
-  final _areasToTreatKey = GlobalKey<MedicalRichTextFieldState>();
   final _diagnosisKey = GlobalKey<MedicalRichTextFieldState>();
   final _medicalHistoryKey = GlobalKey<MedicalRichTextFieldState>();
   final _treatmentGoalsKey = GlobalKey<MedicalRichTextFieldState>();
-  final _contraindicationsKey = GlobalKey<MedicalRichTextFieldState>();
-  final _previousTreatmentKey = GlobalKey<MedicalRichTextFieldState>();
-  final _treatmentProgressKey = GlobalKey<MedicalRichTextFieldState>();
   final _progressNotesKey = GlobalKey<MedicalRichTextFieldState>();
 
+  late Map<String, String> _labelColors;
+
   bool _saving = false;
+
+  static const _fieldSpacing = 12.0;
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
     _maritalStatus = TextEditingController(text: e?.maritalStatus ?? '');
     _feesType = TextEditingController(text: e?.feesType ?? '');
     _painLevel = TextEditingController(text: e?.painLevel ?? '');
+    _labelColors = Map<String, String>.from(e?.medicalLabelColors ?? {});
   }
 
   @override
@@ -74,6 +76,28 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
 
   String? _rich(GlobalKey<MedicalRichTextFieldState> key) =>
       key.currentState?.htmlValue;
+
+  Color? _colorFor(String key) => colorFromHex(_labelColors[key]);
+
+  void _setLabelColor(String key, Color? color) {
+    setState(() {
+      final hex = colorToHex(color);
+      if (hex == null) {
+        _labelColors.remove(key);
+      } else {
+        _labelColors[key] = hex;
+      }
+    });
+  }
+
+  Future<void> _pickPlainLabelColor(String key) async {
+    final picked = await showMedicalColorPicker(
+      context,
+      current: _colorFor(key),
+    );
+    if (!mounted || picked == null) return;
+    _setLabelColor(key, isClearColor(picked) ? null : picked);
+  }
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -94,8 +118,8 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           : e?.referredBy,
       maritalStatus:
           _maritalStatus.text.trim().isEmpty ? null : _maritalStatus.text.trim(),
-      areasToTreat:
-          widget.canEditMedical ? _rich(_areasToTreatKey) : e?.areasToTreat,
+      // Removed from UI — preserve existing values.
+      areasToTreat: e?.areasToTreat,
       feesType: widget.canEditMedical
           ? (_feesType.text.trim().isEmpty ? null : _feesType.text.trim())
           : e?.feesType,
@@ -104,9 +128,7 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           widget.canEditMedical ? e?.followedByDoctorId : e?.followedByDoctorId,
       medicalHistory:
           widget.canEditMedical ? _rich(_medicalHistoryKey) : e?.medicalHistory,
-      treatmentProgress: widget.canEditMedical
-          ? _rich(_treatmentProgressKey)
-          : e?.treatmentProgress,
+      treatmentProgress: e?.treatmentProgress,
       progressNotes:
           widget.canEditMedical ? _rich(_progressNotesKey) : e?.progressNotes,
       chiefComplaint:
@@ -116,19 +138,25 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           : e?.painLevel,
       treatmentGoals:
           widget.canEditMedical ? _rich(_treatmentGoalsKey) : e?.treatmentGoals,
-      contraindications: widget.canEditMedical
-          ? _rich(_contraindicationsKey)
-          : e?.contraindications,
-      previousTreatment: widget.canEditMedical
-          ? _rich(_previousTreatmentKey)
-          : e?.previousTreatment,
+      contraindications: e?.contraindications,
+      previousTreatment: e?.previousTreatment,
+      medicalLabelColors: widget.canEditMedical
+          ? (_labelColors.isEmpty ? null : Map<String, String>.from(_labelColors))
+          : e?.medicalLabelColors,
     );
-    await _firestore.savePatientProfile(profile);
-    if (mounted) Navigator.of(context).pop(true);
-    setState(() => _saving = false);
+    try {
+      await _firestore.savePatientProfile(profile);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
-
-  static const _fieldSpacing = 8.0;
 
   Widget _buildPersonalColumn(AppLocalizations l10n) {
     return Column(
@@ -238,6 +266,37 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
     );
   }
 
+  Widget _plainFieldWithLabelColor({
+    required String fieldKey,
+    required String label,
+    required TextEditingController controller,
+  }) {
+    final color = _colorFor(fieldKey);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: color != null ? TextStyle(color: color) : null,
+              floatingLabelStyle: color != null
+                  ? TextStyle(color: color, fontWeight: FontWeight.w600)
+                  : null,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Label color',
+          icon: Icon(Icons.palette_outlined, color: color),
+          onPressed: () => _pickPlainLabelColor(fieldKey),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMedicalColumn(AppLocalizations l10n) {
     final e = widget.existing;
     return Column(
@@ -250,26 +309,22 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           key: _chiefComplaintKey,
           label: l10n.chiefComplaint,
           initialHtml: e?.chiefComplaint,
+          labelColor: _colorFor('chiefComplaint'),
+          onLabelColorChanged: (c) => _setLabelColor('chiefComplaint', c),
         ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(
+        _plainFieldWithLabelColor(
+          fieldKey: 'painLevel',
+          label: l10n.painLevel,
           controller: _painLevel,
-          decoration: InputDecoration(
-            labelText: l10n.painLevel,
-            border: const OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: _fieldSpacing),
-        MedicalRichTextField(
-          key: _areasToTreatKey,
-          label: l10n.areasToTreat,
-          initialHtml: e?.areasToTreat,
         ),
         const SizedBox(height: _fieldSpacing),
         MedicalRichTextField(
           key: _diagnosisKey,
           label: l10n.diagnosis,
           initialHtml: e?.diagnosis,
+          labelColor: _colorFor('diagnosis'),
+          onLabelColorChanged: (c) => _setLabelColor('diagnosis', c),
         ),
         const SizedBox(height: _fieldSpacing),
         MedicalRichTextField(
@@ -277,6 +332,8 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           label: l10n.medicalHistory,
           initialHtml: e?.medicalHistory,
           minHeight: 140,
+          labelColor: _colorFor('medicalHistory'),
+          onLabelColorChanged: (c) => _setLabelColor('medicalHistory', c),
         ),
         const SizedBox(height: _fieldSpacing),
         MedicalRichTextField(
@@ -284,38 +341,22 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           label: l10n.treatmentGoals,
           initialHtml: e?.treatmentGoals,
           minHeight: 160,
-        ),
-        const SizedBox(height: _fieldSpacing),
-        MedicalRichTextField(
-          key: _contraindicationsKey,
-          label: l10n.contraindications,
-          initialHtml: e?.contraindications,
-        ),
-        const SizedBox(height: _fieldSpacing),
-        MedicalRichTextField(
-          key: _previousTreatmentKey,
-          label: l10n.previousTreatment,
-          initialHtml: e?.previousTreatment,
-        ),
-        const SizedBox(height: _fieldSpacing),
-        MedicalRichTextField(
-          key: _treatmentProgressKey,
-          label: l10n.treatmentProgress,
-          initialHtml: e?.treatmentProgress,
+          labelColor: _colorFor('treatmentGoals'),
+          onLabelColorChanged: (c) => _setLabelColor('treatmentGoals', c),
         ),
         const SizedBox(height: _fieldSpacing),
         MedicalRichTextField(
           key: _progressNotesKey,
           label: l10n.progressNotes,
           initialHtml: e?.progressNotes,
+          labelColor: _colorFor('progressNotes'),
+          onLabelColorChanged: (c) => _setLabelColor('progressNotes', c),
         ),
         const SizedBox(height: _fieldSpacing),
-        TextFormField(
+        _plainFieldWithLabelColor(
+          fieldKey: 'feesType',
+          label: l10n.feesType,
           controller: _feesType,
-          decoration: InputDecoration(
-            labelText: l10n.feesType,
-            border: const OutlineInputBorder(),
-          ),
         ),
       ],
     );
