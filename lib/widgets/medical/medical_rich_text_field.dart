@@ -140,7 +140,11 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
         customButtons: [
           QuillToolbarCustomButtonOptions(
             tooltip: 'Copy format / paste format',
-            childBuilder: (options, extra) {
+            // Use `dynamic` params: Quill resolves childBuilder as
+            // `(dynamic, dynamic) => Widget`, and typed closures throw a
+            // subtype error on AOT (iOS/Android) → grey ErrorWidget boxes.
+            childBuilder: (dynamic options, dynamic extra) {
+              final extras = extra as QuillToolbarCustomButtonExtraOptions;
               return ListenableBuilder(
                 listenable: MedicalFormatClipboard.instance,
                 builder: (context, _) {
@@ -158,7 +162,7 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
                     onPressed: () {
                       final wasCopying = has;
                       MedicalFormatClipboard.instance
-                          .toggleCopyOrPaste(extra.controller);
+                          .toggleCopyOrPaste(extras.controller);
                       final messenger = ScaffoldMessenger.maybeOf(context);
                       if (messenger == null) return;
                       messenger.hideCurrentSnackBar();
@@ -180,7 +184,7 @@ class MedicalRichTextFieldState extends State<MedicalRichTextField> {
           ),
           QuillToolbarCustomButtonOptions(
             tooltip: 'Cancel copied format',
-            childBuilder: (options, extra) {
+            childBuilder: (dynamic options, dynamic extra) {
               return ListenableBuilder(
                 listenable: MedicalFormatClipboard.instance,
                 builder: (context, _) {

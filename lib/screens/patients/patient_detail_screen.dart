@@ -48,6 +48,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
   List<PackageModel> _packages = [];
   List<PatientDocumentModel> _documents = [];
   bool _loading = true;
+  bool _generatingReport = false;
   StreamSubscription<dynamic>? _appointmentsSubscription;
 
   Rect? _sharePositionOriginFromContext() {
@@ -181,11 +182,21 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         .toList();
   }
 
-  /// Merged session rows: from sessions collection and from all appointments, sorted by date desc. Status reflects current appointment status.
+  /// Appointment IDs already represented by a sessions-collection document.
+  Set<String> get _appointmentIdsFromSessions => _sessions
+      .map((s) => s.appointmentId)
+      .where((id) => id != null && id.isNotEmpty)
+      .cast<String>()
+      .toSet();
+
+  /// Merged session rows: sessions collection + appointments that do not already
+  /// have a session doc (avoids double-counting). Sorted by date desc.
+  /// [limit] caps the UI list; omit for full report export.
   List<_SessionRow> _mergedSessionRows(
     AppLocalizations l10n,
-    DataCacheProvider cache,
-  ) {
+    DataCacheProvider cache, {
+    int? limit = 50,
+  }) {
     final rows = <_SessionRow>[];
     final paymentByAppointmentId = <String, String?>{
       for (final r in _incomeRecords)
@@ -200,6 +211,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
           r.appointmentId!: r.amount,
     };
     final packageTags = _packageSessionTagsByAppointmentId();
+    final linkedAppointmentIds = _appointmentIdsFromSessions;
     for (final s in _sessions) {
       rows.add(_SessionRow(
         date: s.sessionDate,
@@ -223,6 +235,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       ));
     }
     for (final a in _appointmentSessions) {
+      if (linkedAppointmentIds.contains(a.id)) continue;
       final statusLabel = _appointmentStatusLabel(a.status, l10n);
       rows.add(_SessionRow(
         date: a.appointmentDate,
@@ -241,7 +254,8 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       ));
     }
     rows.sort((a, b) => b.date.compareTo(a.date));
-    return rows.take(50).toList();
+    if (limit == null) return rows;
+    return rows.take(limit).toList();
   }
 
   static String _appointmentStatusLabel(AppointmentStatus status, AppLocalizations l10n) {
@@ -257,12 +271,19 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
   }
 
   Future<void> _generateReport(AppLocalizations l10n) async {
-    if (_user == null) return;
+    if (_user == null || _generatingReport) return;
+    setState(() => _generatingReport = true);
     final messenger = ScaffoldMessenger.of(context);
+    final cache = context.read<DataCacheProvider>();
     messenger.showSnackBar(SnackBar(content: Text(l10n.generatingReport)));
     try {
       final incomeList = await _firestore.getIncomeRecordsForPatient(widget.patientId);
-      final merged = _mergedSessionRows(l10n, context.read<DataCacheProvider>());
+      // Full history for the PDF (UI list stays capped via default [limit]).
+      final merged = _mergedSessionRows(
+        l10n,
+        cache,
+        limit: null,
+      );
       final sessionRows = merged
           .map((r) => PatientReportSessionRow(
                 date: r.date,
@@ -295,6 +316,8 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('${l10n.reportError}: $e')));
+    } finally {
+      if (mounted) setState(() => _generatingReport = false);
     }
   }
 
@@ -461,9 +484,15 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
             ...MainAppBarActions.notificationsLanguageTheme(context),
             if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
               IconButton(
-                icon: const Icon(Icons.picture_as_pdf_outlined),
+                icon: _generatingReport
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.picture_as_pdf_outlined),
                 tooltip: l10n.generateReport,
-                onPressed: () => _generateReport(l10n),
+                onPressed: _generatingReport ? null : () => _generateReport(l10n),
               ),
             if (context.watch<AuthProvider>().currentUser?.canEditPatients == true)
               IconButton(
@@ -582,9 +611,15 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                                   ),
                                 if (context.watch<AuthProvider>().currentUser?.canAccessPatients == true)
                                   OutlinedButton.icon(
-                                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 20),
+                                    icon: _generatingReport
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          )
+                                        : const Icon(Icons.picture_as_pdf_outlined, size: 20),
                                     label: Text(l10n.generateReport),
-                                    onPressed: () => _generateReport(l10n),
+                                    onPressed: _generatingReport ? null : () => _generateReport(l10n),
                                   ),
                               ],
                             ),
@@ -663,7 +698,12 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                                             size: 40,
                                           )
                                         : null,
-                                    title: Text(AppDateFormat.shortDate.format(r.date)),
+                                    title: Text(
+                                      AppDateFormat.shortDateWithWeekday(
+                                        r.date,
+                                        locale: l10n.isArabic ? 'ar' : 'en',
+                                      ),
+                                    ),
                                     subtitle: Text([
                                       if (tag != null)
                                         '${tag.packageName} • ${tag.sessionNumber} / ${tag.totalSessions} ${l10n.sessions}',

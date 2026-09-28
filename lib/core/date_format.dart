@@ -23,6 +23,15 @@ class AppDateFormat {
   /// Short weekday: Mon
   static DateFormat shortWeekday([String? locale]) => DateFormat('EEE', locale ?? 'en');
 
+  /// Full weekday: Sunday / الأحد
+  static DateFormat fullWeekday([String? locale]) => DateFormat('EEEE', locale ?? 'en');
+
+  /// Weekday + short date, e.g. Sunday • 28/09/2026
+  static String shortDateWithWeekday(DateTime date, {String? locale}) {
+    final loc = locale ?? 'en';
+    return '${fullWeekday(loc).format(date)} • ${shortDate.format(date)}';
+  }
+
   /// Date and time with seconds: 23/02/2026 14:30:45
   static DateFormat get shortDateTimeSec => DateFormat('dd/MM/yyyy HH:mm:ss');
 

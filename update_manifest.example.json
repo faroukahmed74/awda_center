@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.39",
-  "versionCode": 19,
+  "versionName": "1.0.40",
+  "versionCode": 20,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.39: شريط أدوات النص الطبي يظهر في أكثر من صف بدون سهم تمرير معطل، وفرشاة نسخ التنسيق تُلغى بعد اللصق مع زر لإلغاء التنسيق المنسوخ.",
+  "releaseNotes": "1.0.40: إصلاح تعطّل إنشاء تقرير المريض عند كثرة الجلسات (كان التطبيق يغلق على iOS)، مع تقسيم جداول الجلسات والمدفوعات ومنع تكرار الصفوف والضغط المزدوج أثناء التوليد.",
   "minSupportedVersionCode": 1
 }
