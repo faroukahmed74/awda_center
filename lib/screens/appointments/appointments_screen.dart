@@ -1202,9 +1202,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             .toLowerCase();
         final doctorName = (cache.doctorDisplayName(a.doctorId) ?? a.doctorId)
             .toLowerCase();
+        final perfId = a.performingDoctorId?.trim();
+        final performerName = (perfId == null || perfId.isEmpty)
+            ? ''
+            : (cache.doctorDisplayName(perfId) ??
+                    cache.userName(perfId) ??
+                    perfId)
+                .toLowerCase();
         final serviceMatch = a.services.any((s) => s.toLowerCase().contains(q));
         return patientName.contains(q) ||
             doctorName.contains(q) ||
+            performerName.contains(q) ||
             serviceMatch;
       }).toList();
     }
@@ -1836,7 +1844,31 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                                       ),
                                                     Expanded(
                                                       child: Text(
-                                                        '${cache.userName(a.patientId) ?? a.patientId} • ${cache.doctorDisplayName(a.doctorId) ?? a.doctorId}',
+                                                        () {
+                                                          final supervisor =
+                                                              cache.doctorDisplayName(
+                                                                    a.doctorId,
+                                                                  ) ??
+                                                                  a.doctorId;
+                                                          final perfId = a
+                                                              .performingDoctorId
+                                                              ?.trim();
+                                                          if (perfId == null ||
+                                                              perfId.isEmpty ||
+                                                              perfId ==
+                                                                  a.doctorId) {
+                                                            return '${cache.userName(a.patientId) ?? a.patientId} • $supervisor';
+                                                          }
+                                                          final performer =
+                                                              cache.doctorDisplayName(
+                                                                    perfId,
+                                                                  ) ??
+                                                                  cache.userName(
+                                                                    perfId,
+                                                                  ) ??
+                                                                  perfId;
+                                                          return '${cache.userName(a.patientId) ?? a.patientId} • $supervisor / $performer';
+                                                        }(),
                                                       ),
                                                     ),
                                                   ],

@@ -56,6 +56,7 @@ class AppointmentFormDialog extends StatefulWidget {
 class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   late String? _patientId;
   late String? _doctorId;
+  late String? _performingDoctorId;
   late String? _roomId;
   late List<String> _selectedServiceIds; // multiple service ids; display names saved to appointment.services
   late DateTime _date;
@@ -117,6 +118,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     final e = widget.existing;
     _patientId = e?.patientId ?? widget.initialPatientId;
     _doctorId = e?.doctorId;
+    _performingDoctorId = e?.performingDoctorId;
     _roomId = e?.roomId;
     _date = e?.appointmentDate ?? widget.initialDate ?? DateTime.now();
     _startTime = e?.startTime ?? widget.initialStartTime ?? '09:00';
@@ -247,6 +249,10 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
       await fs.updateAppointment(widget.existing!.id, {
         'patientId': _patientId,
         'doctorId': _doctorId,
+        'performingDoctorId':
+            (_performingDoctorId == null || _performingDoctorId!.isEmpty)
+                ? null
+                : _performingDoctorId,
         'roomId': _roomId,
         'appointmentDate': _date,
         'startTime': _startTime,
@@ -276,6 +282,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
         id: '',
         patientId: _patientId!,
         doctorId: _doctorId!,
+        performingDoctorId: _performingDoctorId,
         roomId: _roomId,
         appointmentDate: _date,
         startTime: _startTime,
@@ -392,6 +399,62 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                     }),
                   ],
                   onChanged: (v) => setState(() => _doctorId = v),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            Builder(
+              builder: (context) {
+                // Doctors (by doctor doc id) + active trainees (by user id).
+                final performers = <DropdownMenuItem<String?>>[
+                  const DropdownMenuItem(value: null, child: Text('—')),
+                ];
+                final seenIds = <String>{};
+                for (final d in doctorsSource) {
+                  if (!seenIds.add(d.id)) continue;
+                  final name =
+                      cache.doctorDisplayName(d.id) ?? d.displayName ?? d.userId;
+                  performers.add(
+                    DropdownMenuItem(
+                      value: d.id,
+                      child: Text(name),
+                    ),
+                  );
+                }
+                final trainees = cache.users
+                    .where((u) => u.isActive && u.hasRole(UserRole.trainee))
+                    .toList()
+                  ..sort((a, b) => a.displayName
+                      .toLowerCase()
+                      .compareTo(b.displayName.toLowerCase()));
+                for (final u in trainees) {
+                  if (!seenIds.add(u.id)) continue;
+                  performers.add(
+                    DropdownMenuItem(
+                      value: u.id,
+                      child: Text('${u.displayName} (${l10n.trainee})'),
+                    ),
+                  );
+                }
+                // Keep current value visible if inactive / not in lists.
+                if (_performingDoctorId != null &&
+                    !seenIds.contains(_performingDoctorId)) {
+                  final name = cache.doctorDisplayName(_performingDoctorId) ??
+                      cache.userName(_performingDoctorId) ??
+                      _performingDoctorId!;
+                  performers.insert(
+                    1,
+                    DropdownMenuItem(
+                      value: _performingDoctorId,
+                      child: Text(name),
+                    ),
+                  );
+                }
+                return DropdownButtonFormField<String?>(
+                  value: _performingDoctorId,
+                  decoration: InputDecoration(labelText: l10n.performingDoctor),
+                  items: performers,
+                  onChanged: (v) => setState(() => _performingDoctorId = v),
                 );
               },
             ),

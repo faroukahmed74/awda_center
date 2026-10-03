@@ -5,6 +5,7 @@ import 'firebase_callable_http.dart';
 import '../models/user_model.dart';
 import '../models/doctor_model.dart';
 import '../models/room_model.dart';
+import '../core/session_workload.dart';
 import '../models/appointment_model.dart';
 import '../models/session_model.dart';
 import '../models/patient_profile_model.dart';
@@ -1013,6 +1014,42 @@ class FirestoreService {
       for (final d in doctors)
         d.id: (d.displayName != null && d.displayName!.trim().isNotEmpty) ? d.displayName!.trim() : d.id,
     };
+    final userDisplayName = <String, String>{
+      for (final u in users)
+        u.id: u.displayName.trim().isNotEmpty ? u.displayName.trim() : u.id,
+    };
+    String resolveWorkloadName(String id) {
+      if (id.isEmpty) return '';
+      return doctorDisplayName[id] ?? userDisplayName[id] ?? id;
+    }
+
+    // Session workload: completed appointments credit supervisor + performer (if different).
+    final workloadTotals = <String, SessionWorkloadCredit>{};
+    for (final a in appointments) {
+      if (a.status != AppointmentStatus.completed) continue;
+      creditSessionWorkload(
+        workloadTotals,
+        supervisorDoctorId: a.doctorId,
+        performingDoctorId: a.performingDoctorId,
+      );
+    }
+    final sessionWorkload = workloadTotals.entries
+        .map((e) {
+          final id = e.key;
+          final isTrainee = users.any(
+            (u) => u.id == id && u.hasRole(UserRole.trainee),
+          );
+          return <String, dynamic>{
+            'id': id,
+            'name': resolveWorkloadName(id),
+            'role': isTrainee ? 'trainee' : 'doctor',
+            'asSupervisor': e.value.asSupervisor,
+            'asPerformer': e.value.asPerformer,
+            'total': e.value.total,
+          };
+        })
+        .toList()
+      ..sort((a, b) => (b['total'] as int).compareTo(a['total'] as int));
     final incomeByDoctorAmount = <String, double>{};
     for (final r in incomeList) {
       final id = (r.doctorId != null && r.doctorId!.trim().isNotEmpty) ? r.doctorId!.trim() : '';
@@ -1095,6 +1132,7 @@ class FirestoreService {
       'usersByRole': usersByRole,
       'appointmentsByStatus': appointmentsByStatus,
       'incomeByDoctor': incomeByDoctor,
+      'sessionWorkload': sessionWorkload,
       'expensesByCategory': expensesByCategory,
       'expensesByDoctor': expensesByDoctor,
       'appointmentsByService': appointmentsByService,

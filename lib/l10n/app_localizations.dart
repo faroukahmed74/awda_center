@@ -135,6 +135,11 @@ class AppLocalizations {
   String get incomeByDoctor => _map['incomeByDoctor']!;
   String get expenseByDoctor => _map['expenseByDoctor']!;
   String get paidByDoctor => _map['paidByDoctor']!;
+  String get performingDoctor => _map['performingDoctor']!;
+  String get sessionWorkload => _map['sessionWorkload']!;
+  String get sessionsAsSupervisor => _map['sessionsAsSupervisor']!;
+  String get sessionsAsPerformer => _map['sessionsAsPerformer']!;
+  String get sessionWorkloadHint => _map['sessionWorkloadHint']!;
   String get filterMonth => _map['filterMonth']!;
   String get filterYear => _map['filterYear']!;
   String get sessionsFiltered => _map['sessionsFiltered']!;
@@ -566,6 +571,12 @@ class AppLocalizations {
     'time': 'Time',
     'status': 'Status',
     'doctor': 'Doctor',
+    'performingDoctor': 'Performing doctor',
+    'sessionWorkload': 'Session workload (doctors & trainees)',
+    'sessionsAsSupervisor': 'As supervisor',
+    'sessionsAsPerformer': 'As performer',
+    'sessionWorkloadHint':
+        'Counts completed sessions. Supervisor and performer both get credit when different. Does not affect income.',
     'patient': 'Patient',
     'notes': 'Notes',
     'sessions': 'Sessions',
@@ -1045,6 +1056,12 @@ class AppLocalizations {
     'time': 'الوقت',
     'status': 'الحالة',
     'doctor': 'الطبيب',
+    'performingDoctor': 'الدكتور القائم بالجلسة',
+    'sessionWorkload': 'جهد الجلسات (أطباء ومتدربين)',
+    'sessionsAsSupervisor': 'كمشرف',
+    'sessionsAsPerformer': 'كقائم بالجلسة',
+    'sessionWorkloadHint':
+        'يعد الجلسات المكتملة. المشرف والقائم يأخذان عدًّا عند الاختلاف. لا يؤثر على الدخل.',
     'patient': 'المريض',
     'notes': 'ملاحظات',
     'sessions': 'الجلسات',

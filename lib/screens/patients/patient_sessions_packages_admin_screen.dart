@@ -304,6 +304,10 @@ class _PatientSessionsPackagesAdminScreenState extends State<PatientSessionsPack
         '${l10n.time} (end): ${session.endTime}',
         if (session.service != null) '${l10n.service}: ${session.service}',
         '${l10n.doctor}: ${cache.doctorDisplayName(session.doctorId) ?? session.doctorId}',
+        if (session.performingDoctorId != null &&
+            session.performingDoctorId!.trim().isNotEmpty &&
+            session.performingDoctorId != session.doctorId)
+          '${l10n.performingDoctor}: ${cache.doctorDisplayName(session.performingDoctorId) ?? cache.userName(session.performingDoctorId) ?? session.performingDoctorId}',
         if (session.notes != null) '${l10n.notes}: ${session.notes}',
         if (session.progressNotes != null) 'Progress notes: ${session.progressNotes}',
         if (session.vas != null) 'VAS: ${session.vas}',
@@ -317,6 +321,10 @@ class _PatientSessionsPackagesAdminScreenState extends State<PatientSessionsPack
         '${l10n.time}: ${appointment.startTime} - ${appointment.endTime}',
         '${l10n.service}: ${appointment.servicesDisplay}',
         '${l10n.doctor}: ${cache.doctorDisplayName(appointment.doctorId) ?? appointment.doctorId}',
+        if (appointment.performingDoctorId != null &&
+            appointment.performingDoctorId!.trim().isNotEmpty &&
+            appointment.performingDoctorId != appointment.doctorId)
+          '${l10n.performingDoctor}: ${cache.doctorDisplayName(appointment.performingDoctorId) ?? cache.userName(appointment.performingDoctorId) ?? appointment.performingDoctorId}',
         '${l10n.status}: ${_statusLabel(appointment.status, l10n)}',
         if (appointment.notes != null && appointment.notes!.isNotEmpty) '${l10n.notes}: ${appointment.notes}',
         if (appointment.packageId != null) 'Package ID: ${appointment.packageId}',

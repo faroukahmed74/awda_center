@@ -112,6 +112,7 @@ const _kDynamicReportOrder = <String>[
   'incomeExpense',
   'usersByRole',
   'doctorIncome',
+  'sessionWorkload',
   'expenseCategory',
   'expenseByDoctor',
   'appointmentStatus',
@@ -152,6 +153,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'incomeExpense': 'bar',
     'usersByRole': 'pie',
     'doctorIncome': 'bar',
+    'sessionWorkload': 'bar',
     'expenseCategory': 'bar',
     'expenseByDoctor': 'bar',
     'appointmentStatus': 'bar',
@@ -163,6 +165,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'incomeExpense': GlobalKey(),
     'usersByRole': GlobalKey(),
     'doctorIncome': GlobalKey(),
+    'sessionWorkload': GlobalKey(),
     'expenseCategory': GlobalKey(),
     'expenseByDoctor': GlobalKey(),
     'appointmentStatus': GlobalKey(),
@@ -630,6 +633,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final usersByRole = Map<String, int>.from(_chartData!['usersByRole'] as Map<dynamic, dynamic>? ?? {});
     final appointmentsByStatus = Map<String, int>.from(_chartData!['appointmentsByStatus'] as Map<dynamic, dynamic>? ?? {});
     final incomeByDoctorRaw = _chartData!['incomeByDoctor'] as List<dynamic>? ?? [];
+    final sessionWorkloadRaw = _chartData!['sessionWorkload'] as List<dynamic>? ?? [];
     final expensesByCategoryRaw = _chartData!['expensesByCategory'] as List<dynamic>? ?? [];
     final expensesByDoctorRaw = _chartData!['expensesByDoctor'] as List<dynamic>? ?? [];
     final appointmentsByServiceRaw = _chartData!['appointmentsByService'] as List<dynamic>? ?? [];
@@ -645,6 +649,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         : _chartRange;
 
     final incomeByDoctor = _prepareDoctorIncomeSeries(incomeByDoctorRaw, l10n);
+    final sessionWorkload = _prepareSessionWorkloadSeries(sessionWorkloadRaw, l10n);
+    final sessionWorkloadChart = sessionWorkload
+        .map((r) => <String, dynamic>{
+              'name': r['name'],
+              'count': r['total'],
+            })
+        .toList();
     final expensesByCategory = _prepareExpenseCategorySeries(expensesByCategoryRaw, l10n);
     final expensesByDoctor = _prepareExpenseByDoctorSeries(expensesByDoctorRaw, l10n);
     final appointmentsByService = _prepareCountSeries(appointmentsByServiceRaw, l10n, emptyNameLabel: l10n.appointmentNoServices);
@@ -745,6 +756,56 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ? _LabeledAmountPieChart(data: incomeByDoctor, l10n: l10n, amountKey: 'income')
                           : _LabeledAmountBarChart(data: incomeByDoctor, l10n: l10n, amountKey: 'income'),
                 ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (sessionWorkload.isNotEmpty) ...[
+          _ChartCard(
+            title: l10n.sessionWorkload,
+            subtitle: l10n.sessionWorkloadHint,
+            chartKey: _chartKeys['sessionWorkload']!,
+            chartType: _chartTypes['sessionWorkload']!,
+            chartTypes: const ['bar', 'line', 'pie'],
+            onChartTypeChanged: (t) =>
+                setState(() => _chartTypes['sessionWorkload'] = t),
+            onExportPdf: () => _exportChartPdf(
+              l10n,
+              'sessionWorkload',
+              l10n.sessionWorkload,
+              rangeLabel,
+            ),
+            child: RepaintBoundary(
+              key: _chartKeys['sessionWorkload'],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SessionWorkloadTable(rows: sessionWorkload, l10n: l10n),
+                  const SizedBox(height: 12),
+                  ClipRect(
+                    child: SizedBox(
+                      height: chartHeight * 0.7,
+                      child: _chartTypes['sessionWorkload'] == 'line'
+                          ? _LabeledAmountLineChart(
+                              data: sessionWorkloadChart,
+                              l10n: l10n,
+                              amountKey: 'count',
+                            )
+                          : _chartTypes['sessionWorkload'] == 'pie'
+                              ? _LabeledAmountPieChart(
+                                  data: sessionWorkloadChart,
+                                  l10n: l10n,
+                                  amountKey: 'count',
+                                )
+                              : _LabeledAmountBarChart(
+                                  data: sessionWorkloadChart,
+                                  l10n: l10n,
+                                  amountKey: 'count',
+                                ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -871,6 +932,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ],
     );
+  }
+
+  List<Map<String, dynamic>> _prepareSessionWorkloadSeries(
+    List<dynamic> raw,
+    AppLocalizations l10n,
+  ) {
+    final rows = raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    return rows.map((r) {
+      final name = (r['name'] as String?)?.trim() ?? '';
+      final role = r['role'] as String? ?? 'doctor';
+      final display = name.isEmpty ? (r['id'] as String? ?? '') : name;
+      // Only label trainees — doctor names already use د. / Dr.
+      final labeled =
+          role == 'trainee' ? '$display (${l10n.trainee})' : display;
+      return {
+        ...r,
+        'name': labeled,
+        'asSupervisor': (r['asSupervisor'] as num?)?.toInt() ?? 0,
+        'asPerformer': (r['asPerformer'] as num?)?.toInt() ?? 0,
+        'total': (r['total'] as num?)?.toInt() ?? 0,
+      };
+    }).toList();
   }
 
   /// Caps long doctor lists for readable bar/line/pie; merges remainder into [chartOtherCategory].
@@ -1016,12 +1099,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final usersByRole = Map<String, int>.from(c['usersByRole'] as Map<dynamic, dynamic>? ?? {});
     final appointmentsByStatus = Map<String, int>.from(c['appointmentsByStatus'] as Map<dynamic, dynamic>? ?? {});
     final incomeByDoctorRaw = c['incomeByDoctor'] as List<dynamic>? ?? [];
+    final sessionWorkloadRaw = c['sessionWorkload'] as List<dynamic>? ?? [];
     final expensesByCategoryRaw = c['expensesByCategory'] as List<dynamic>? ?? [];
     final expensesByDoctorRaw = c['expensesByDoctor'] as List<dynamic>? ?? [];
     final appointmentsByServiceRaw = c['appointmentsByService'] as List<dynamic>? ?? [];
     final appointmentsByPackageRaw = c['appointmentsByPackage'] as List<dynamic>? ?? [];
 
     final incomeByDoctor = _prepareDoctorIncomeSeries(incomeByDoctorRaw, l10n);
+    final sessionWorkload = _prepareSessionWorkloadSeries(sessionWorkloadRaw, l10n);
     final expensesByCategory = _prepareExpenseCategorySeries(expensesByCategoryRaw, l10n);
     final expensesByDoctor = _prepareExpenseByDoctorSeries(expensesByDoctorRaw, l10n);
     final appointmentsByService = _prepareCountSeries(appointmentsByServiceRaw, l10n, emptyNameLabel: l10n.appointmentNoServices);
@@ -1032,6 +1117,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _DynamicReportOption(id: 'incomeExpense', title: _incomeExpenseChartTitle(l10n), available: incomeExpenseByMonth.isNotEmpty),
       _DynamicReportOption(id: 'usersByRole', title: l10n.usersByRole, available: usersByRole.isNotEmpty),
       _DynamicReportOption(id: 'doctorIncome', title: l10n.incomeByDoctor, available: incomeByDoctor.isNotEmpty),
+      _DynamicReportOption(id: 'sessionWorkload', title: l10n.sessionWorkload, available: sessionWorkload.isNotEmpty),
       _DynamicReportOption(id: 'expenseCategory', title: l10n.expensesByCategory, available: expensesByCategory.isNotEmpty),
       _DynamicReportOption(id: 'expenseByDoctor', title: l10n.expenseByDoctor, available: expensesByDoctor.isNotEmpty),
       _DynamicReportOption(id: 'appointmentStatus', title: l10n.appointmentsByStatus, available: appointmentsByStatus.values.any((x) => x > 0)),
@@ -2579,6 +2665,60 @@ class _AdminTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SessionWorkloadTable extends StatelessWidget {
+  const _SessionWorkloadTable({required this.rows, required this.l10n});
+
+  final List<Map<String, dynamic>> rows;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final headerStyle = theme.textTheme.labelMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowHeight: 36,
+        dataRowMinHeight: 36,
+        dataRowMaxHeight: 44,
+        columns: [
+          DataColumn(label: Text(l10n.doctor, style: headerStyle)),
+          DataColumn(
+            numeric: true,
+            label: Text(l10n.sessionsAsSupervisor, style: headerStyle),
+          ),
+          DataColumn(
+            numeric: true,
+            label: Text(l10n.sessionsAsPerformer, style: headerStyle),
+          ),
+          DataColumn(
+            numeric: true,
+            label: Text(l10n.total, style: headerStyle),
+          ),
+        ],
+        rows: [
+          for (final r in rows)
+            DataRow(
+              cells: [
+                DataCell(Text('${r['name'] ?? ''}')),
+                DataCell(Text('${r['asSupervisor'] ?? 0}')),
+                DataCell(Text('${r['asPerformer'] ?? 0}')),
+                DataCell(
+                  Text(
+                    '${r['total'] ?? 0}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }

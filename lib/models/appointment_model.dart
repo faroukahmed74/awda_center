@@ -34,6 +34,9 @@ class AppointmentModel {
   final String id;
   final String patientId;
   final String doctorId;
+  /// Who actually ran the session (stats only). May be a doctor doc id or trainee user id.
+  /// Does not affect income — billing always uses [doctorId].
+  final String? performingDoctorId;
   final String? roomId;
   final DateTime appointmentDate;
   final String startTime;
@@ -61,6 +64,7 @@ class AppointmentModel {
     required this.id,
     required this.patientId,
     required this.doctorId,
+    this.performingDoctorId,
     this.roomId,
     required this.appointmentDate,
     required this.startTime,
@@ -100,6 +104,7 @@ class AppointmentModel {
       id: doc.id,
       patientId: d['patientId'] as String? ?? '',
       doctorId: d['doctorId'] as String? ?? '',
+      performingDoctorId: d['performingDoctorId'] as String?,
       roomId: d['roomId'] as String?,
       appointmentDate: dateTs?.toDate() ?? DateTime.now(),
       startTime: d['startTime'] as String? ?? '',
@@ -123,6 +128,8 @@ class AppointmentModel {
     return {
       'patientId': patientId,
       'doctorId': doctorId,
+      if (performingDoctorId != null && performingDoctorId!.isNotEmpty)
+        'performingDoctorId': performingDoctorId,
       'roomId': roomId,
       'appointmentDate': Timestamp.fromDate(appointmentDate),
       'startTime': startTime,
@@ -142,11 +149,17 @@ class AppointmentModel {
     };
   }
 
-  AppointmentModel copyWith({AppointmentStatus? status, bool? isStarred, String? sessionPaymentStatus}) {
+  AppointmentModel copyWith({
+    AppointmentStatus? status,
+    bool? isStarred,
+    String? sessionPaymentStatus,
+    String? performingDoctorId,
+  }) {
     return AppointmentModel(
       id: id,
       patientId: patientId,
       doctorId: doctorId,
+      performingDoctorId: performingDoctorId ?? this.performingDoctorId,
       roomId: roomId,
       appointmentDate: appointmentDate,
       startTime: startTime,

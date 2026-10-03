@@ -5,6 +5,8 @@ class SessionModel {
   final String? appointmentId;
   final String patientId;
   final String doctorId;
+  /// Who actually ran the session (stats only). Billing uses [doctorId].
+  final String? performingDoctorId;
   final DateTime sessionDate;
   final String startTime;
   final String endTime;
@@ -25,6 +27,7 @@ class SessionModel {
     this.appointmentId,
     required this.patientId,
     required this.doctorId,
+    this.performingDoctorId,
     required this.sessionDate,
     required this.startTime,
     required this.endTime,
@@ -49,6 +52,7 @@ class SessionModel {
       appointmentId: d['appointmentId'] as String?,
       patientId: d['patientId'] as String? ?? '',
       doctorId: d['doctorId'] as String? ?? '',
+      performingDoctorId: d['performingDoctorId'] as String?,
       sessionDate: dateTs?.toDate() ?? DateTime.now(),
       startTime: d['startTime'] as String? ?? '',
       endTime: d['endTime'] as String? ?? '',
@@ -71,6 +75,8 @@ class SessionModel {
       if (appointmentId != null && appointmentId!.isNotEmpty) 'appointmentId': appointmentId,
       'patientId': patientId,
       'doctorId': doctorId,
+      if (performingDoctorId != null && performingDoctorId!.isNotEmpty)
+        'performingDoctorId': performingDoctorId,
       'sessionDate': Timestamp.fromDate(sessionDate),
       'startTime': startTime,
       'endTime': endTime,

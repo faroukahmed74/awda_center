@@ -220,7 +220,21 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         service: s.service,
         doctorLabel: s.doctorId.isEmpty
             ? null
-            : '${l10n.doctor}: ${cache.doctorDisplayName(s.doctorId) ?? cache.userName(s.doctorId) ?? s.doctorId}',
+            : () {
+                final supervisor = cache.doctorDisplayName(s.doctorId) ??
+                    cache.userName(s.doctorId) ??
+                    s.doctorId;
+                final perfId = s.performingDoctorId?.trim();
+                if (perfId == null ||
+                    perfId.isEmpty ||
+                    perfId == s.doctorId) {
+                  return '${l10n.doctor}: $supervisor';
+                }
+                final performer = cache.doctorDisplayName(perfId) ??
+                    cache.userName(perfId) ??
+                    perfId;
+                return '${l10n.doctor}: $supervisor • ${l10n.performingDoctor}: $performer';
+              }(),
         statusLabel: null,
         paymentStatusLabel: _paymentStatusLabel(
           s.appointmentId == null ? null : paymentByAppointmentId[s.appointmentId!],
@@ -242,8 +256,19 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         startTime: a.startTime,
         endTime: a.endTime,
         service: a.hasServices ? a.servicesDisplay : null,
-        doctorLabel:
-            '${l10n.doctor}: ${cache.doctorDisplayName(a.doctorId) ?? cache.userName(a.doctorId) ?? a.doctorId}',
+        doctorLabel: () {
+          final supervisor = cache.doctorDisplayName(a.doctorId) ??
+              cache.userName(a.doctorId) ??
+              a.doctorId;
+          final perfId = a.performingDoctorId?.trim();
+          if (perfId == null || perfId.isEmpty || perfId == a.doctorId) {
+            return '${l10n.doctor}: $supervisor';
+          }
+          final performer = cache.doctorDisplayName(perfId) ??
+              cache.userName(perfId) ??
+              perfId;
+          return '${l10n.doctor}: $supervisor • ${l10n.performingDoctor}: $performer';
+        }(),
         statusLabel: statusLabel,
         paymentStatusLabel: _paymentStatusLabel(
           paymentByAppointmentId[a.id] ?? a.sessionPaymentStatus,

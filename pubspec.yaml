@@ -16,10 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.40+20
+version: 1.0.41+21
 # Release notes:
-# 1.0.40: Fix patient report crash (SIGABRT) when generating PDFs for patients
-# with many sessions; chunk tables, dedupe session rows, and guard double-taps.
+# 1.0.41: Add optional performing doctor on appointments (stats only; income stays
+# on supervisor). Admin dashboard session workload table/chart for doctors & trainees.
 
 environment:
   sdk: ^3.9.0
