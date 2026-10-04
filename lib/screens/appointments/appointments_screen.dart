@@ -42,6 +42,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   /// Filter by doctor (appointments for this doctor only). Combines with status, date, and search.
   String? _filterDoctorId;
 
+  /// Filter by performing doctor (doctor doc id or trainee user id).
+  String? _filterPerformingDoctorId;
+
   /// Optional filter by main service.
   String? _filterServiceId;
 
@@ -1180,6 +1183,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (_filterDoctorId != null && _filterDoctorId!.isNotEmpty) {
       out = out.where((a) => a.doctorId == _filterDoctorId).toList();
     }
+    if (_filterPerformingDoctorId != null &&
+        _filterPerformingDoctorId!.isNotEmpty) {
+      out = out
+          .where((a) => a.performingDoctorId == _filterPerformingDoctorId)
+          .toList();
+    }
     if (_filterServiceId != null &&
         _filterServiceId!.isNotEmpty &&
         cache.services.isNotEmpty) {
@@ -1330,6 +1339,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         selected:
                             _statusFilter == null &&
                             _filterDoctorId == null &&
+                            _filterPerformingDoctorId == null &&
                             _filterServiceId == null &&
                             _filterPackageId == null &&
                             _filterDay != null &&
@@ -1341,6 +1351,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                         onSelected: (_) => setState(() {
                           _statusFilter = null;
                           _filterDoctorId = null;
+                          _filterPerformingDoctorId = null;
                           _filterServiceId = null;
                           _filterPackageId = null;
                           final now = DateTime.now();
@@ -1566,9 +1577,68 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   final w = constraints.maxWidth;
                   final padding =
                       ResponsivePadding.horizontal(context).left * 2;
-                  final count = _showDoctorFilter(context) ? 3 : 2;
+                  final count = _showDoctorFilter(context) ? 4 : 2;
                   final available = w - padding - 12.0 * (count - 1);
                   final dropdownWidth = (available / count).clamp(120.0, 260.0);
+                  final performerItems = <DropdownMenuItem<String?>>[
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(l10n.filterAll),
+                    ),
+                  ];
+                  final seenPerformerIds = <String>{};
+                  for (final d in cache.activeDoctors) {
+                    if (!seenPerformerIds.add(d.id)) continue;
+                    performerItems.add(
+                      DropdownMenuItem<String?>(
+                        value: d.id,
+                        child: Text(
+                          cache.doctorDisplayName(d.id) ??
+                              cache.userName(d.userId) ??
+                              d.displayName ??
+                              d.id,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    );
+                  }
+                  final trainees = cache.users
+                      .where(
+                        (u) => u.isActive && u.hasRole(UserRole.trainee),
+                      )
+                      .toList()
+                    ..sort(
+                      (a, b) => a.displayName.toLowerCase().compareTo(
+                            b.displayName.toLowerCase(),
+                          ),
+                    );
+                  for (final u in trainees) {
+                    if (!seenPerformerIds.add(u.id)) continue;
+                    performerItems.add(
+                      DropdownMenuItem<String?>(
+                        value: u.id,
+                        child: Text(
+                          '${u.displayName} (${l10n.trainee})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    );
+                  }
+                  if (_filterPerformingDoctorId != null &&
+                      !seenPerformerIds.contains(_filterPerformingDoctorId)) {
+                    final name = cache.doctorDisplayName(
+                          _filterPerformingDoctorId,
+                        ) ??
+                        cache.userName(_filterPerformingDoctorId) ??
+                        _filterPerformingDoctorId!;
+                    performerItems.insert(
+                      1,
+                      DropdownMenuItem<String?>(
+                        value: _filterPerformingDoctorId,
+                        child: Text(name, overflow: TextOverflow.ellipsis),
+                      ),
+                    );
+                  }
                   return Padding(
                     padding: EdgeInsets.fromLTRB(
                       ResponsivePadding.horizontal(context).left,
@@ -1675,6 +1745,25 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               ],
                               onChanged: (v) =>
                                   setState(() => _filterDoctorId = v),
+                            ),
+                          ),
+                        if (_showDoctorFilter(context))
+                          SizedBox(
+                            width: dropdownWidth,
+                            child: DropdownButtonFormField<String?>(
+                              value: _filterPerformingDoctorId,
+                              decoration: InputDecoration(
+                                labelText: l10n.filterByPerformingDoctor,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              items: performerItems,
+                              onChanged: (v) => setState(
+                                () => _filterPerformingDoctorId = v,
+                              ),
                             ),
                           ),
                       ],

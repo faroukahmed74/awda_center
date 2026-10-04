@@ -132,6 +132,7 @@ class AppLocalizations {
   String get previousDay => _map['previousDay']!;
   String get nextDay => _map['nextDay']!;
   String get filterByDoctor => _map['filterByDoctor']!;
+  String get filterByPerformingDoctor => _map['filterByPerformingDoctor']!;
   String get incomeByDoctor => _map['incomeByDoctor']!;
   String get expenseByDoctor => _map['expenseByDoctor']!;
   String get paidByDoctor => _map['paidByDoctor']!;
@@ -624,6 +625,7 @@ class AppLocalizations {
     'previousDay': 'Previous day',
     'nextDay': 'Next day',
     'filterByDoctor': 'Filter by doctor',
+    'filterByPerformingDoctor': 'Filter by performing doctor',
     'incomeByDoctor': 'Income by doctor',
     'expenseByDoctor': 'Expense by doctor',
     'paidByDoctor': 'Paid by (doctor)',
@@ -1109,6 +1111,7 @@ class AppLocalizations {
     'previousDay': 'اليوم السابق',
     'nextDay': 'اليوم التالي',
     'filterByDoctor': 'تصفية حسب الطبيب',
+    'filterByPerformingDoctor': 'تصفية حسب القائم بالجلسة',
     'incomeByDoctor': 'الدخل حسب الطبيب',
     'expenseByDoctor': 'المصروفات حسب الطبيب',
     'paidByDoctor': 'مدفوع من (الطبيب)',

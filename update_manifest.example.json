@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.41",
-  "versionCode": 21,
+  "versionName": "1.0.42",
+  "versionCode": 22,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.41: إضافة حقل اختياري «الدكتور القائم بالجلسة» (للإحصاء فقط دون تأثير على الدخل)، وعدّ الجلسات للمشرف والقائم معًا، مع قسم جهد الجلسات في لوحة تحكم المسؤول للأطباء والمتدربين.",
+  "releaseNotes": "1.0.42: إظهار الدكتور القائم بالجلسة في مواعيد اليوم بالوحة الرئيسية، وإضافة تصفية حسب القائم بالجلسة في شاشة المواعيد (أطباء ومتدربين).",
   "minSupportedVersionCode": 1
 }

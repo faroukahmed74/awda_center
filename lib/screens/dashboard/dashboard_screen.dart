@@ -736,6 +736,21 @@ class _DashboardAppointmentsSectionState
         appointment.doctorId;
   }
 
+  /// Supervisor, or "supervisor / performer" when performing doctor differs.
+  String _doctorLine(AppointmentModel appointment, DataCacheProvider cache) {
+    final supervisor = _doctorName(appointment, cache);
+    final perfId = appointment.performingDoctorId?.trim();
+    if (perfId == null ||
+        perfId.isEmpty ||
+        perfId == appointment.doctorId) {
+      return supervisor;
+    }
+    final performer = cache.doctorDisplayName(perfId) ??
+        cache.userName(perfId) ??
+        perfId;
+    return '$supervisor / $performer';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = widget.l10n;
@@ -905,10 +920,10 @@ class _DashboardAppointmentsSectionState
             else
               ...filtered.take(15).map((a) {
                 final otherName = isPatient
-                    ? _doctorName(a, cache)
+                    ? _doctorLine(a, cache)
                     : isDoctor
                     ? _patientName(a, cache)
-                    : '${_patientName(a, cache)} • ${_doctorName(a, cache)}';
+                    : '${_patientName(a, cache)} • ${_doctorLine(a, cache)}';
                 final subtitle = [
                   '${AppDateFormat.shortDate.format(a.appointmentDate)} ${a.startTime} - ${a.endTime} • ${_statusLabel(a.status)}${a.hasServices ? ' • ${a.servicesDisplay}' : ''}',
                   if (a.notes != null && a.notes!.trim().isNotEmpty)
