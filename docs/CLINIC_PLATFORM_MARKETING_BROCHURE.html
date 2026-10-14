@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clinic OS — Complete Product Brochure | نظام إدارة العيادة</title>
+  <meta name="description" content="Deep feature brochure for a bilingual AR/EN physical-therapy clinic management platform — web, Android, and iOS." />
+  <style>
+    @font-face {
+      font-family: "Cairo";
+      src: url("../assets/fonts/Cairo-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "Cairo";
+      src: url("../assets/fonts/Cairo-Bold.ttf") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "Amiri";
+      src: url("../assets/fonts/Amiri-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    :root {
+      --ink: #0f1c24;
+      --muted: #4a5d68;
+      --paper: #f7f4ef;
+      --card: #ffffff;
+      --teal: #0d6e6e;
+      --teal-deep: #084848;
+      --sand: #e8dcc8;
+      --accent: #c45c26;
+      --line: #d9cfc0;
+      --ok: #1f7a4c;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #dceceb 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #f0e2d2 0%, transparent 50%),
+        var(--paper);
+      font-family: "Cairo", "Segoe UI", Tahoma, sans-serif;
+      line-height: 1.65;
+      font-size: 16px;
+    }
+
+    .ar { font-family: "Cairo", "Amiri", Tahoma, sans-serif; direction: rtl; }
+    .muted { color: var(--muted); }
+    .accent { color: var(--accent); }
+    .teal { color: var(--teal); }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 22px 80px;
+    }
+
+    /* —— Cover —— */
+    .cover {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(145deg, #063a3a 0%, #0d6e6e 42%, #145a4a 72%, #1a3a2f 100%);
+      color: #f5f8f7;
+      border-radius: 18px;
+      padding: 48px 40px 40px;
+      margin-bottom: 28px;
+    }
+    .cover::after {
+      content: "";
+      position: absolute;
+      inset: auto -40px -80px auto;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      pointer-events: none;
+    }
+    .cover-top {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .cover img.logo,
+    .cover .logo.mark {
+      width: 112px;
+      height: 112px;
+      border-radius: 22px;
+      background: #fff;
+      object-fit: contain;
+      padding: 8px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    }
+    .cover .logo.mark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #0d6e6e;
+      letter-spacing: -0.04em;
+      padding: 0;
+    }
+    .cover h1 {
+      margin: 0 0 6px;
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      line-height: 1.15;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .cover .ar-title {
+      margin: 0 0 14px;
+      font-size: 1.45rem;
+      opacity: 0.95;
+      font-family: "Amiri", "Cairo", serif;
+    }
+    .tagline {
+      max-width: 62ch;
+      margin: 0 0 18px;
+      font-size: 1.08rem;
+      opacity: 0.95;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.22);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px 28px;
+      margin-top: 28px;
+      padding-top: 22px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+      font-size: 0.92rem;
+    }
+    .meta-row strong { display: block; opacity: 0.7; font-weight: 400; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* —— Nav —— */
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 28px;
+    }
+    .toc h2 { margin: 0 0 12px; font-size: 1.15rem; }
+    .toc ol {
+      columns: 2;
+      column-gap: 28px;
+      margin: 0;
+      padding-left: 1.2em;
+    }
+    .toc a { color: var(--teal-deep); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    @media (max-width: 700px) {
+      .toc ol { columns: 1; }
+    }
+
+    /* —— Sections —— */
+    section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 28px 26px;
+      margin-bottom: 18px;
+      break-inside: avoid;
+    }
+    section h2 {
+      margin: 0 0 4px;
+      font-size: 1.45rem;
+      color: var(--teal-deep);
+    }
+    section .ar-h {
+      margin: 0 0 14px;
+      color: var(--accent);
+      font-family: "Amiri", "Cairo", serif;
+      font-size: 1.15rem;
+    }
+    section h3 {
+      margin: 22px 0 8px;
+      font-size: 1.08rem;
+      color: var(--ink);
+    }
+    section h4 {
+      margin: 14px 0 6px;
+      font-size: 0.98rem;
+      color: var(--teal);
+    }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 1.25em; }
+    li { margin-bottom: 6px; }
+    .ar-note {
+      background: #f3eee6;
+      border-right: 4px solid var(--accent);
+      padding: 12px 14px;
+      margin: 12px 0 16px;
+      border-radius: 0 10px 10px 0;
+      direction: rtl;
+      font-family: "Cairo", "Amiri", sans-serif;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 720px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .card-mini {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .card-mini h4 { margin-top: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 10px 0 16px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #e7f2f1;
+      color: var(--teal-deep);
+      font-weight: 700;
+    }
+    tr:nth-child(even) td { background: #fbfaf7; }
+    .check { color: var(--ok); font-weight: 700; }
+    .dash { color: #99a; }
+
+    .pitch {
+      font-size: 1.12rem;
+      border-left: 4px solid var(--teal);
+      padding: 10px 0 10px 16px;
+      margin: 16px 0;
+      background: linear-gradient(90deg, #e7f2f1, transparent);
+    }
+
+    .footer-cta {
+      text-align: center;
+      padding: 36px 24px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, var(--teal-deep), var(--teal));
+      color: #fff;
+      margin-top: 8px;
+    }
+    .footer-cta h2 { color: #fff; margin: 0 0 8px; }
+    .footer-cta p { opacity: 0.95; max-width: 60ch; margin: 0 auto 8px; }
+
+    .print-hint {
+      text-align: center;
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+    .print-hint kbd {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.85em;
+    }
+
+    @media print {
+      body { background: #fff; font-size: 11pt; }
+      .wrap { max-width: none; padding: 0; }
+      .print-hint, .no-print { display: none !important; }
+      .cover, section, .toc, .footer-cta {
+        break-inside: avoid;
+        box-shadow: none;
+        border-radius: 0;
+      }
+      .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      a { color: inherit; text-decoration: none; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="print-hint no-print">
+      Offline brochure · Open this file anytime · Print to PDF:
+      <kbd>⌘/Ctrl + P</kbd> → Save as PDF
+    </p>
+
+    <!-- COVER -->
+    <header class="cover" id="cover">
+      <div class="cover-top">
+        <div class="logo mark" aria-hidden="true">CO</div>
+        <div>
+          <h1>Clinic OS</h1>
+          <p class="ar-title ar">نظام إدارة عيادة العلاج الطبيعي</p>
+          <p class="tagline">
+            A complete bilingual clinic operating system for physical-therapy centers —
+            scheduling, medical records, packages, EGP finance, chat, notifications,
+            analytics, and patient access — on <strong>Web, Android, and iOS</strong> from one product.
+          </p>
+          <div class="badges">
+            <span class="badge">Web · Android · iOS</span>
+            <span class="badge">Arabic + English · RTL</span>
+            <span class="badge">Flutter + Firebase</span>
+            <span class="badge">v1.0.42</span>
+          </div>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div><strong>Built for</strong> PT clinics · Reception · Doctors · Trainees · Owners</div>
+        <div><strong>Replaces</strong> Paper diaries · WhatsApp chaos · Excel finance</div>
+        <div><strong>Document</strong> Full feature brochure · Sales &amp; demos</div>
+      </div>
+    </header>
+
+    <!-- TOC -->
+    <nav class="toc" id="toc" aria-label="Table of contents">
+      <h2>Contents · المحتويات</h2>
+      <ol>
+        <li><a href="#why">Why clinics buy Clinic OS</a></li>
+        <li><a href="#platforms">Platforms &amp; delivery</a></li>
+        <li><a href="#roles">Roles, privileges &amp; security</a></li>
+        <li><a href="#appointments">Appointments &amp; schedule</a></li>
+        <li><a href="#performing">Performing doctor &amp; workload</a></li>
+        <li><a href="#patients">Patients &amp; medical records</a></li>
+        <li><a href="#packages">Services, packages &amp; price quote</a></li>
+        <li><a href="#finance">Income, expenses &amp; finance summary</a></li>
+        <li><a href="#reports">Reports, Excel &amp; PDF</a></li>
+        <li><a href="#admin">Admin dashboard &amp; charts</a></li>
+        <li><a href="#chat">Clinic chat &amp; media</a></li>
+        <li><a href="#notify">Notifications &amp; reminders</a></li>
+        <li><a href="#doctors">Doctors, rooms &amp; VIP</a></li>
+        <li><a href="#ops">Todos, requirements &amp; audit</a></li>
+        <li><a href="#patient-app">Patient experience</a></li>
+        <li><a href="#ux">Arabic / Egypt UX differentiators</a></li>
+        <li><a href="#stack">Technology &amp; roadmap-ready stack</a></li>
+        <li><a href="#demo">Suggested live demo path</a></li>
+        <li><a href="#ar-summary">ملخص عربي كامل</a></li>
+      </ol>
+    </nav>
+
+    <!-- WHY -->
+    <section id="why">
+      <h2>1. Why clinics buy Clinic OS</h2>
+      <p class="ar-h ar">ليه العيادة تشتري النظام؟</p>
+      <div class="ar-note ar">
+        نظام عام لأي عيادة: بدل الدفتر وواتساب والإكسل — استقبال، أطباء، متدربين، مرضى، ومالية بالجنيه، عربي وإنجليزي.
+      </div>
+      <p class="pitch">
+        Clinic OS is not a “booking widget.” It is the daily operating system of a physical-therapy clinic:
+        who is in which room, who supervised vs who performed the session, what package remains,
+        what was paid in EGP, and what the owner sees at month-end.
+      </p>
+      <div class="grid-2">
+        <div class="card-mini">
+          <h4>For the owner / admin</h4>
+          <ul>
+            <li>Live dashboard: income, expenses, net, workload by doctor &amp; trainee</li>
+            <li>Finance summary with clinic economics (targets, slices, MANG / BASKET)</li>
+            <li>Audit trail of who changed what, on which platform</li>
+            <li>Role &amp; privilege control down to chat media types</li>
+          </ul>
+        </div>
+        <div class="card-mini">
+          <h4>For reception &amp; floor staff</h4>
+          <ul>
+            <li>Day schedule by rooms · conflict prevention</li>
+            <li>Statuses that match real life: apologized / absent with or without cause</li>
+            <li>Packages, services, price quote at the front desk</li>
+            <li>Create patients without forcing them through self-registration only</li>
+          </ul>
+        </div>
+        <div class="card-mini">
+          <h4>For doctors &amp; trainees</h4>
+          <ul>
+            <li>Own schedule or clinic-wide (by privilege)</li>
+            <li>Rich medical notes, VAS, progress, documents</li>
+            <li>Performing-doctor credit without breaking billing</li>
+            <li>In-app clinic chat with media</li>
+          </ul>
+        </div>
+        <div class="card-mini">
+          <h4>For patients</h4>
+          <ul>
+            <li>Same app: book, view appointments, profile</li>
+            <li>Price quote for services &amp; packages</li>
+            <li>Push / reminder awareness (mobile)</li>
+            <li>Arabic or English UI</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLATFORMS -->
+    <section id="platforms">
+      <h2>2. Platforms &amp; delivery</h2>
+      <p class="ar-h ar">المنصات وطريقة التسليم</p>
+      <p>One Flutter codebase. Clinics can run reception on a desktop browser, doctors on phones, and owners on tablets — without buying three different products.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>Web</th>
+            <th>Android</th>
+            <th>iOS</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Full clinic UI (roles, appointments, finance, chat…)</td>
+            <td class="check">Yes</td>
+            <td class="check">Yes</td>
+            <td class="check">Yes</td>
+            <td>Responsive mobile / tablet / desktop</td>
+          </tr>
+          <tr>
+            <td>Cloud hosting (SPA)</td>
+            <td class="check">Firebase Hosting</td>
+            <td class="dash">—</td>
+            <td class="dash">—</td>
+            <td>Instant updates for all web users</td>
+          </tr>
+          <tr>
+            <td>App Store / Play / APK</td>
+            <td class="dash">—</td>
+            <td class="check">APK + AAB path</td>
+            <td class="check">IPA / Archive</td>
+            <td>Android in-app update via version manifest</td>
+          </tr>
+          <tr>
+            <td>Push notifications (FCM)</td>
+            <td class="check">Yes (VAPID)</td>
+            <td class="check">Yes</td>
+            <td class="check">Yes</td>
+            <td>Appointments + chat</td>
+          </tr>
+          <tr>
+            <td>Local appointment / todo reminders</td>
+            <td class="dash">—</td>
+            <td class="check">Yes</td>
+            <td class="check">Yes</td>
+            <td>~1 hour before + day-of</td>
+          </tr>
+          <tr>
+            <td>PDF &amp; Excel export / share</td>
+            <td class="check">Download</td>
+            <td class="check">Share / save</td>
+            <td class="check">Share / save</td>
+            <td>Arabic-capable PDF fonts + reshaper</td>
+          </tr>
+          <tr>
+            <td>Google Sign-In</td>
+            <td class="check">Popup</td>
+            <td class="check">Plugin</td>
+            <td class="check">Plugin</td>
+            <td>New Google users default to patient</td>
+          </tr>
+          <tr>
+            <td>macOS / Windows / Linux folders</td>
+            <td colspan="4">Present in project for desktop expansion; primary production targets are Web + Android + iOS.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>Update &amp; release model</h3>
+      <ul>
+        <li><strong>Web:</strong> rebuild + Firebase Hosting deploy — all browsers get the new build.</li>
+        <li><strong>Android:</strong> optional remote <code>version.json</code> / Dropbox APK URL with release notes, min supported build, force-update.</li>
+        <li><strong>iOS:</strong> App Store / Transporter via Xcode archive (IPA).</li>
+      </ul>
+    </section>
+
+    <!-- ROLES -->
+    <section id="roles">
+      <h2>3. Roles, privileges &amp; security</h2>
+      <p class="ar-h ar">الأدوار والصلاحيات والأمان</p>
+      <h3>Built-in roles</h3>
+      <table>
+        <thead>
+          <tr><th>Role</th><th>Typical access</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Admin</strong></td><td>Everything: dashboard, users, finance, audit, chat oversight, settings</td></tr>
+          <tr><td><strong>Supervisor</strong></td><td>Near-admin operations; can book past dates (migration); audit read</td></tr>
+          <tr><td><strong>Secretary</strong></td><td>Users, appointments, reports, chat defaults (view-all / manage group)</td></tr>
+          <tr><td><strong>Doctor</strong></td><td>Appointments, patients, reports, own doctor profile, chat</td></tr>
+          <tr><td><strong>Trainee</strong></td><td>Chat by default; appointments/patients via grants; can be performing doctor</td></tr>
+          <tr><td><strong>Patient</strong></td><td>My appointments, profile, book, price quote, chat</td></tr>
+        </tbody>
+      </table>
+      <h3>Privilege model (sales differentiator)</h3>
+      <ul>
+        <li><strong>Multi-role users</strong> (e.g. admin + doctor) via roles array.</li>
+        <li><strong>Per-user permission overrides</strong> — admin edits privileges without redeploying.</li>
+        <li>Fine-grained clinic keys: admin dashboard, appointments see-all / view-all, patients edit, income, finance summary, reports, requirements, admin todos.</li>
+        <li>Fine-grained <strong>chat</strong> keys: start chats, message anyone, send text/image/video/audio/voice/document, save media, broadcast, create/manage groups, retention, delete own / delete any, chat settings.</li>
+      </ul>
+      <h3>Security posture (honest positioning)</h3>
+      <ul>
+        <li>Firebase Authentication (email/password, Google); inactive accounts blocked.</li>
+        <li>Firestore &amp; Storage security rules gated by role helpers + permission checks.</li>
+        <li>Staff can create patient Auth accounts via secure Cloud Functions (not “open signup only”).</li>
+        <li>Immutable audit log (create-only; admin/supervisor read).</li>
+        <li>Position as: <em>role-gated cloud clinic system with audit &amp; Firebase rules</em> — not a certified EMR/HIPAA claim unless separately certified.</li>
+      </ul>
+    </section>
+
+    <!-- APPOINTMENTS -->
+    <section id="appointments">
+      <h2>4. Appointments &amp; schedule (core floor ops)</h2>
+      <p class="ar-h ar">المواعيد وجدول العيادة</p>
+      <div class="ar-note ar">
+        جدول يومي بالغرف، منع التعارض، حالات اعتذار/غياب حقيقية، باقات، وفلاتر للمشرف والقائم بالجلسة.
+      </div>
+      <h3>Views</h3>
+      <ul>
+        <li><strong>List view</strong> with status chips, date navigation (day / month / year), search.</li>
+        <li><strong>Schedule (day) view</strong>: time slots every 30 minutes (00:00–23:30), rooms as columns, sticky-friendly layout for reception desks.</li>
+      </ul>
+      <h3>Create / edit appointment fields</h3>
+      <ul>
+        <li>Patient, supervising <strong>Doctor</strong>, optional <strong>Performing doctor</strong> (doctor or trainee)</li>
+        <li>Room, date, start/end time, multiple services, linked package</li>
+        <li>Cost, discount %, notes, optional extra slot, VIP star</li>
+      </ul>
+      <h3>Statuses that match Egyptian clinic language</h3>
+      <ul>
+        <li>Pending · Confirmed · Attended (completed) · Cancelled</li>
+        <li>Absent · <strong>Apologized (absent with cause)</strong> · Absent without cause / no-show</li>
+        <li>Cancelled / absent / no-show do <strong>not</strong> keep occupying the room slot</li>
+      </ul>
+      <h3>Slot &amp; conflict rules</h3>
+      <ul>
+        <li>Up to <strong>3 main + 1 extra</strong> appointments per time slot / day logic used by the clinic.</li>
+        <li><strong>Room overlap blocked</strong> so two sessions cannot claim the same room at overlapping times.</li>
+      </ul>
+      <h3>Filters &amp; payment on complete</h3>
+      <ul>
+        <li>Filter by service, package, supervising doctor, <strong>performing doctor</strong>, status, search (patient / doctor / performer / service).</li>
+        <li>On complete: paid / partial / prepaid / not paid — can create linked income entry.</li>
+        <li>Dashboard “today’s appointments” shows <code>supervisor / performer</code> when they differ.</li>
+      </ul>
+      <h3>Who sees what</h3>
+      <ul>
+        <li>Doctors default to their own book; privileges unlock clinic-wide see-all / view-all.</li>
+        <li>Admin / supervisor can book <strong>past dates</strong> for data migration.</li>
+        <li>Patients self-book via dedicated booking dialog.</li>
+      </ul>
+    </section>
+
+    <!-- PERFORMING -->
+    <section id="performing">
+      <h2>5. Performing doctor &amp; session workload</h2>
+      <p class="ar-h ar">الدكتور القائم بالجلسة وجهد الجلسات</p>
+      <p>Built for training clinics and busy floors where the billing doctor is not always the person who ran the session.</p>
+      <ul>
+        <li><strong>doctorId</strong> = supervising / billing doctor (income stays here).</li>
+        <li><strong>performingDoctorId</strong> = who actually performed (doctor doc id or trainee user id) — <strong>stats only</strong>.</li>
+        <li>Admin dashboard <strong>Session workload</strong> table + chart: counts as supervisor, as performer, and total.</li>
+        <li>When supervisor ≠ performer, <strong>both get credit</strong> (dual count). Legacy sessions without a performer stay “as performer = 0”.</li>
+        <li>Visible on appointments list, dashboard, patient detail, and admin reports — never silently changes money.</li>
+      </ul>
+    </section>
+
+    <!-- PATIENTS -->
+    <section id="patients">
+      <h2>6. Patients &amp; medical records</h2>
+      <p class="ar-h ar">المرضى والسجل الطبي</p>
+      <h3>Patient management</h3>
+      <ul>
+        <li>Searchable list (cached), deep-link search query support.</li>
+        <li>Staff creates patients via Cloud Function (email account + profile) — front desk friendly.</li>
+        <li><strong>Patient code</strong> for clinic IDs; login with email <em>or</em> patient code.</li>
+        <li>Secondary phone, AR/EN display names.</li>
+        <li>VIP / starred patient flag for priority clients.</li>
+      </ul>
+      <h3>Medical profile (deep)</h3>
+      <ul>
+        <li>Demographics: DOB or age, gender, address, occupation, referred by, marital status, areas to treat, fees type, followed-by doctor.</li>
+        <li>Clinical: chief complaint, diagnosis, medical history, treatment goals/plan, progress notes, pain (VAS), contraindications, previous PT/surgery, treatment progress.</li>
+        <li><strong>Rich text (Quill)</strong>: bold, underline, size, color; Delta JSON (HTML/plain fallback); per-field label colors.</li>
+        <li>Session notes: VAS, ROM, function, progress, free notes.</li>
+      </ul>
+      <h3>Documents &amp; patient PDF report</h3>
+      <ul>
+        <li>Upload/view: ray, lab, report, image, PDF, note — images fullscreen; PDF via viewer.</li>
+        <li><strong>Patient report PDF</strong>: personal + medical + sessions (+ weekday on dates) + payments + packages; Arabic fonts + reshaper; chunked tables for large histories (stable on mobile).</li>
+      </ul>
+    </section>
+
+    <!-- PACKAGES -->
+    <section id="packages">
+      <h2>7. Services, packages &amp; price quote</h2>
+      <p class="ar-h ar">الخدمات والباقات وعرض الأسعار</p>
+      <ul>
+        <li><strong>Services catalog</strong>: AR/EN names, amount per session, used in booking.</li>
+        <li><strong>Packages</strong>: AR/EN name &amp; description, linked services, session count, fixed amount, active flag.</li>
+        <li>Appointments link to <code>packageId</code>; package progress tracked in patient admin screens.</li>
+        <li><strong>Price Quote</strong> screen (available broadly): public-facing list of active services &amp; packages for front-desk quoting without opening finance.</li>
+      </ul>
+    </section>
+
+    <!-- FINANCE -->
+    <section id="finance">
+      <h2>8. Income, expenses &amp; finance summary</h2>
+      <p class="ar-h ar">الدخل والمصروفات والملخص المالي</p>
+      <h3>Income &amp; expenses</h3>
+      <ul>
+        <li>Default currency <strong>EGP</strong>.</li>
+        <li>Income: amount, source, date/time (can preserve session time), notes, doctor/patient, appointment link, payment status; add/edit/delete; search; day/month/year summaries.</li>
+        <li>Expense categories: <strong>Salary, Rent, Supplies, Media, Other</strong> (+ recipient for salary, paid-by-doctor).</li>
+        <li>Category mapping into finance summary buckets (e.g. Salary→Receptionist, Rent→Rent+Guard, Media→Media).</li>
+      </ul>
+      <h3>Finance summary (owner P&amp;L style)</h3>
+      <ul>
+        <li>Per-doctor income, 30% target, bonus, slice-based commission table, consumables, media.</li>
+        <li>Shared lines: Rent+Guard, Receptionist.</li>
+        <li>Outputs familiar to partner clinics: <strong>NET, MANG, BASKET</strong>, profit; reorder doctor rows; config saved per month.</li>
+        <li>Periods: month / quarter / 6 months / year.</li>
+        <li><strong>Bilingual PDF</strong> with Amiri + Arabic reshaper; download/share on all primary platforms.</li>
+      </ul>
+    </section>
+
+    <!-- REPORTS -->
+    <section id="reports">
+      <h2>9. Reports, Excel &amp; PDF</h2>
+      <p class="ar-h ar">التقارير وتصدير Excel وPDF</p>
+      <ul>
+        <li>Tabs for income/expenses, appointments, patients, users (as permitted).</li>
+        <li>Period filters: day / month / year.</li>
+        <li>Export colored <strong>PDF</strong> and <strong>Excel/CSV</strong>.</li>
+        <li>Web: download; mobile: share sheet / save.</li>
+        <li>Admin can also export selected dashboard charts into a combined statistics PDF.</li>
+      </ul>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="admin">
+      <h2>10. Admin dashboard &amp; charts</h2>
+      <p class="ar-h ar">لوحة تحكم المسؤول والرسوم البيانية</p>
+      <ul>
+        <li>Period filters: day, week, month, whole month, pick month, 3–12 months, custom range.</li>
+        <li>Charts (bar / line / pie): appointments trend, income vs expense, users by role, income by doctor, <strong>session workload</strong>, expenses by category, expense by doctor, appointments by status / service / package.</li>
+        <li>Period totals: income, expense, net.</li>
+        <li>Shortcuts: rooms, manage doctors, audit log, migrate staff-created patients.</li>
+        <li>Dynamic multi-chart PDF export for owners and partners.</li>
+      </ul>
+    </section>
+
+    <!-- CHAT -->
+    <section id="chat">
+      <h2>11. Clinic chat &amp; media</h2>
+      <p class="ar-h ar">محادثات العيادة والوسائط</p>
+      <ul>
+        <li>1:1 chats, <strong>groups</strong>, <strong>broadcast</strong>.</li>
+        <li>Media: text, image, video, audio file, voice note, documents (PDF thumbnails).</li>
+        <li>Reactions, read receipts, save media (permissioned).</li>
+        <li>Retention settings + scheduled Cloud Function cleanup.</li>
+        <li>Quiet hours respected in Functions; FCM on new messages; deep-link into conversation.</li>
+        <li>Oversight: view-all for admin / supervisor / secretary when granted.</li>
+      </ul>
+    </section>
+
+    <!-- NOTIFY -->
+    <section id="notify">
+      <h2>12. Notifications &amp; reminders</h2>
+      <p class="ar-h ar">الإشعارات والتذكيرات</p>
+      <ul>
+        <li><strong>FCM push</strong> (including web): appointment booked/status changes to patient, doctor, and secretaries — Arabic-friendly bodies with patient/doctor names, services, package session.</li>
+        <li><strong>Local reminders</strong> on Android/iOS: ~1 hour before + day-of; rescheduled when appointments change.</li>
+        <li><strong>In-app bell</strong>: upcoming appointments, audit (admins), open todos — dialog on desktop / sheet on phone.</li>
+        <li>Chat message pushes with quiet-hours awareness.</li>
+      </ul>
+    </section>
+
+    <!-- DOCTORS VIP -->
+    <section id="doctors">
+      <h2>13. Doctors, rooms &amp; VIP</h2>
+      <p class="ar-h ar">الأطباء والغرف والتمييز VIP</p>
+      <h3>Doctors</h3>
+      <ul>
+        <li>Public “Our doctors”: specialization, qualifications, certifications, bio (AR/EN).</li>
+        <li>My doctor profile + availability (weekday slots, duration).</li>
+        <li>Admin: manage / link doctor documents to users.</li>
+      </ul>
+      <h3>Rooms</h3>
+      <ul>
+        <li>CRUD rooms used as schedule columns and booking constraints.</li>
+      </ul>
+      <h3>VIP / starred</h3>
+      <ul>
+        <li>Star a <strong>patient</strong> and/or a <strong>session</strong> — same visual language as “new / VIP” on the floor schedule for priority clients.</li>
+      </ul>
+    </section>
+
+    <!-- OPS -->
+    <section id="ops">
+      <h2>14. Admin todos, requirements &amp; audit</h2>
+      <p class="ar-h ar">مهام الإدارة والمتطلبات وسجل المراجعة</p>
+      <ul>
+        <li><strong>Admin todos</strong> with reminder timestamps (local notify on mobile).</li>
+        <li><strong>Center requirements</strong> / to-buy / operational checklist.</li>
+        <li><strong>Audit log</strong>: action, entity, user, email, details, platform/device; exportable; immutable create-only trail for accountability conversations with staff.</li>
+      </ul>
+    </section>
+
+    <!-- PATIENT APP -->
+    <section id="patient-app">
+      <h2>15. Patient experience (same app)</h2>
+      <p class="ar-h ar">تجربة المريض من نفس التطبيق</p>
+      <ul>
+        <li>Register / login (email, Google, or patient code flows as configured).</li>
+        <li>Dashboard with personal upcoming appointments.</li>
+        <li>My appointments + self-booking dialog.</li>
+        <li>Profile edit (names AR/EN, phones, password).</li>
+        <li>Price quote for transparent service/package pricing.</li>
+        <li>Chat (as permitted) with the clinic.</li>
+      </ul>
+    </section>
+
+    <!-- UX EG -->
+    <section id="ux">
+      <h2>16. Arabic / Egypt UX differentiators</h2>
+      <p class="ar-h ar">ما يميز النظام للعيادات المصرية والعربي</p>
+      <ul>
+        <li><strong>True bilingual product</strong>: ~450+ UI strings × AR+EN, RTL, Cairo/Amiri/Noto fonts — not a bolted-on translation.</li>
+        <li>Arabic-native notification copy and PDF letter reshaping for correct joining.</li>
+        <li><strong>EGP</strong> finance + partnership-style lines (MANG / BASKET / slices).</li>
+        <li>Schedule language: apologized / absent with-without cause; room grid for busy PT floors.</li>
+        <li>Supervisor vs performing doctor + trainee credit without breaking doctor billing.</li>
+        <li>Patient codes + dual phones; staff-created patients for low-email literacy contexts.</li>
+        <li>Android APK update channel for clinics starting outside Play Store.</li>
+        <li>One codebase: receptionist on web desktop, doctor on phone, owner on tablet.</li>
+      </ul>
+    </section>
+
+    <!-- STACK -->
+    <section id="stack">
+      <h2>17. Technology &amp; what you are buying</h2>
+      <p class="ar-h ar">التقنية وما تحصل عليه</p>
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Choice</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Client</td><td>Flutter (Dart), Provider, go_router — Web / Android / iOS</td></tr>
+          <tr><td>Backend</td><td>Firebase Auth, Firestore, Storage, Cloud Messaging, Cloud Functions, Hosting</td></tr>
+          <tr><td>Documents</td><td>pdf, excel, Amiri/Cairo/Noto Arabic fonts, Arabic reshaper</td></tr>
+          <tr><td>Medical notes</td><td>flutter_quill (rich text)</td></tr>
+          <tr><td>Charts</td><td>fl_chart + admin PDF export</td></tr>
+        </tbody>
+      </table>
+      <h3>What a clinic receives (typical commercial package)</h3>
+      <ul>
+        <li>Branded web URL (Firebase Hosting) + Android build + iOS build</li>
+        <li>Firebase project (Auth, Firestore, Storage, Functions, FCM)</li>
+        <li>Role setup for admin / reception / doctors / trainees / patients</li>
+        <li>Training on appointments, packages, finance summary, reports</li>
+        <li>This brochure + user guide materials for onboarding</li>
+      </ul>
+      <p class="muted">Commercial terms (license, hosting fees, customization, training hours) are agreed per deal — this document describes product capability, not pricing.</p>
+    </section>
+
+    <!-- DEMO -->
+    <section id="demo">
+      <h2>18. Suggested live demo path (15–20 minutes)</h2>
+      <p class="ar-h ar">مسار عرض حي مقترح</p>
+      <ol>
+        <li>Login as admin → Dashboard today’s appointments (show supervisor / performer).</li>
+        <li>Appointments schedule view → room columns → create appointment with package + performing doctor.</li>
+        <li>Complete session → payment status → linked income.</li>
+        <li>Patient detail → rich medical note → generate patient PDF report.</li>
+        <li>Admin dashboard → session workload + income by doctor → export chart PDF.</li>
+        <li>Finance summary → show NET / MANG / BASKET → export bilingual PDF.</li>
+        <li>Chat group / broadcast → show media permission story.</li>
+        <li>Switch language AR ↔ EN and theme light/dark.</li>
+        <li>(Optional) Patient login → self-book + price quote.</li>
+      </ol>
+    </section>
+
+    <!-- ARABIC SUMMARY -->
+    <section id="ar-summary" class="ar" dir="rtl">
+      <h2>19. ملخص عربي كامل للعرض على العيادات</h2>
+      <p class="ar-h" style="color: var(--teal-deep);">نظام تشغيل عيادة علاج طبيعي متكامل — قابل للعلامة التجارية باسم عيادتكم</p>
+      <p>
+        <strong>النظام</strong> تطبيق واحد (ويب + أندرويد + آيفون) يدير العيادة يوميًا بدل الدفتر وواتساب والإكسل:
+        مواعيد وغرف، سجل طبي غني، باقات وجلسات، دخل ومصروفات بالجنيه، ملخص مالي للشركاء،
+        شات داخلي، إشعارات وتذكير، لوحة إحصائيات، وصلاحيات دقيقة لكل دور.
+      </p>
+      <h3>المنصات</h3>
+      <ul>
+        <li>ويب للاستقبال والمالك (تحديث فوري عبر الاستضافة)</li>
+        <li>أندرويد وآيفون للأطباء والمرضى — مع إشعارات وتذكيرات محلية</li>
+        <li>واجهة عربية/إنجليزية كاملة مع اتجاه يمين-يسار</li>
+      </ul>
+      <h3>الأدوار</h3>
+      <ul>
+        <li>مسؤول · مشرف · سكرتير · طبيب · متدرب · مريض</li>
+        <li>أدوار متعددة لنفس المستخدم + صلاحيات تفصيلية (حتى نوع وسائط الشات)</li>
+      </ul>
+      <h3>أهم الموديولات</h3>
+      <ul>
+        <li><strong>المواعيد:</strong> قائمة وجدول يومي بالغرف، منع التعارض، حالات حضور/اعتذار/غياب، فلاتر للطبيب والقائم بالجلسة</li>
+        <li><strong>القائم بالجلسة:</strong> العدّ الإحصائي للمشرف والمنفّذ دون التأثير على الدخل</li>
+        <li><strong>المرضى:</strong> كود مريض، سجل طبي Rich Text، مرفقات، تقرير PDF عربي</li>
+        <li><strong>الباقات والخدمات وعرض الأسعار</strong> للاستقبال</li>
+        <li><strong>المالية:</strong> دخل/مصروف + ملخص (NET / MANG / BASKET) وتصدير PDF ثنائي اللغة</li>
+        <li><strong>التقارير:</strong> PDF وExcel</li>
+        <li><strong>لوحة المسؤول:</strong> رسوم بيانية وجهد الجلسات وتصدير إحصائيات</li>
+        <li><strong>الشات:</strong> فردي/جماعي/بث مع صور وفيديو وصوت ومستندات</li>
+        <li><strong>الإشعارات:</strong> FCM + تذكير محلي للمواعيد</li>
+        <li><strong>VIP وسجل مراجعة ومهام ومتطلبات المركز</strong></li>
+      </ul>
+      <h3>رسالة البيع بجملة واحدة</h3>
+      <p class="pitch" style="border-right: 4px solid var(--teal); border-left: none; padding: 10px 16px 10px 0; background: linear-gradient(270deg, #e7f2f1, transparent);">
+        نظام عربي/إنجليزي متكامل لعيادات العلاج الطبيعي: من الحجز والغرفة والسجل الطبي والباقات،
+        إلى المالية بالجنيه وإحصائيات جهد الأطباء والمتدربين والشات والإشعارات — على الويب والموبايل من منتج واحد.
+      </p>
+    </section>
+
+    <div class="footer-cta" id="cta">
+      <h2>Ready to run your clinic on Clinic OS</h2>
+      <p class="ar" style="font-family: Amiri, Cairo, serif; font-size: 1.2rem;">جاهزين نشغّل عيادتكم على النظام</p>
+      <p>Web · Android · iOS · AR/EN · Appointments · Medical · Packages · EGP Finance · Chat · Analytics</p>
+      <p style="margin-top: 16px; font-size: 0.9rem; opacity: 0.85;">
+        Product brochure · Offline HTML · Print to PDF · Clinic OS · White-label ready for any clinic
+      </p>
+    </div>
+  </div>
+</body>
+</html>
