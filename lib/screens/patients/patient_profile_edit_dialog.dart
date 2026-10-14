@@ -215,19 +215,40 @@ class _PatientProfileEditDialogState extends State<PatientProfileEditDialog> {
           ),
         ),
         const SizedBox(height: _fieldSpacing),
-        DropdownButtonFormField<String?>(
-          value: _gender,
-          decoration: InputDecoration(
-            labelText: l10n.gender,
-            border: const OutlineInputBorder(),
+        // FilterChips instead of DropdownButtonFormField — Dropdown has had iOS assertion/layout crashes in nested dialogs.
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.gender,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilterChip(
+                    label: const Text('—'),
+                    selected: _gender == null,
+                    onSelected: (_) => setState(() => _gender = null),
+                  ),
+                  FilterChip(
+                    label: Text(l10n.male),
+                    selected: _gender == 'male',
+                    onSelected: (_) => setState(() => _gender = 'male'),
+                  ),
+                  FilterChip(
+                    label: Text(l10n.female),
+                    selected: _gender == 'female',
+                    onSelected: (_) => setState(() => _gender = 'female'),
+                  ),
+                ],
+              ),
+            ],
           ),
-          items: [
-            DropdownMenuItem<String?>(value: null, child: Text('—')),
-            DropdownMenuItem<String?>(value: 'male', child: Text(l10n.male)),
-            DropdownMenuItem<String?>(
-                value: 'female', child: Text(l10n.female)),
-          ],
-          onChanged: (v) => setState(() => _gender = v),
         ),
         const SizedBox(height: _fieldSpacing),
         TextFormField(
