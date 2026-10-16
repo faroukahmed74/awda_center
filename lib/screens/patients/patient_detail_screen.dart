@@ -26,8 +26,11 @@ import '../../widgets/medical/medical_rich_text_view.dart';
 import 'patient_profile_edit_dialog.dart';
 import 'patient_document_dialog.dart';
 import 'document_viewer.dart';
+import 'patient_report_docx.dart';
 import 'patient_report_pdf.dart';
 import '../reports/report_pdf_share.dart';
+
+enum _PatientReportFormat { pdf, docs }
 
 class PatientDetailScreen extends StatefulWidget {
   final String patientId;
@@ -213,6 +216,9 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     final packageTags = _packageSessionTagsByAppointmentId();
     final linkedAppointmentIds = _appointmentIdsFromSessions;
     for (final s in _sessions) {
+      final payKey = s.appointmentId == null
+          ? null
+          : paymentByAppointmentId[s.appointmentId!];
       rows.add(_SessionRow(
         date: s.sessionDate,
         startTime: s.startTime,
@@ -236,10 +242,11 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                 return '${l10n.doctor}: $supervisor • ${l10n.performingDoctor}: $performer';
               }(),
         statusLabel: null,
-        paymentStatusLabel: _paymentStatusLabel(
-          s.appointmentId == null ? null : paymentByAppointmentId[s.appointmentId!],
-          l10n,
-        ),
+        paymentStatusKey: payKey,
+        paymentStatusLabel: _paymentStatusLabel(payKey, l10n),
+        paymentAmount: s.appointmentId == null
+            ? null
+            : paymentAmountByAppointmentId[s.appointmentId!],
         paymentAmountLabel: s.appointmentId == null
             ? null
             : _paymentAmountLabel(paymentAmountByAppointmentId[s.appointmentId!]),
@@ -251,6 +258,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     for (final a in _appointmentSessions) {
       if (linkedAppointmentIds.contains(a.id)) continue;
       final statusLabel = _appointmentStatusLabel(a.status, l10n);
+      final payKey = paymentByAppointmentId[a.id] ?? a.sessionPaymentStatus;
       rows.add(_SessionRow(
         date: a.appointmentDate,
         startTime: a.startTime,
@@ -270,10 +278,9 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
           return '${l10n.doctor}: $supervisor • ${l10n.performingDoctor}: $performer';
         }(),
         statusLabel: statusLabel,
-        paymentStatusLabel: _paymentStatusLabel(
-          paymentByAppointmentId[a.id] ?? a.sessionPaymentStatus,
-          l10n,
-        ),
+        paymentStatusKey: payKey,
+        paymentStatusLabel: _paymentStatusLabel(payKey, l10n),
+        paymentAmount: paymentAmountByAppointmentId[a.id],
         paymentAmountLabel: _paymentAmountLabel(paymentAmountByAppointmentId[a.id]),
         packageTag: packageTags[a.id],
       ));
@@ -295,20 +302,55 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     }
   }
 
+  Future<_PatientReportFormat?> _pickReportFormat(AppLocalizations l10n) {
+    return showDialog<_PatientReportFormat>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.chooseReportFormat),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: Text(l10n.exportPdf),
+              onTap: () => Navigator.pop(ctx, _PatientReportFormat.pdf),
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: Text(l10n.exportDocs),
+              onTap: () => Navigator.pop(ctx, _PatientReportFormat.docs),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _generateReport(AppLocalizations l10n) async {
     if (_user == null || _generatingReport) return;
+    final format = await _pickReportFormat(l10n);
+    if (format == null || !mounted) return;
+
     setState(() => _generatingReport = true);
     final messenger = ScaffoldMessenger.of(context);
     final cache = context.read<DataCacheProvider>();
     messenger.showSnackBar(SnackBar(content: Text(l10n.generatingReport)));
     try {
-      final incomeList = await _firestore.getIncomeRecordsForPatient(widget.patientId);
-      // Full history for the PDF (UI list stays capped via default [limit]).
+      final incomeList =
+          await _firestore.getIncomeRecordsForPatient(widget.patientId);
+      // Full history for export (UI list stays capped via default [limit]).
       final merged = _mergedSessionRows(
         l10n,
         cache,
         limit: null,
       );
+      // Report order: oldest at top → newest at bottom.
       final sessionRows = merged
           .map((r) => PatientReportSessionRow(
                 date: r.date,
@@ -316,34 +358,67 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                 endTime: r.endTime,
                 service: r.service,
                 statusLabel: r.statusLabel,
-                paymentStatusLabel: r.paymentStatusLabel,
-                doctorLabel: r.doctorLabel,
+                paymentStatusKey: r.paymentStatusKey,
+                paymentAmount: r.paymentAmount,
               ))
+          .toList()
+        ..sort((a, b) {
+          final byDate = a.date.compareTo(b.date);
+          if (byDate != 0) return byDate;
+          return a.startTime.compareTo(b.startTime);
+        });
+      final currency = incomeList
+              .map((r) => r.currency.trim())
+              .firstWhere((c) => c.isNotEmpty, orElse: () => 'EGP');
+      final packageProgress = _packageProgress()
+          .map(
+            (e) => PatientReportPackageProgress.fromPackage(
+              pkg: e.pkg,
+              completed: e.completed,
+              total: e.total,
+            ),
+          )
           .toList();
-      final followedId = _profile?.followedByDoctorId?.trim();
-      final followedName = (followedId == null || followedId.isEmpty)
-          ? null
-          : (cache.doctorDisplayName(followedId) ??
-              cache.userName(followedId) ??
-              followedId);
-      final bytes = await buildPatientReportPdf(
-        user: _user!,
-        profile: _profile,
-        sessionRows: sessionRows,
-        incomeForPatient: incomeList,
-        packageProgress: _packageProgress(),
-        l10n: l10n,
-        centerName: l10n.appTitle,
-        followedByDoctorName: followedName,
-      );
-      final name = _user!.displayName.replaceAll(RegExp(r'[^\w\s\u0600-\u06FF-]'), '').trim();
-      final safeName = name.isEmpty ? 'patient' : name.split(RegExp(r'\s+')).first;
-      final filename = 'patient_report_${safeName}_${AppDateFormat.fileNameDate.format(DateTime.now())}.pdf';
-      await savePdfAndShare(
-        filename,
-        bytes,
-        _sharePositionOriginFromContext(),
-      );
+
+      final name = _user!.displayName
+          .replaceAll(RegExp(r'[^\w\s\u0600-\u06FF-]'), '')
+          .trim();
+      final safeName =
+          name.isEmpty ? 'patient' : name.split(RegExp(r'\s+')).first;
+      final stamp = AppDateFormat.fileNameDate.format(DateTime.now());
+
+      if (format == _PatientReportFormat.pdf) {
+        final bytes = await buildPatientReportPdf(
+          user: _user!,
+          profile: _profile,
+          sessionRows: sessionRows,
+          l10n: l10n,
+          centerName: l10n.appTitle,
+          currency: currency,
+          packageProgress: packageProgress,
+        );
+        await savePdfAndShare(
+          'patient_report_${safeName}_$stamp.pdf',
+          bytes,
+          _sharePositionOriginFromContext(),
+        );
+      } else {
+        final bytes = await buildPatientReportDocx(
+          user: _user!,
+          profile: _profile,
+          sessionRows: sessionRows,
+          l10n: l10n,
+          centerName: l10n.appTitle,
+          currency: currency,
+          packageProgress: packageProgress,
+        );
+        await savePdfAndShare(
+          'patient_report_${safeName}_$stamp.docx',
+          bytes,
+          _sharePositionOriginFromContext(),
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        );
+      }
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(l10n.reportReady)));
     } catch (e) {
@@ -889,7 +964,9 @@ class _SessionRow {
   final String? service;
   final String? doctorLabel;
   final String? statusLabel;
+  final String? paymentStatusKey;
   final String? paymentStatusLabel;
+  final double? paymentAmount;
   final String? paymentAmountLabel;
   final _PackageSessionTag? packageTag;
 
@@ -900,7 +977,9 @@ class _SessionRow {
     this.service,
     this.doctorLabel,
     this.statusLabel,
+    this.paymentStatusKey,
     this.paymentStatusLabel,
+    this.paymentAmount,
     this.paymentAmountLabel,
     this.packageTag,
   });

@@ -345,6 +345,8 @@ class AppLocalizations {
   String get periodCustomRange => _map['periodCustomRange']!;
   String get chooseDateRange => _map['chooseDateRange']!;
   String get exportPdf => _map['exportPdf']!;
+  String get exportDocs => _map['exportDocs']!;
+  String get chooseReportFormat => _map['chooseReportFormat']!;
   String get dynamicReport => _map['dynamicReport']!;
   String get dynamicReportHint => _map['dynamicReportHint']!;
   String get dynamicReportExportChartType => _map['dynamicReportExportChartType']!;
@@ -830,6 +832,8 @@ class AppLocalizations {
     'periodCustomRange': 'Custom range',
     'chooseDateRange': 'Choose dates',
     'exportPdf': 'Export PDF',
+    'exportDocs': 'Export Docs',
+    'chooseReportFormat': 'Choose report format',
     'dynamicReport': 'Dynamic report',
     'dynamicReportHint': 'Choose one or more statistics below. Pick a chart style for the PDF; all selected charts will be exported using that style (your on-screen chart types stay the same after export).',
     'dynamicReportExportChartType': 'Chart style for PDF export',
@@ -1316,6 +1320,8 @@ class AppLocalizations {
     'periodCustomRange': 'فترة مخصصة',
     'chooseDateRange': 'اختر التواريخ',
     'exportPdf': 'تصدير PDF',
+    'exportDocs': 'تصدير Docs',
+    'chooseReportFormat': 'اختر صيغة التقرير',
     'dynamicReport': 'تقرير ديناميكي',
     'dynamicReportHint': 'اختر إحصائية واحدة أو أكثر أدناه. اختر شكل المخطط للتصدير؛ ستُصدَّر كل المخططات المحددة بهذا الشكل (أنواع المخططات على الشاشة تُعاد كما كانت بعد التصدير).',
     'dynamicReportExportChartType': 'شكل المخطط لتصدير PDF',

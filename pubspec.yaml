@@ -16,11 +16,11 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.43+23
+version: 1.0.44+24
 # Release notes:
-# 1.0.43: Dynamic patient PDF report — omit empty fields/sections for sparse
-# profiles; paginate long medical text and large session tables so reports
-# with little or heavy data generate reliably without layout crashes.
+# 1.0.44: Compact patient report (logo, name/date/diagnosis, sessions with
+# payment + total, packages); export as PDF or Docs; sessions oldest→newest;
+# fix missing Arabic ي glyph in PDF names.
 
 
 environment:
@@ -55,6 +55,7 @@ dependencies:
   share_plus: ^10.1.4
   package_info_plus: ^8.0.2
   pdf: ^3.11.1
+  archive: ^3.6.1
   excel: ^4.0.3
   path_provider: ^2.1.5
   image_picker: ^1.1.2

@@ -5,10 +5,15 @@ import 'dart:html' as html;
 
 import 'package:flutter/material.dart';
 
-/// Triggers a PDF download in the browser (web). [sharePositionOrigin] is ignored on web.
-Future<void> savePdfAndShare(String filename, List<int> bytes, [Rect? sharePositionOrigin]) async {
+/// Triggers a file download in the browser (web). [sharePositionOrigin] is ignored on web.
+Future<void> savePdfAndShare(
+  String filename,
+  List<int> bytes, [
+  Rect? sharePositionOrigin,
+  String mimeType = 'application/pdf',
+]) async {
   try {
-    final blob = html.Blob([Uint8List.fromList(bytes)]);
+    final blob = html.Blob([Uint8List.fromList(bytes)], mimeType);
     final url = html.Url.createObjectUrlFromBlob(blob);
     final anchor = html.AnchorElement()
       ..href = url
@@ -16,7 +21,7 @@ Future<void> savePdfAndShare(String filename, List<int> bytes, [Rect? sharePosit
       ..style.display = 'none';
     final body = html.document.body;
     if (body == null) {
-      throw StateError('Document body not available for PDF download');
+      throw StateError('Document body not available for download');
     }
     body.append(anchor);
     anchor.click();

@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.43",
-  "versionCode": 23,
+  "versionName": "1.0.44",
+  "versionCode": 24,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.43: تقرير المريض ديناميكي — إخفاء الحقول والأقسام الفارغة عند قلة البيانات، وتقسيم النصوص الطبية الطويلة وجداول الجلسات الكثيرة على صفحات متعددة لتوليد التقرير بشكل موثوق دون أعطال.",
+  "releaseNotes": "1.0.44: تقرير مريض مختصر (شعار، الاسم/التاريخ/التشخيص، جلسات مع الدفع والإجمالي والباقات)؛ تصدير PDF أو Docs؛ ترتيب الجلسات من الأقدم للأحدث؛ إصلاح حرف ي العربي في أسماء PDF.",
   "minSupportedVersionCode": 1
 }
