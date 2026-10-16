@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Clinic OS — Deep Feature Brochure (Desktop + Mobile)</title>
+<style>
+@font-face{font-family:Cairo;src:url("../assets/fonts/Cairo-Regular.ttf") format("truetype");font-weight:400}
+@font-face{font-family:Cairo;src:url("../assets/fonts/Cairo-Bold.ttf") format("truetype");font-weight:700}
+@font-face{font-family:Amiri;src:url("../assets/fonts/Amiri-Regular.ttf") format("truetype")}
+:root{--ink:#102027;--muted:#516670;--paper:#f3efe8;--card:#fff;--teal:#0b6b6b;--deep:#063f3f;--accent:#b85a24;--line:#d8cec0;--chip:#e8f4f3}
+*{box-sizing:border-box}
+body{margin:0;font-family:Cairo,"Segoe UI",Tahoma,sans-serif;background:
+ radial-gradient(900px 420px at 0% 0%,#d9eceb,transparent 55%),
+ radial-gradient(800px 400px at 100% 0%,#f0e4d4,transparent 50%),var(--paper);color:var(--ink);line-height:1.6;font-size:15px}
+.wrap{max-width:1040px;margin:0 auto;padding:22px 16px 72px}
+.cover{background:linear-gradient(140deg,#052e2e 0%,#0b6b6b 45%,#18463a 100%);color:#f4f8f7;border-radius:18px;padding:42px 34px;margin-bottom:18px;position:relative;overflow:hidden}
+.cover:after{content:"";position:absolute;right:-60px;bottom:-80px;width:240px;height:240px;border:40px solid rgba(255,255,255,.06);border-radius:50%}
+.cover h1{margin:0 0 4px;font-size:clamp(2rem,4vw,2.8rem)}
+.ar{direction:rtl;font-family:Cairo,Amiri,Tahoma,sans-serif}
+.badge{display:inline-block;margin:4px 6px 0 0;padding:5px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.1);font-size:.78rem;font-weight:700}
+section,nav.toc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 22px;margin-bottom:14px}
+h2{margin:0 0 6px;color:var(--deep);font-size:1.4rem}
+.ar-h{margin:0 0 12px;color:var(--accent);font-family:Amiri,Cairo,serif;font-size:1.12rem}
+h3{margin:20px 0 8px;color:var(--teal);font-size:1.08rem}
+h4{margin:14px 0 6px;font-size:.98rem}
+.shot{margin:14px 0 8px;text-align:center}
+.shot img{max-width:100%;height:auto;border-radius:12px;border:1px solid var(--line);box-shadow:0 10px 30px rgba(16,32,39,.12)}
+.shot.phone img{max-width:360px}
+figcaption{font-size:.82rem;color:var(--muted);margin-top:6px}
+.icon-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){.icon-grid{grid-template-columns:1fr}}
+.icon-grid li{display:flex;gap:10px;background:var(--chip);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.icon-grid .ico{flex:0 0 42px;height:42px;border-radius:10px;background:var(--deep);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700}
+.icon-grid .d{color:var(--muted);font-size:.88rem}
+.callout{border-left:4px solid var(--teal);background:linear-gradient(90deg,#e8f4f3,transparent);padding:10px 14px;margin:12px 0}
+.note{background:#f4ebe1;border-right:4px solid var(--accent);padding:10px 12px;margin:10px 0;direction:rtl}
+table{width:100%;border-collapse:collapse;font-size:.9rem;margin:10px 0 14px}
+th,td{border:1px solid var(--line);padding:8px 9px;vertical-align:top;text-align:left}
+th{background:#e7f2f1;color:var(--deep)}
+.duo{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;align-items:start}
+@media(max-width:800px){.duo{grid-template-columns:1fr}}
+.toc ol{columns:2}
+.footer{text-align:center;padding:30px;border-radius:14px;background:linear-gradient(145deg,var(--deep),var(--teal));color:#fff;margin-top:8px}
+@media print{body{background:#fff}.no-print{display:none}section,.cover{break-inside:avoid}.shot img{max-height:85vh;object-fit:contain}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="no-print" style="text-align:center;color:var(--muted);font-size:.88rem">Deep brochure · Full-page desktop + mobile captures · Print → PDF · Also exported as Word</p>
+
+<header class="cover">
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div style="width:86px;height:86px;border-radius:20px;background:#fff;color:#0b6b6b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.5rem">CO</div>
+    <div>
+      <h1>Clinic OS</h1>
+      <p class="ar" style="margin:0 0 10px;font-size:1.25rem;font-family:Amiri,Cairo,serif">دليل الميزات التفصيلي — كل أيقونة وفلتر وشاشة (ديسكتوب + موبايل)</p>
+      <p style="margin:0;max-width:64ch;opacity:.95">White-label physical-therapy clinic platform. This document annotates <strong>every major control</strong>: app-bar icons, themes, languages, notifications, appointment list vs schedule, income/expense filters, and finance-summary cells — with <strong>full-page real screenshots</strong>.</p>
+      <div style="margin-top:12px">
+        <span class="badge">Web · Android · iOS</span>
+        <span class="badge">Desktop + Mobile shots</span>
+        <span class="badge">AR ↔ EN · Dark ↔ Light</span>
+        <span class="badge">Icon-level detail</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#global">Global app bar icons</a></li>
+    <li><a href="#appointments">Appointments — every filter &amp; view</a></li>
+    <li><a href="#income">Income &amp; Expenses — every control</a></li>
+    <li><a href="#finance">Finance summary — every column/cell</a></li>
+    <li><a href="#other">Other screens gallery</a></li>
+    <li><a href="#mobile">Mobile views</a></li>
+    <li><a href="#platforms">Platforms &amp; roles</a></li>
+    <li><a href="#ar">ملخص عربي</a></li>
+  </ol>
+</nav>
+
+<section id="global">
+  <h2>1. Global app bar — every icon</h2>
+  <p class="ar-h ar">شريط التطبيق العلوي — شرح كل أيقونة</p>
+  <p class="callout">These icons appear on almost every authenticated screen (Appointments, Income, Reports, Chat, …). Same behavior on Web, Android, and iOS.</p>
+<ul class="icon-grid"><li><span class="ico">💬</span><div><strong>Messages / Chat</strong><br/><span class="d">Opens clinic messaging (1:1, groups, broadcast). Badge may show unread.</span></div></li>
+<li><span class="ico">🔔</span><div><strong>Notifications</strong><br/><span class="d">Opens in-app panel: upcoming appointments, audit items (admin), open todos. Desktop = dialog; phone = bottom sheet.</span></div></li>
+<li><span class="ico">↻</span><div><strong>Refresh (Web)</strong><br/><span class="d">Reloads the page to fetch the latest web build / data. Tooltip: “Refresh (get latest update)”.</span></div></li>
+<li><span class="ico">🌐</span><div><strong>Language</strong><br/><span class="d">Toggles Arabic ↔ English. Full UI RTL when Arabic. Tooltip shows the language you will switch to.</span></div></li>
+<li><span class="ico">🌙 / ☀️</span><div><strong>Theme</strong><br/><span class="d">Toggles Dark ↔ Light. Moon icon in dark mode; sun icon in light mode. Preference is persisted.</span></div></li>
+<li><span class="ico">←</span><div><strong>Back</strong><br/><span class="d">Returns to previous route / dashboard.</span></div></li>
+<li><span class="ico">＋</span><div><strong>Context add</strong><br/><span class="d">Screen-specific create action (new appointment, income, expense, user, room…).</span></div></li>
+<li><span class="ico">☰</span><div><strong>Drawer / menu</strong><br/><span class="d">Dashboard hamburger opens navigation filtered by the user’s roles & privileges.</span></div></li></ul>
+  <h3>Language &amp; theme in practice</h3>
+  <p>Language switch rebuilds all labels (status chips, filters, finance headers). Theme switch repaints surfaces, cards, and charts for day/night clinic floors.</p>
+<figure class="shot"><img src="marketing_screens/states/s-theme-toggle.png" alt="Appointments after theme/language controls — same screen, different chrome" loading="lazy"/><figcaption>Appointments after theme/language controls — same screen, different chrome</figcaption></figure>
+</section>
+
+<section id="appointments">
+  <h2>2. Appointments — every button, filter, legend &amp; cell</h2>
+  <p class="ar-h ar">شاشة المواعيد — كل زر وفلتر وخلية</p>
+<figure class="shot"><img src="marketing_screens/desktop/d-appointments-sm.png" alt="Desktop · Appointments full tall capture (list view)" loading="lazy"/><figcaption>Desktop · Appointments full tall capture (list view)</figcaption></figure>
+
+  <h3>2.1 App-bar actions (this screen)</h3>
+<ul class="icon-grid"><li><span class="ico">←</span><div><strong>Back</strong><br/><span class="d">Leave appointments.</span></div></li>
+<li><span class="ico">💬🔔↻🌐🌙</span><div><strong>Global icons</strong><br/><span class="d">Messages, Notifications, Refresh, Language, Theme — see §1.</span></div></li>
+<li><span class="ico">☰ filters</span><div><strong>Show / Hide filters</strong><br/><span class="d">Icon <code>filter_list</code> / <code>filter_list_off</code>. Collapses status chips, date chips, dropdowns, and count row to give the list more space.</span></div></li>
+<li><span class="ico">＋</span><div><strong>Create appointment</strong><br/><span class="d">Opens the full booking dialog: patient, supervising doctor, performing doctor, room, date/time, services, package, cost, discount %, notes, VIP star, extra slot.</span></div></li></ul>
+
+  <h3>2.2 Status filter chips</h3>
+  <table>
+    <tr><th>Chip</th><th>What it shows</th></tr>
+    <tr><td><strong>All</strong></td><td>Resets status + (when used as “today reset”) clears doctor/service/package filters and jumps to today.</td></tr>
+    <tr><td><strong>Pending</strong></td><td>Not yet confirmed.</td></tr>
+    <tr><td><strong>Confirmed</strong></td><td>Booked and confirmed.</td></tr>
+    <tr><td><strong>Attended</strong></td><td>Completed / patient attended.</td></tr>
+    <tr><td><strong>Apologized</strong></td><td>Absent with cause (اعتذار).</td></tr>
+    <tr><td><strong>Absent</strong></td><td>Absent without cause / no-show style absence.</td></tr>
+    <tr><td><strong>Absents all (both)</strong></td><td>Both apologized + absent types together.</td></tr>
+  </table>
+
+  <h3>2.3 Period chips &amp; List / Schedule toggle</h3>
+<ul class="icon-grid"><li><span class="ico">Day</span><div><strong>Day filter</strong><br/><span class="d">Single calendar day (with prev/next day & date picker).</span></div></li>
+<li><span class="ico">Month</span><div><strong>Month filter</strong><br/><span class="d">Whole month of appointments.</span></div></li>
+<li><span class="ico">Year</span><div><strong>Year filter</strong><br/><span class="d">Whole year.</span></div></li>
+<li><span class="ico">☰ List</span><div><strong>List view</strong><br/><span class="d">Vertical cards: patient • supervisor / performer, time, status, service, notes, ⋮ menu.</span></div></li>
+<li><span class="ico">▦ Schedule</span><div><strong>Schedule view</strong><br/><span class="d">Day grid: time rows (every 30 min 00:00–23:30) × room columns. Shows conflicts visually; cancelled/absent don’t keep the room.</span></div></li></ul>
+  <p class="callout"><strong>List vs Schedule:</strong> List is best for search &amp; status ops. Schedule is the floor board — who is in which room at which half-hour. Toggle lives in the filter row as a segmented control with list / calendar icons.</p>
+
+  <h3>2.4 Dropdown filters</h3>
+  <table>
+    <tr><th>Dropdown</th><th>Behavior</th></tr>
+    <tr><td><strong>Services</strong></td><td>Keep appointments that include that service name.</td></tr>
+    <tr><td><strong>Packages</strong></td><td>Filter by linked package id.</td></tr>
+    <tr><td><strong>Filter by doctor</strong></td><td>Supervising / billing doctor (<code>doctorId</code>).</td></tr>
+    <tr><td><strong>Filter by performing doctor</strong></td><td>Who ran the session (<code>performingDoctorId</code>) — doctors + trainees.</td></tr>
+  </table>
+
+  <h3>2.5 Live count chips</h3>
+  <ul>
+    <li><strong>Sessions (filtered)</strong> — count after all filters.</li>
+    <li><strong>Apologized</strong> / <strong>Absent</strong> — subset counters.</li>
+    <li><strong>Sessions this week</strong> — week total for planning.</li>
+  </ul>
+
+  <h3>2.6 Search &amp; date navigator</h3>
+<ul class="icon-grid"><li><span class="ico">🔍</span><div><strong>Search</strong><br/><span class="d">Matches patient name, patient code, supervising doctor, performing doctor, or service text. Clear (×) resets.</span></div></li>
+<li><span class="ico">‹ ›</span><div><strong>Previous / Next day</strong><br/><span class="d">Step the Day filter one day.</span></div></li>
+<li><span class="ico">📅 Date</span><div><strong>Date picker</strong><br/><span class="d">Jump to any calendar day.</span></div></li></ul>
+
+  <h3>2.7 Legend &amp; list card anatomy</h3>
+  <table>
+    <tr><th>Legend / cell</th><th>Meaning</th></tr>
+    <tr><td>Green · Attended</td><td>Completed session color.</td></tr>
+    <tr><td>Blue · Pending</td><td>Awaiting confirmation.</td></tr>
+    <tr><td>Red · Absent</td><td>No-show / absent without cause.</td></tr>
+    <tr><td>Orange · Apologized</td><td>Absent with cause.</td></tr>
+    <tr><td>⭐ New patient</td><td>Star marker for new patient priority.</td></tr>
+    <tr><td>⭐ Session (VIP)</td><td>Starred / VIP session (<code>isStarred</code>).</td></tr>
+    <tr><td>Title line</td><td><code>Patient • Supervisor</code> or <code>Patient • Supervisor / Performer</code>.</td></tr>
+    <tr><td>Subtitle line</td><td>Date, start–end, status label, services; optional Notes line.</td></tr>
+    <tr><td>⋮ Show menu</td><td>Edit / status transitions (confirm, complete, cancel, absent…) by privilege.</td></tr>
+  </table>
+</section>
+
+<section id="income">
+  <h2>3. Income &amp; Expenses — every control</h2>
+  <p class="ar-h ar">الدخل والمصروفات — شرح كل عنصر</p>
+<figure class="shot"><img src="marketing_screens/desktop/d-income-expenses-sm.png" alt="Desktop · Income & Expenses full tall capture" loading="lazy"/><figcaption>Desktop · Income & Expenses full tall capture</figcaption></figure>
+
+  <h3>3.1 App-bar icons</h3>
+<ul class="icon-grid"><li><span class="ico">←</span><div><strong>Back</strong><br/><span class="d">Return.</span></div></li>
+<li><span class="ico">💬🔔↻🌐🌙</span><div><strong>Global</strong><br/><span class="d">Messages, Notifications, Refresh, Language, Theme.</span></div></li>
+<li><span class="ico">＋</span><div><strong>Add income</strong><br/><span class="d">Opens Add Income: amount, source, notes, date/time, optional doctor/patient/appointment links.</span></div></li>
+<li><span class="ico">➖</span><div><strong>Add expense</strong><br/><span class="d">Opens Add Expense: amount, category (Salary/Rent/Supplies/Media/Other), paid-by-doctor, optional employee/recipient, description.</span></div></li></ul>
+
+  <h3>3.2 Finance summary shortcut</h3>
+  <p>Teal button <strong>Finance summary</strong> (summarize icon) navigates to the owner P&amp;L screen (§4).</p>
+
+  <h3>3.3 Type chips</h3>
+  <table>
+    <tr><th>Chip</th><th>Effect</th></tr>
+    <tr><td>All / Both</td><td>Show income and expense sections together.</td></tr>
+    <tr><td>Income</td><td>Focus income stream.</td></tr>
+    <tr><td>Expenses</td><td>Focus expense stream.</td></tr>
+  </table>
+
+  <h3>3.4 Period chips</h3>
+  <ul>
+    <li><strong>Day</strong> — pick a calendar day (label shows the selected date).</li>
+    <li><strong>Month</strong> — month/year picker.</li>
+    <li><strong>Year</strong> — year picker.</li>
+  </ul>
+
+  <h3>3.5 Dropdown filters</h3>
+  <table>
+    <tr><th>Filter</th><th>What it does</th></tr>
+    <tr><td>Filter by doctor</td><td>Income/expense rows tied to that doctor.</td></tr>
+    <tr><td>Patient</td><td>Rows linked to a patient.</td></tr>
+    <tr><td>Source</td><td>Income source values.</td></tr>
+    <tr><td>Category</td><td>Expense categories (Salary, Rent, Supplies, Media, Other).</td></tr>
+  </table>
+
+  <h3>3.6 Summary cards &amp; lists</h3>
+<ul class="icon-grid"><li><span class="ico">💰</span><div><strong>Total Income card</strong><br/><span class="d">Sum of filtered income (EGP).</span></div></li>
+<li><span class="ico">📈</span><div><strong>Net Profit card</strong><br/><span class="d">Income − expenses for the filter.</span></div></li>
+<li><span class="ico">🧾</span><div><strong>Total Expenses card</strong><br/><span class="d">Sum of filtered expenses.</span></div></li>
+<li><span class="ico">📊</span><div><strong>Income by doctor / Expense by doctor</strong><br/><span class="d">Breakdown blocks under the cards when data exists.</span></div></li>
+<li><span class="ico">⋮</span><div><strong>Row menu</strong><br/><span class="d">Edit or Delete a record.</span></div></li></ul>
+  <p>Each <strong>income row</strong> shows: amount, source, date/time, notes, patient, doctor, payment status (Paid / Partial / Prepaid / Not paid).<br/>
+  Each <strong>expense row</strong> shows: amount, date/time, category, description, paid-by-doctor, optional recipient (salary).</p>
+  <p class="callout">Search box filters free text across visible fields. Counter text under filters: <em>Income: N · Expenses: M</em>.</p>
+</section>
+
+<section id="finance">
+  <h2>4. Finance summary — every field &amp; cell</h2>
+  <p class="ar-h ar">الملخص المالي — كل عمود وخلية</p>
+<figure class="shot"><img src="marketing_screens/desktop/d-finance-summary-sm.png" alt="Desktop · Finance summary full tall capture" loading="lazy"/><figcaption>Desktop · Finance summary full tall capture</figcaption></figure>
+
+  <h3>4.1 Header controls</h3>
+<ul class="icon-grid"><li><span class="ico">Month / Year</span><div><strong>Period selectors</strong><br/><span class="d">Choose month & year for the sheet.</span></div></li>
+<li><span class="ico">Month / Quarter / 6 months / Year</span><div><strong>Range mode</strong><br/><span class="d">Aggregates months; config scales for multi-month ranges.</span></div></li>
+<li><span class="ico">Target</span><div><strong>Clinic target</strong><br/><span class="d">Editable money target for the period.</span></div></li>
+<li><span class="ico">30% factor</span><div><strong>Percent factor</strong><br/><span class="d">Usually 0.3 — drives “30% Target” column = income × factor.</span></div></li>
+<li><span class="ico">📄 PDF</span><div><strong>Export PDF</strong><br/><span class="d">Bilingual PDF with Amiri + Arabic reshaper.</span></div></li>
+<li><span class="ico">💾 Save</span><div><strong>Save config</strong><br/><span class="d">Persists target, rates, slices, doctor order for the month.</span></div></li></ul>
+
+  <h3>4.2 Doctor performance table (columns)</h3>
+  <table>
+    <tr><th>Column / control</th><th>Meaning</th></tr>
+    <tr><td>↑ ↓ arrows</td><td>Reorder doctors (saved order).</td></tr>
+    <tr><td>Doctor</td><td>Doctor display name.</td></tr>
+    <tr><td>Income</td><td>Sum of that doctor’s income in range.</td></tr>
+    <tr><td>30% Target</td><td>Income × 30% factor (c30).</td></tr>
+    <tr><td>Bonus</td><td>Bonus amount derived from target logic.</td></tr>
+    <tr><td>%</td><td>Commission % from slices + computed value.</td></tr>
+    <tr><td>Consumables</td><td>Mapped expense bucket for that doctor.</td></tr>
+    <tr><td>Media</td><td>Media expense bucket.</td></tr>
+    <tr><td>Total row</td><td>Sums across doctors.</td></tr>
+  </table>
+
+  <h3>4.3 NET / MANG / BASKET block</h3>
+  <table>
+    <tr><th>Cell</th><th>Meaning</th></tr>
+    <tr><td><strong>NET</strong></td><td>Net after doctor-level deductions — basis for splits.</td></tr>
+    <tr><td><strong>Rent + guard</strong></td><td>Editable shared clinic overhead (from Rent expenses / config).</td></tr>
+    <tr><td><strong>Receptionist</strong></td><td>Editable shared salary line (from Salary expenses / config).</td></tr>
+    <tr><td><strong>MANG (rate)</strong></td><td>Management share of NET (e.g. 0.15 = 15%). Editable rate.</td></tr>
+    <tr><td><strong>BASKET (rate)</strong></td><td>Basket/pool share of NET (e.g. 0.30). Editable rate.</td></tr>
+    <tr><td><strong>Profit for each</strong></td><td>Remaining profit figure after MANG/BASKET logic.</td></tr>
+    <tr><td>Per-doctor Net side column</td><td>Individual net after commission/consumables.</td></tr>
+  </table>
+
+  <h3>4.4 Commission slices table</h3>
+  <table>
+    <tr><th>Column</th><th>Meaning</th></tr>
+    <tr><td>Slice</td><td>Tier index.</td></tr>
+    <tr><td>Income range</td><td>Min–max income band for the tier.</td></tr>
+    <tr><td>Commission</td><td>Percent for that band (editable).</td></tr>
+    <tr><td>Rate</td><td>Decimal form of commission (kept in sync).</td></tr>
+  </table>
+  <p class="callout">This screen is the commercial heart for partner clinics: transparent doctor income, targets, overhead, and MANG/BASKET splits — exportable as PDF for monthly meetings.</p>
+</section>
+
+<section id="other">
+  <h2>5. Other screens (full-page desktop)</h2>
+  <p class="ar-h ar">شاشات أخرى — التقاط كامل</p>
+  <h3>Dashboard</h3>
+  <p>Welcome + role, date/time card, quick actions (Add patient, Find patient, Book appointment, Today’s count), period chips, doctor filter, search, appointment rows with supervisor/performer.</p>
+<figure class="shot"><img src="marketing_screens/desktop/d-dashboard-sm.png" alt="Desktop · Dashboard full page" loading="lazy"/><figcaption>Desktop · Dashboard full page</figcaption></figure>
+  <h3>Admin Dashboard KPIs</h3>
+  <p>Total users, active users, today’s / week’s appointments, patients, doctors — plus deeper charts (income, workload, expenses) further down the scrollable page.</p>
+<figure class="shot"><img src="marketing_screens/desktop/d-admin-dashboard-sm.png" alt="Desktop · Admin dashboard" loading="lazy"/><figcaption>Desktop · Admin dashboard</figcaption></figure>
+  <h3>Patients · Users · Reports · Audit</h3>
+<figure class="shot"><img src="marketing_screens/desktop/d-patients-sm.png" alt="Patients directory" loading="lazy"/><figcaption>Patients directory</figcaption></figure>
+<figure class="shot"><img src="marketing_screens/desktop/d-users-sm.png" alt="Users & roles" loading="lazy"/><figcaption>Users & roles</figcaption></figure>
+<figure class="shot"><img src="marketing_screens/desktop/d-reports-sm.png" alt="Reports hub" loading="lazy"/><figcaption>Reports hub</figcaption></figure>
+<figure class="shot"><img src="marketing_screens/desktop/d-audit-log-sm.png" alt="Audit log (platform + device on each row)" loading="lazy"/><figcaption>Audit log (platform + device on each row)</figcaption></figure>
+</section>
+
+<section id="mobile">
+  <h2>6. Mobile views (real phone viewport)</h2>
+  <p class="ar-h ar">واجهات الموبايل — نفس الميزات بتخطيط عمودي</p>
+  <p>Captured at ~390×2800 CSS px (2× DPR). Same icons and filters; stacked layout for one-handed clinic use.</p>
+  <div class="duo">
+    <div>
+      <h3>Dashboard (mobile)</h3>
+<figure class="shot"><img src="marketing_screens/mobile/m-dashboard-sm.png" alt="Mobile dashboard" loading="lazy"/><figcaption>Mobile dashboard</figcaption></figure>
+    </div>
+    <div>
+      <h3>Appointments (mobile)</h3>
+<figure class="shot"><img src="marketing_screens/mobile/m-appointments-sm.png" alt="Mobile appointments" loading="lazy"/><figcaption>Mobile appointments</figcaption></figure>
+    </div>
+  </div>
+  <div class="duo">
+    <div>
+      <h3>Income &amp; Expenses (mobile)</h3>
+<figure class="shot"><img src="marketing_screens/mobile/m-income-expenses-sm.png" alt="Mobile income & expenses" loading="lazy"/><figcaption>Mobile income & expenses</figcaption></figure>
+    </div>
+    <div>
+      <h3>Finance summary (mobile)</h3>
+<figure class="shot"><img src="marketing_screens/mobile/m-finance-summary-sm.png" alt="Mobile finance summary — horizontal scroll for wide tables" loading="lazy"/><figcaption>Mobile finance summary — horizontal scroll for wide tables</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="platforms">
+  <h2>7. Platforms &amp; roles</h2>
+  <table>
+    <tr><th></th><th>Web</th><th>Android</th><th>iOS</th></tr>
+    <tr><td>Full UI</td><td>✓</td><td>✓</td><td>✓</td></tr>
+    <tr><td>FCM push</td><td>✓</td><td>✓</td><td>✓</td></tr>
+    <tr><td>Local reminders</td><td>—</td><td>✓</td><td>✓</td></tr>
+    <tr><td>PDF / Excel</td><td>✓</td><td>✓</td><td>✓</td></tr>
+    <tr><td>APK in-app update</td><td>—</td><td>✓</td><td>—</td></tr>
+  </table>
+  <p><strong>Roles:</strong> Admin · Supervisor · Secretary · Doctor · Trainee · Patient — with multi-role + per-user privilege overrides (including fine-grained chat media permissions).</p>
+</section>
+
+<section id="ar" class="ar" dir="rtl">
+  <h2>8. ملخص عربي</h2>
+  <div class="note">البروشور ده بيشرح بالتفصيل أيقونات الشريط العلوي (شات، إشعارات، تحديث، لغة، ثيم)، وكل فلاتر المواعيد (حالة، يوم/شهر/سنة، قائمة vs جدول، خدمات، باقات، مشرف، قائم بالجلسة)، وشاشة الدخل/المصروف بالكامل، وجدول الملخص المالي (Target، 30%، Bonus، Consumables، Media، NET، MANG، BASKET، شرائح العمولة) — مع صور ديسكتوب كاملة الطول وصور موبايل.</div>
+  <ul>
+    <li>قائمة المواعيد للبحث والحالات · جدول المواعيد للغرف ونصف الساعة</li>
+    <li>اللغة عربي/إنجليزي مع RTL · الثيم فاتح/غامق</li>
+    <li>المالية بالجنيه جاهزة لاجتماعات الشركاء وتصدير PDF</li>
+  </ul>
+</section>
+
+<div class="footer">
+  <h2 style="margin:0 0 8px;color:#fff">Clinic OS</h2>
+  <p class="ar" style="margin:0 0 8px;font-family:Amiri,Cairo,serif">بروشور تفصيلي للبيع — HTML · PDF · Word</p>
+  <p style="margin:0;opacity:.9;font-size:.9rem">White-label · Desktop + Mobile · Icon-level documentation</p>
+</div>
+</div>
+</body>
+</html>
