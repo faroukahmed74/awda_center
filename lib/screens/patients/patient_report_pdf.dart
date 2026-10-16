@@ -21,6 +21,8 @@ class PatientReportSessionRow {
   final String? service;
   final String? statusLabel;
   final String? paymentStatusLabel;
+  /// Optional "Doctor: … / Performing: …" line from the UI.
+  final String? doctorLabel;
 
   PatientReportSessionRow({
     required this.date,
@@ -29,8 +31,12 @@ class PatientReportSessionRow {
     this.service,
     this.statusLabel,
     this.paymentStatusLabel,
+    this.doctorLabel,
   });
 }
+
+bool _hasPdfText(String? value) =>
+    value != null && value.trim().isNotEmpty;
 
 /// Keep session/payment tables small enough to fit on a page.
 /// A single tall [pw.Table] inside MultiPage frequently aborts on iOS (SIGABRT)
@@ -38,7 +44,11 @@ class PatientReportSessionRow {
 const int _pdfTableChunkSize = 18;
 
 /// Soft cap for long medical rich-text fields in the PDF.
-const int _maxMedicalFieldChars = 2500;
+const int _maxMedicalFieldChars = 8000;
+
+/// Max characters per MultiPage child. A single [pw.Row]/[pw.RichText] taller
+/// than the page throws: "Widget won't fit into the page".
+const int _maxPdfBlockChars = 900;
 
 /// Use a modern Arabic font first.
 /// Make sure these files really exist in assets and are declared in pubspec.yaml.
@@ -118,14 +128,58 @@ Future<_PdfFontBundle> _loadPdfFonts() async {
   );
 }
 
+String _plainMedicalText(String value) {
+  if (MedicalRichTextHtml.isLikelyHtml(value) ||
+      MedicalRichTextHtml.isDeltaJson(value)) {
+    return MedicalRichTextHtml.htmlToPlainText(value);
+  }
+  return value;
+}
+
 String _truncateForPdf(String value) {
-  final plain =
-      (MedicalRichTextHtml.isLikelyHtml(value) ||
-          MedicalRichTextHtml.isDeltaJson(value))
-      ? MedicalRichTextHtml.htmlToPlainText(value)
-      : value;
+  final plain = _plainMedicalText(value);
   if (plain.length <= _maxMedicalFieldChars) return plain;
   return '${plain.substring(0, _maxMedicalFieldChars)}…';
+}
+
+/// Split long plain text into page-safe blocks for [pw.MultiPage].
+List<String> _chunkTextForPdfPage(String plain) {
+  final normalized = plain.replaceAll('\r\n', '\n').trim();
+  if (normalized.isEmpty) return const [];
+  if (normalized.length <= _maxPdfBlockChars) return [normalized];
+
+  final chunks = <String>[];
+  final paragraphs = normalized.split(RegExp(r'\n+'));
+  final buf = StringBuffer();
+
+  void flush() {
+    final s = buf.toString().trim();
+    if (s.isNotEmpty) chunks.add(s);
+    buf.clear();
+  }
+
+  for (final para in paragraphs) {
+    final piece = para.trim();
+    if (piece.isEmpty) continue;
+    if (piece.length > _maxPdfBlockChars) {
+      flush();
+      for (var i = 0; i < piece.length; i += _maxPdfBlockChars) {
+        final end = (i + _maxPdfBlockChars < piece.length)
+            ? i + _maxPdfBlockChars
+            : piece.length;
+        chunks.add(piece.substring(i, end).trim());
+      }
+      continue;
+    }
+    final nextLen = buf.length + (buf.isEmpty ? 0 : 1) + piece.length;
+    if (buf.isNotEmpty && nextLen > _maxPdfBlockChars) {
+      flush();
+    }
+    if (buf.isNotEmpty) buf.writeln();
+    buf.write(piece);
+  }
+  flush();
+  return chunks.isEmpty ? [normalized.substring(0, _maxPdfBlockChars)] : chunks;
 }
 
 /// Builds a PDF report for the patient: personal data, medical details, sessions, payments, packages.
@@ -138,6 +192,8 @@ Future<List<int>> buildPatientReportPdf({
   required List<({PackageModel pkg, int completed, int total})> packageProgress,
   required AppLocalizations l10n,
   required String centerName,
+  /// Resolved display name for [PatientProfileModel.followedByDoctorId], if any.
+  String? followedByDoctorName,
 }) async {
   final fonts = await _loadPdfFonts();
   final arabicFont = fonts.regular;
@@ -248,6 +304,7 @@ Future<List<int>> buildPatientReportPdf({
     );
   }
 
+  /// Short fields — single row when short enough for one page.
   pw.Widget bulletItem(String label, String value) {
     final plainValue = _truncateForPdf(value);
     final labelText = shape(label);
@@ -285,35 +342,68 @@ Future<List<int>> buildPatientReportPdf({
     );
   }
 
-  final medicalLines = <pw.Widget>[];
+  /// Long fields: multiple MultiPage-safe children (paginates for huge treatment plans).
+  List<pw.Widget> labeledFieldBlocks(String label, String value) {
+    final plainValue = _truncateForPdf(value);
+    final chunks = _chunkTextForPdfPage(plainValue);
+    if (chunks.isEmpty) return const [];
 
-  if (profile != null) {
-    if ((profile.diagnosis ?? '').isNotEmpty) {
-      medicalLines.add(bulletItem(l10n.diagnosis, profile.diagnosis!));
-    }
-    if ((profile.medicalHistory ?? '').isNotEmpty) {
-      medicalLines.add(
-        bulletItem(l10n.medicalHistory, profile.medicalHistory!),
+    final out = <pw.Widget>[
+      pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
+        child: plainText(
+          '• $label:',
+          fontSize: 10,
+          bold: true,
+          textDirection: dirForText(label),
+        ),
+      ),
+    ];
+    for (final chunk in chunks) {
+      out.add(
+        pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 6, left: 10, right: 4),
+          child: plainText(
+            chunk,
+            fontSize: 10,
+            textDirection: dirForText(chunk),
+          ),
+        ),
       );
     }
-    if ((profile.chiefComplaint ?? '').isNotEmpty) {
-      medicalLines.add(
-        bulletItem(l10n.chiefComplaint, profile.chiefComplaint!),
-      );
+    return out;
+  }
+
+  /// Auto-pick short bullet vs paginated blocks from actual content length.
+  List<pw.Widget> dynamicField(String label, String? value) {
+    if (!_hasPdfText(value)) return const [];
+    final plain = _truncateForPdf(value!);
+    if (plain.length <= _maxPdfBlockChars) {
+      return [bulletItem(label, plain)];
     }
-    if ((profile.treatmentGoals ?? '').isNotEmpty) {
-      medicalLines.add(
-        bulletItem(l10n.treatmentGoals, profile.treatmentGoals!),
+    return labeledFieldBlocks(label, plain);
+  }
+
+  void addSection(
+    List<pw.Widget> target,
+    String title,
+    List<pw.Widget> body, {
+    bool omitIfEmpty = true,
+  }) {
+    if (omitIfEmpty && body.isEmpty) return;
+    if (target.isNotEmpty) target.add(pw.SizedBox(height: 14));
+    target.add(sectionTitle(title));
+    target.add(pw.SizedBox(height: 6));
+    if (body.isEmpty) {
+      target.add(
+        plainText(l10n.noData, fontSize: 10, textDirection: pageDir),
       );
-    }
-    if ((profile.progressNotes ?? '').isNotEmpty) {
-      medicalLines.add(
-        bulletItem(l10n.progressNotes, profile.progressNotes!),
-      );
+    } else {
+      target.addAll(body);
     }
   }
 
-  /// Flat MultiPage children (not one giant Column) so large tables can paginate.
+  /// Flat MultiPage children — only fields/sections that exist for this patient.
   final content = <pw.Widget>[
     pw.Center(
       child: pw.Column(
@@ -336,8 +426,6 @@ Future<List<int>> buildPatientReportPdf({
       ),
     ),
     pw.SizedBox(height: 16),
-
-    /// Personal data
     sectionTitle(l10n.personalData),
     pw.SizedBox(height: 6),
     pw.Wrap(
@@ -356,13 +444,13 @@ Future<List<int>> buildPatientReportPdf({
             fontSize: 10,
             textDirection: pw.TextDirection.ltr,
           ),
-        if (user.phone != null && user.phone!.isNotEmpty)
+        if (_hasPdfText(user.phone))
           plainText(
             user.phone!,
             fontSize: 10,
             textDirection: pw.TextDirection.ltr,
           ),
-        if (user.phone2 != null && user.phone2!.isNotEmpty)
+        if (_hasPdfText(user.phone2))
           plainText(
             user.phone2!,
             fontSize: 10,
@@ -372,74 +460,95 @@ Future<List<int>> buildPatientReportPdf({
     ),
   ];
 
+  final personalFields = <pw.Widget>[];
   if (profile != null) {
+    if (_hasPdfText(profile.dateOfBirth)) {
+      personalFields.addAll(dynamicField(l10n.date, profile.dateOfBirth));
+    } else if (profile.age != null) {
+      personalFields.add(
+        bulletItem(l10n.age, '${profile.age} ${l10n.yearsOld}'),
+      );
+    }
+    personalFields.addAll(dynamicField(l10n.gender, profile.gender));
+    personalFields.addAll(dynamicField(l10n.address, profile.address));
+    personalFields.addAll(dynamicField(l10n.occupation, profile.occupation));
+    personalFields.addAll(dynamicField(l10n.referredBy, profile.referredBy));
+    personalFields.addAll(
+      dynamicField(l10n.maritalStatus, profile.maritalStatus),
+    );
+    personalFields.addAll(
+      dynamicField(l10n.areasToTreat, profile.areasToTreat),
+    );
+    personalFields.addAll(dynamicField(l10n.feesType, profile.feesType));
+    if (_hasPdfText(followedByDoctorName)) {
+      personalFields.addAll(
+        dynamicField(l10n.doctor, followedByDoctorName),
+      );
+    }
+  }
+  if (personalFields.isNotEmpty) {
     content.add(pw.SizedBox(height: 6));
-    if (profile.dateOfBirth != null && profile.dateOfBirth!.isNotEmpty) {
-      content.add(bulletItem(l10n.date, profile.dateOfBirth!));
-    }
-    if (profile.gender != null && profile.gender!.isNotEmpty) {
-      content.add(bulletItem(l10n.gender, profile.gender!));
-    }
-    if (profile.address != null && profile.address!.isNotEmpty) {
-      content.add(bulletItem(l10n.address, profile.address!));
-    }
-    if (profile.occupation != null && profile.occupation!.isNotEmpty) {
-      content.add(bulletItem(l10n.occupation, profile.occupation!));
-    }
+    content.addAll(personalFields);
   }
 
-  content.addAll([
-    pw.SizedBox(height: 14),
-    sectionTitle(l10n.medicalDetails),
-    pw.SizedBox(height: 6),
-  ]);
-
-  if (medicalLines.isEmpty) {
-    content.add(
-      plainText(
-        l10n.noData,
-        fontSize: 10,
-        textDirection: pageDir,
-      ),
+  final medicalFields = <pw.Widget>[];
+  if (profile != null) {
+    medicalFields.addAll(dynamicField(l10n.diagnosis, profile.diagnosis));
+    medicalFields.addAll(
+      dynamicField(l10n.chiefComplaint, profile.chiefComplaint),
     );
-  } else {
-    content.addAll(medicalLines);
+    medicalFields.addAll(dynamicField(l10n.painLevel, profile.painLevel));
+    medicalFields.addAll(
+      dynamicField(l10n.medicalHistory, profile.medicalHistory),
+    );
+    medicalFields.addAll(
+      dynamicField(l10n.previousTreatment, profile.previousTreatment),
+    );
+    medicalFields.addAll(
+      dynamicField(l10n.contraindications, profile.contraindications),
+    );
+    medicalFields.addAll(
+      dynamicField(l10n.treatmentGoals, profile.treatmentGoals),
+    );
+    medicalFields.addAll(
+      dynamicField(l10n.treatmentProgress, profile.treatmentProgress),
+    );
+    medicalFields.addAll(
+      dynamicField(l10n.progressNotes, profile.progressNotes),
+    );
   }
+  addSection(content, l10n.medicalDetails, medicalFields);
 
-  content.addAll([
-    pw.SizedBox(height: 14),
-    sectionTitle(
-      sessionRows.isEmpty
-          ? l10n.sessions
-          : '${l10n.sessions} (${sessionRows.length})',
-    ),
-    pw.SizedBox(height: 6),
-  ]);
-
-  if (sessionRows.isEmpty) {
-    content.add(
-      plainText(
-        l10n.noData,
-        fontSize: 10,
-        textDirection: pageDir,
-      ),
-    );
-  } else {
-    for (var start = 0; start < sessionRows.length; start += _pdfTableChunkSize) {
+  final sessionBody = <pw.Widget>[];
+  final includeDoctorCol =
+      sessionRows.any((r) => _hasPdfText(r.doctorLabel));
+  if (sessionRows.isNotEmpty) {
+    for (var start = 0;
+        start < sessionRows.length;
+        start += _pdfTableChunkSize) {
       final end = (start + _pdfTableChunkSize > sessionRows.length)
           ? sessionRows.length
           : start + _pdfTableChunkSize;
       final chunk = sessionRows.sublist(start, end);
-      content.add(
+      sessionBody.add(
         pw.Table(
           border: pw.TableBorder.all(color: PdfColors.grey400),
-                        columnWidths: {
-                          0: const pw.FlexColumnWidth(2.0),
-                          1: const pw.FlexColumnWidth(1),
-                          2: const pw.FlexColumnWidth(1.8),
-                          3: const pw.FlexColumnWidth(1),
-                          4: const pw.FlexColumnWidth(1),
-                        },
+          columnWidths: includeDoctorCol
+              ? {
+                  0: const pw.FlexColumnWidth(1.6),
+                  1: const pw.FlexColumnWidth(0.9),
+                  2: const pw.FlexColumnWidth(1.4),
+                  3: const pw.FlexColumnWidth(1.6),
+                  4: const pw.FlexColumnWidth(0.9),
+                  5: const pw.FlexColumnWidth(0.9),
+                }
+              : {
+                  0: const pw.FlexColumnWidth(2.0),
+                  1: const pw.FlexColumnWidth(1),
+                  2: const pw.FlexColumnWidth(1.8),
+                  3: const pw.FlexColumnWidth(1),
+                  4: const pw.FlexColumnWidth(1),
+                },
           children: [
             if (start == 0)
               pw.TableRow(
@@ -447,6 +556,7 @@ Future<List<int>> buildPatientReportPdf({
                   headerCell(l10n.date),
                   headerCell(l10n.time),
                   headerCell(l10n.services),
+                  if (includeDoctorCol) headerCell(l10n.doctor),
                   headerCell(l10n.status),
                   headerCell(l10n.sessionPayment),
                 ],
@@ -454,14 +564,14 @@ Future<List<int>> buildPatientReportPdf({
             ...chunk.asMap().entries.map((entry) {
               final i = start + entry.key;
               final r = entry.value;
-              final serviceStr = r.service?.trim().isNotEmpty == true
-                  ? r.service!.trim()
-                  : '—';
-              final statusStr = r.statusLabel?.trim().isNotEmpty == true
-                  ? r.statusLabel!.trim()
-                  : '—';
-              final paymentStr = r.paymentStatusLabel?.trim().isNotEmpty == true
+              final serviceStr = _hasPdfText(r.service) ? r.service!.trim() : '—';
+              final statusStr =
+                  _hasPdfText(r.statusLabel) ? r.statusLabel!.trim() : '—';
+              final paymentStr = _hasPdfText(r.paymentStatusLabel)
                   ? r.paymentStatusLabel!.trim()
+                  : '—';
+              final doctorStr = _hasPdfText(r.doctorLabel)
+                  ? r.doctorLabel!.trim()
                   : '—';
 
               return pw.TableRow(
@@ -486,6 +596,12 @@ Future<List<int>> buildPatientReportPdf({
                     alternate: i.isOdd,
                     textDirection: dirForText(serviceStr),
                   ),
+                  if (includeDoctorCol)
+                    cell(
+                      doctorStr,
+                      alternate: i.isOdd,
+                      textDirection: dirForText(doctorStr),
+                    ),
                   cell(
                     statusStr,
                     alternate: i.isOdd,
@@ -503,26 +619,21 @@ Future<List<int>> buildPatientReportPdf({
         ),
       );
       if (end < sessionRows.length) {
-        content.add(pw.SizedBox(height: 6));
+        sessionBody.add(pw.SizedBox(height: 6));
       }
     }
   }
+  addSection(
+    content,
+    sessionRows.isEmpty
+        ? l10n.sessions
+        : '${l10n.sessions} (${sessionRows.length})',
+    sessionBody,
+    omitIfEmpty: false,
+  );
 
-  content.addAll([
-    pw.SizedBox(height: 14),
-    sectionTitle(l10n.amountPaid),
-    pw.SizedBox(height: 6),
-  ]);
-
-  if (incomeForPatient.isEmpty) {
-    content.add(
-      plainText(
-        l10n.noData,
-        fontSize: 10,
-        textDirection: pageDir,
-      ),
-    );
-  } else {
+  final paymentBody = <pw.Widget>[];
+  if (incomeForPatient.isNotEmpty) {
     for (var start = 0;
         start < incomeForPatient.length;
         start += _pdfTableChunkSize) {
@@ -531,7 +642,7 @@ Future<List<int>> buildPatientReportPdf({
           : start + _pdfTableChunkSize;
       final chunk = incomeForPatient.sublist(start, end);
       final isLastChunk = end >= incomeForPatient.length;
-      content.add(
+      paymentBody.add(
         pw.Table(
           border: pw.TableBorder.all(color: PdfColors.grey400),
           columnWidths: {
@@ -609,58 +720,59 @@ Future<List<int>> buildPatientReportPdf({
         ),
       );
       if (!isLastChunk) {
-        content.add(pw.SizedBox(height: 6));
+        paymentBody.add(pw.SizedBox(height: 6));
       }
     }
   }
+  addSection(
+    content,
+    incomeForPatient.isEmpty
+        ? l10n.amountPaid
+        : '${l10n.amountPaid} (${incomeForPatient.length})',
+    paymentBody,
+    omitIfEmpty: false,
+  );
 
-  content.addAll([
-    pw.SizedBox(height: 14),
-    sectionTitle(l10n.packages),
-    pw.SizedBox(height: 6),
-  ]);
-
-  if (packageProgress.isEmpty) {
-    content.add(
-      plainText(
-        l10n.noData,
-        fontSize: 10,
-        textDirection: pageDir,
+  final packageBody = <pw.Widget>[];
+  for (final e in packageProgress) {
+    packageBody.add(
+      pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 4),
+        child: pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Expanded(
+              child: plainText(
+                e.pkg.displayName,
+                fontSize: 10,
+                textDirection: dirForText(e.pkg.displayName),
+              ),
+            ),
+            pw.SizedBox(width: 8),
+            plainText(
+              '${e.completed} / ${e.total}',
+              fontSize: 10,
+              textDirection: pw.TextDirection.ltr,
+            ),
+            pw.SizedBox(width: 6),
+            plainText(
+              l10n.sessions,
+              fontSize: 10,
+              textDirection: pageDir,
+            ),
+          ],
+        ),
       ),
     );
-  } else {
-    for (final e in packageProgress) {
-      content.add(
-        pw.Padding(
-          padding: const pw.EdgeInsets.only(bottom: 4),
-          child: pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                child: plainText(
-                  e.pkg.displayName,
-                  fontSize: 10,
-                  textDirection: dirForText(e.pkg.displayName),
-                ),
-              ),
-              pw.SizedBox(width: 8),
-              plainText(
-                '${e.completed} / ${e.total}',
-                fontSize: 10,
-                textDirection: pw.TextDirection.ltr,
-              ),
-              pw.SizedBox(width: 6),
-              plainText(
-                l10n.sessions,
-                fontSize: 10,
-                textDirection: pageDir,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
   }
+  addSection(
+    content,
+    packageProgress.isEmpty
+        ? l10n.packages
+        : '${l10n.packages} (${packageProgress.length})',
+    packageBody,
+    omitIfEmpty: false,
+  );
 
   content.addAll([
     pw.SizedBox(height: 20),

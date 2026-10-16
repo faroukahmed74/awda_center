@@ -84,4 +84,42 @@ void main() {
     );
     expect(String.fromCharCodes(bytes.take(4)), '%PDF');
   });
+
+  test('buildPatientReportPdf paginates a very long treatment plan', () async {
+    final l10n = AppLocalizations(const Locale('en'));
+    final longPlan = StringBuffer()
+      ..writeln('ELECTRO / PAIN MODULATION')
+      ..writeln('TENS · IFC · US');
+    for (var i = 0; i < 120; i++) {
+      longPlan.writeln(
+        'ARTICULAR / ROM — Shoulder and cervical line $i: '
+        'PROM AAROM AROM stretching mobilization soft tissue release.',
+      );
+    }
+    const user = UserModel(
+      id: 'p3',
+      email: 'long@test.com',
+      fullNameEn: 'Long Plan Patient',
+    );
+    final profile = PatientProfileModel(
+      id: 'p3',
+      userId: 'p3',
+      diagnosis:
+          'LF SUPRASPINATUS PARTIAL-THICKNESS TEAR\nCERVICAL AND LUMBAR SPONDYLOSIS',
+      treatmentGoals: longPlan.toString(),
+    );
+
+    final bytes = await buildPatientReportPdf(
+      user: user,
+      profile: profile,
+      sessionRows: const [],
+      incomeForPatient: const [],
+      packageProgress: const [],
+      l10n: l10n,
+      centerName: l10n.appTitle,
+    );
+
+    expect(bytes.length, greaterThan(2000));
+    expect(String.fromCharCodes(bytes.take(4)), '%PDF');
+  });
 }

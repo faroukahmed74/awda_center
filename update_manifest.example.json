@@ -1,7 +1,7 @@
 {
-  "versionName": "1.0.42",
-  "versionCode": 22,
+  "versionName": "1.0.43",
+  "versionCode": 23,
   "apkUrl": "https://www.dropbox.com/scl/fi/zko6rih4r3n0uyawcwy5y/app-release.apk?rlkey=4kt62awoe8rw28cnw5cqa7d66&st=boudw343&dl=1",
-  "releaseNotes": "1.0.42: إظهار الدكتور القائم بالجلسة في مواعيد اليوم بالوحة الرئيسية، وإضافة تصفية حسب القائم بالجلسة في شاشة المواعيد (أطباء ومتدربين).",
+  "releaseNotes": "1.0.43: تقرير المريض ديناميكي — إخفاء الحقول والأقسام الفارغة عند قلة البيانات، وتقسيم النصوص الطبية الطويلة وجداول الجلسات الكثيرة على صفحات متعددة لتوليد التقرير بشكل موثوق دون أعطال.",
   "minSupportedVersionCode": 1
 }

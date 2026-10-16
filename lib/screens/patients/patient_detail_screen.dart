@@ -317,8 +317,15 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                 service: r.service,
                 statusLabel: r.statusLabel,
                 paymentStatusLabel: r.paymentStatusLabel,
+                doctorLabel: r.doctorLabel,
               ))
           .toList();
+      final followedId = _profile?.followedByDoctorId?.trim();
+      final followedName = (followedId == null || followedId.isEmpty)
+          ? null
+          : (cache.doctorDisplayName(followedId) ??
+              cache.userName(followedId) ??
+              followedId);
       final bytes = await buildPatientReportPdf(
         user: _user!,
         profile: _profile,
@@ -327,6 +334,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         packageProgress: _packageProgress(),
         l10n: l10n,
         centerName: l10n.appTitle,
+        followedByDoctorName: followedName,
       );
       final name = _user!.displayName.replaceAll(RegExp(r'[^\w\s\u0600-\u06FF-]'), '').trim();
       final safeName = name.isEmpty ? 'patient' : name.split(RegExp(r'\s+')).first;
